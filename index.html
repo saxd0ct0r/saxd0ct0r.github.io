@@ -12,9 +12,17 @@
                     Lato, Verdana, Geneva, Tahoma, sans-serif, sans-serif;
             }
             
-            #PersonalName {
+            h1 {
                 font-family: "Book Antiqua", Palatino, "Palatino Linotype", 
                     "Palatino LT STD", Georgia, serif;
+            }
+
+            h2 {
+                font-family: "Book Antiqua", Palatino, "Palatino Linotype", 
+                    "Palatino LT STD", Georgia, serif;
+
+            }
+            #PersonalName {
                 font-variant-caps:petite-caps;
                 }
             #address {
@@ -32,6 +40,31 @@
                 font-variant-caps:petite-caps;
             }
 
+            .container {
+                display: flex;
+                justify-content: space-between; /* Distributes columns evenly */
+                gap: 20px; /* Space between columns */
+                flex-wrap: wrap; /* Allows wrapping on smaller screens */
+                width: 100%;
+                max-width: 1200px; /* Optional: limits max width for larger screens */
+                margin: 0 auto; /* Centers the container */
+                padding: 20px; /* Optional: adds padding */
+            }
+
+            .column {
+                flex: 1; /* Each column takes equal space */
+                min-width: 250px; /* Ensures columns don't get too narrow */
+                padding: 15px;
+                box-sizing: border-box; /* Includes padding in width calculation */
+            }
+
+            /* Optional: Responsive adjustments for smaller screens */
+            @media (max-width: 768px) {
+                .column {
+                    flex: 100%; /* Columns stack vertically on small screens */
+                    min-width: 100%;
+                }
+            }
         </style>
         <script src="https://platform.linkedin.com/badges/js/profile.js" async defer type="text/javascript">
         </script>
@@ -73,26 +106,26 @@
         </section>
         <section id="Skills and certifications">
             <h2>Skills and Certifications</h2>
-            <ul>
-                <li><strong>DoD Secret Clearance</strong></li>
+            <ul class="container">
+                <span class="column"><li><strong>DoD Secret Clearance</strong></li>
                 <li><strong>Foundational C# with Microsoft</strong></li>
                 <li>Python</li>
                 <li>Jupyter Books</li>
                 <li>Visual Studio Code</li>
                 <li>Network Administration</li>
-                <li>Linux: bash</li>
-                <li>Windows: PowerShell</li>
+                <li>Linux: bash</li></span>
+                <span class="column"><li>Windows: PowerShell</li>
                 <li>GitHub</li>
                 <li>Hardware</li>
                 <li>Troubleshooting</li>
                 <li>Leadership</li>
                 <li>Training</li>
-                <li>Project Management</li>
-                <li>Communication</li>
+                <li>Project Management</li></span>
+                <span class="column"><li>Communication</li>
                 <li>Fluent in Russian (Verbal/Written)</li>
                 <li>Customer Service</li>
                 <li>Analysis and Production</li>
-                <li>Interpersonal Skills</li>
+                <li>Interpersonal Skills</li></span>
             </ul>
         </section>
         <section id="Education">
