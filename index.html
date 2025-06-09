@@ -3,10 +3,6 @@
     <head>
         <title>Dr. Timothy Owen</title>
         <style>
-            header {
-                text-align:center;
-            }
-
             body {
                 font-family: "Century Gothic", Avenir, "Avenir Next", Montserrat,
                     Lato, Verdana, Geneva, Tahoma, sans-serif, sans-serif;
@@ -18,6 +14,14 @@
                 border-radius:25px;
             }
             
+            header {
+                text-align:center;
+            }
+
+            section {
+                margin:10px;
+            }
+
             h1 {
                 font-family: "Book Antiqua", Palatino, "Palatino Linotype", 
                     "Palatino LT STD", Georgia, serif;
@@ -26,20 +30,23 @@
             h2 {
                 font-family: "Book Antiqua", Palatino, "Palatino Linotype", 
                     "Palatino LT STD", Georgia, serif;
+                padding-top:10px;
+                margin-bottom:0;
 
             }
+
             #PersonalName {
-                font-variant-caps:petite-caps;
+                text-transform:uppercase;
                 }
             #address {
-                font-family: "Century Gothic", Arial, sans-serif;
+                /* font-family: "Century Gothic", Arial, sans-serif; */
                 text-transform:uppercase;
             }
             #phone {
-                font-variant-caps:normal;
+                /* font-variant-caps:normal; */
             }
             #email {
-                font-variant-caps:normal;
+                /* font-variant-caps:normal; */
             }
 
             .container {
@@ -73,17 +80,21 @@
     </head>
     <body>
         <header>
-            <h1 id="PersonalName">Dr. Timothy James Owen</h1>
-            <addr>
-                <p id="address">South Puget Sound Area, WA 98327</p>
-                <p>
+            <div style="margin-bottom:0">
+                <h1 id="PersonalName" style="margin:0;padding:20px;border:1px solid #6B7C71;">Dr. Timothy James Owen</h1>
+            </div>
+            <div id="address" style="margin-top:0;margin-bottom:0;background:#93A299">
+                <p style="margin:0;color:white;padding-top:5px;padding-bottom:5px;font-size:120%">South Puget Sound Area, WA 98327</p>
+            </div>
+            <div>
+                <p style="margin:0;color:#93A299">
                     <a href="tel:757-502-5970" id="phone">(757) 502-5970</a> | 
                     <a href="mailto:timothy.j.owen@outlook.com" id="email">timothy.j.owen@outlook.com</a> | 
                     <a href="https://www.linkedin.com/in/timothy-j-owen" target="_blank">
                         LinkedIn</a> | 
-                    <a href="https://github.com/saxd0ct0r" target="_blank">GitHub</a>
+                    <a href="https://github.com/saxd0ct0r?tab=repositories" target="_blank">GitHub</a>
                 </p>
-            </addr>
+            </div>
             <!-- <div class="badge-base LI-profile-badge" data-locale="en_US" data-size="medium" 
                 data-theme="light" data-type="VERTICAL" data-vanity="timothy-j-owen" data-version="v1">
                 <a class="badge-base__link LI-simple-link" 
@@ -94,7 +105,7 @@
             <h2>
                 Objective
             </h2>
-            <p>
+            <p style="padding-top:0px;">
                 Results-oriented U.S. Army veteran with 20 years of service as a
                 military saxophonist and an active DoD Secret clearance,
                 transitioning to the Information Technology sector with a strong
