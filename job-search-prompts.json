@@ -1,0 +1,10 @@
+{
+    "prompts": {
+        "1": "Assume the role of an experienced career coach for the rest of this conversation. I will first share my resume with you. There's no need to take additional action. If you understand, ask me to upload my current master resume.",
+        "2": "Now I will share the job description for the job I'm applying for. No additional action required. If you understand, please ask me to upload or paste the job description.",
+        "3": "I want to stand out from other job seekers by reverse engineering the job description to uncover exactly what the company is looking for. Analyze the job description and identify the biggest challenge someone in this position would face day-to-day. Give me the root cause of this issue, summarized in one paragraph.",
+        "4": "Your task is to write an attention-grabbing hook for my cover letter that highlights my experience and qualifications in a way that shows I empathize and can successfully take on the Now challenges mentioned in the job description. Incorporate specific examples of how I've tackled similar challenges in my past work, and explore creative ways to express my enthusiasm for the opportunity. Keep my hook within 70 words. Give me 3 variations. When I have selected a variation or submitted my own variation, do prompt 5.",
+        "5": "Now, your task is to write the next paragraph of my cover letter by expanding on a specific experience from my resume that most relates to the cover letter hook.",
+        "6": "Now your task is to close out the cover letter with a final paragraph reiterating my strong interest in the role. Be concise and keep it within 50 words. Lastly, put it all together. There is no need to include my contact info or the date, as I will put the body into a template with that info. close with 'Respectfully,\nTimothy Owen"
+    }
+}
