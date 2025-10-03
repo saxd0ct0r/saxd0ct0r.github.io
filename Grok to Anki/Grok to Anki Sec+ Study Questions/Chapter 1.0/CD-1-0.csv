@@ -1,0 +1,2 @@
+Text,Extra,Tags
+"Cybersecurity practices primarily aim to protect {{c1::information::asset}} and {{c2::systems::asset}}.","Defending key assets.<hr>Rationale: Tests recall of the two primary assets protected by cybersecurity<br>Metadata: Multiple-cloze<br>Source: Section::1.0","Section::1.0 cybersecurity protection cloze enumerative"
