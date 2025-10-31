@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# Install and start Apache
+yum update -y
+yum install -y httpd
+systemctl start httpd
+systemctl enable httpd
+
+# Get Availability Zone (IMDSv2)
+EC2AZ=$(TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600") && curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone)
+
+# Write HTML with Matrix rain (quoted heredoc = no backtick issues)
+cat <<'EOF' > /var/www/html/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EC2 Instance in The Matrix</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: black; color: #0f0; font-family: 'Courier New', monospace; }
+        canvas { position: absolute; top: 0; left: 0; z-index: 1; }
+        .content { position: relative; z-index: 2; text-align: center; top: 50%; transform: translateY(-50%); text-shadow: 0 0 10px #0f0; padding: 20px; }
+        h1 { font-size: 2.5em; margin: 10px 0; }
+        #az { color: #0f0; font-weight: bold; text-shadow: 0 0 15px #0f0; animation: glow 2s infinite alternate; }
+        @keyframes glow { from { text-shadow: 0 0 10px #0f0; } to { text-shadow: 0 0 20px #0f0, 0 0 30px #0f0; } }
+        p { font-size: 1.2em; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <canvas id="matrix"></canvas>
+    <div class="content">
+        <h1>This Amazon EC2 instance is located in</h1>
+        <h1 id="az">AZ_PLACEHOLDER</h1>
+        <p>Wake up, Neo... The Matrix has you.</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const matrixChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|]`'}";
+        const fontSize = 16;
+        let drops = [];
+
+        function initDrops() {
+            const columns = Math.floor(canvas.width / fontSize);
+            drops = Array(columns).fill(1);
+        }
+        initDrops();
+
+        function draw() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0f0';
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const char = matrixChars.charAt(Math.floor(Math.random() * matrixChars.length));
+                ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+
+        setInterval(draw, 35);
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initDrops();
+        });
+    </script>
+</body>
+</html>
+EOF
+
+# Inject real AZ
+sed -i "s|AZ_PLACEHOLDER|$EC2AZ|g" /var/www/html/index.html
+
+# Permissions
+chmod 644 /var/www/html/index.html
+chown apache:apache /var/www/html/index.html
+
+# Restart Apache
+systemctl restart httpd

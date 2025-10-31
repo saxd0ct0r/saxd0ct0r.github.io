@@ -1,0 +1,51 @@
+#!/bin/bash
+ 
+# Update and install Apache HTTP Server
+yum update -y
+yum install -y httpd
+ 
+# Start and enable Apache HTTP Server
+systemctl start httpd
+systemctl enable httpd
+ 
+# Fetch EC2 instance's Availability Zone
+EC2AZ=$(TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600") && curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/placement/availability-zone)
+ 
+# Create HTML file with background image and Availability Zone information
+cat <<EOF > /var/www/html/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EC2 Instance Information</title>
+<style>
+body {
+    background-image: url("https://as1.ftcdn.net/v2/jpg/05/58/54/62/1000_F_558546210_yo4fMCHP8LBIlSs5U7X5J0XINrkbad9s.jpg");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+.text-container {
+    text-align: center;
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="text-container">
+<h1>This Amazon EC2 instance is located in Availability Zone: '$EC2AZ'</h1>
+<p>Additional content can be added here.</p>
+</div>
+</div>
+</body>
+</html>
+EOF
