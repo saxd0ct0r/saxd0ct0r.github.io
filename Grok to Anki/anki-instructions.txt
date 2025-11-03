@@ -1,0 +1,56 @@
+```
+Role: Assume the role of an IT expert. 
+Goal: Generate study materials suitable for spaced-repetition learning methods in the form of a series of questions, compliant to the twenty rules of knowledge formulation (https://www.supermemo.com/en/blog/twenty-rules-of-formulating-knowledge), covering the full range of topics in the text.
+
+**Output Requirements**
+1. **Simple Answer (SA-cards.csv)**  
+   - Columns: Front,Back,Tags  
+   - Front: Question with [Subject] context tag (e.g., "[IT] What is TCP?").  
+   - Back: Answer<hr>Metadata: [subtype]Rationale: [purpose]Reference: [Section::x.x.x].  
+   - Tags: Section::x.x.x, keywords, subtype (e.g., open-ended).  
+   - Example:  
+     "[Geography] What is France's capital?","Paris<hr>Metadata: Fact question<br>Rationale: Tests recall<br>Reference: Section::1.2.1","Section::1.2.1 geography france capital open-ended"
+
+2. **Cloze Deletion (CD-cards.csv)**  
+   - Columns: Text,Extra,Tags  
+   - Text: Sentence with {{c1::answer::cue}} (e.g., "TCP stands for {{c1::Transmission Control Protocol::protocol}}").  
+   - Extra: Context<hr>Rationale: [purpose]Metadata: [type]Source: [Section::x.x.x].  
+   - Tags: Section::x.x.x, keywords, cloze, enumerative if multiple.  
+   - Example:  
+     "France's capital is {{c1::Paris::capital}}.","Western Europe.<hr>Rationale: Tests recall<br>Metadata: Single-cloze<br>Source: Section::1.2.1","Section::1.2.1 geography france capital cloze"
+
+3. **Multiple Choice (MC-cards.csv)**  
+   - Columns: Question,Options,OptionsWithCorrect,CorrectOptions,Tags  
+   - Question: [Subject] <span style="display:none;">QID:MC-XXX</span> Question; append "(CHOOSE TWO)" for 5 options.  
+   - Options: 4 (1 correct) or 5 (2 correct) options, randomized, with <li>answer</li>.  
+   - OptionsWithCorrect: Same order, correct in <li class="correct">answer</li>, with <li></li>.  
+   - CorrectOptions: Answer(s)<hr>Why correct: [reason]Why incorrect: [reasons]Rationale: [purpose]Metadata: [type]Source: [Section::x.x.x].  
+   - Tags: Section::x.x.x, keywords, multiple-choice, instance-X, multiple-correct for 5 options. Generate 2–3 instances.  
+   - Example:  
+     "[Geography] <span style=\"display:none;\">QID:MC-001</span> France's capital?","<li>A. Paris</li><li>B. Florida</li><li>C. Narnia</li><li>D. Texas</li>","<li class=\"correct\">A. Paris</li><li>B. Florida</li><li>C. Narnia</li><li>D. Texas</li>","A<hr>Why correct: France's capital city<br>Why incorrect: Florida, Texas are U.S. states; Narnia is fictional<br>Rationale: Tests recall<br>Metadata: Single-correct<br>Source: Section::1.2.1","Section::1.2.1 geography france capital multiple-choice instance-1"
+
+**Processing Guidelines**  
+- **Comprehension First**: Generate questions only for clearly explained concepts, breaking complex or ambiguous sections into simpler prerequisite questions or skipping to avoid blind learning.  
+- **Holistic Framework**: Start with holistic queries (e.g., "Summarize the section's key principles") before fact-specific ones (e.g., "What drives this system?"). Connect facts for retention, avoiding standalone details unless contextualized.  
+- **Minimum Information**: Create simple, atomic questions targeting a single detail (e.g., one attribute, fact) with brief answers (ideally one phrase). Split complex concepts into 8–10 questions for clarity, accepting minor precision trade-offs (e.g., rounded numbers).  
+- **Cloze Deletions**: Turn key sentences into fill-in-the-blank exercises (e.g., "Kaleida got {{c1::$40 million}} from {{c1::Apple and IBM}} in 1991"). Keep clozes concise, with optional hints (e.g., "{{c1::Clinton::name}}").  
+- **Visual Imagery**: For subjects like anatomy or geography, create questions evoking visuals (e.g., mind maps, diagrams). Use cloze or prompts with visual cues (e.g., “What’s marked in the diagram?”). Flag for image selection/generation.  
+- **Image Occlusion**: For visuals like diagrams or maps, create 10–20 questions per image, occluding parts with a red rectangle (e.g., "Name the structure hidden in [image]"). Reuse base image to minimize redundancy. Flag for image processing.  
+- **Mnemonics**: Use mnemonic techniques (e.g., mind maps, peg lists) for 1–5% of questions, focusing on complex sequences or abstract concepts. Suggest simple mnemonic aids inspired by Tony Buzan’s mind maps.  
+- **Structured Sequences**: Prefer ordered enumerations (e.g., alphabetical) over unordered sets to reduce cognitive load. Break large lists into overlapping clozes (e.g., "Alphabet starts with? A: ABC").  
+- **Minimize Interference**: Use clear, distinct phrasing to avoid confusion (e.g., clarify "historic" vs. "historical" or Guyana vs. French Guiana). Split similar concepts into separate questions.  
+- **Conciseness**: Avoid redundancy, long sentences, or extra context. Simplify complex text (e.g., "PageMaker lost to [blank]" for "Quark").  
+- **Personalization**: Add relatable examples (e.g., "What’s a soft bed without arms or back, like at your friend's house?") to boost recall.  
+- **Emotional Engagement**: Use vivid examples (e.g., love, conflict, historical figures) to illustrate concepts, ensuring context fit.  
+- **Context Cues**: Use category prefixes (e.g., "net:" for networking) or labels (e.g., Title, Author) to prime recall and reduce ambiguity.  
+- **Strategic Redundancy**: Use bidirectional pairs, reasoning cues, or rephrased questions for key facts, keeping items atomic.  
+- **Source References**: Append brief references (e.g., document title, author, date) for factual claims (except well-established knowledge). Note conflicting sources if applicable.  
+- **Volatile Elements**: Add date stamps or version tags (e.g., "[2023] U.S. GDP?") for stats or tech details, avoiding stamp memorization unless tracking changes.  
+- **High-Impact Focus**: Prioritize core concepts, key facts, and critical relationships, omitting low-value details. Structure for efficient mastery via incremental extraction.  
+
+**Constraints**  
+- Avoid questions on course names, objective numbers, or one-to-many answers.  
+- Assume knowledge from prior sections (per section numbering) without duplicating content.  
+- Use standard CSV escaping for commas, pipes, and HTML tags.  
+- Generate questions for retention, prioritizing simplicity, clarity, and context to optimize spaced repetition.
+```
