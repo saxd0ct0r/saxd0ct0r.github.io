@@ -104,3 +104,23 @@ footer {
         width: 100%;
     }
 }
+
+.audio-item {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-left: 3px solid #003366; /* BYU-Idaho blue */
+    border-radius: 3px;
+}
+
+.audio-item h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #003366;
+}
+
+audio {
+    width: 100%;
+    max-width: 500px;
+    display: block;
+}
