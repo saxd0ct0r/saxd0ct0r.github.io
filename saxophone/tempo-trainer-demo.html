@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tempo Trainer - Interactive Demo | Timothy J. Owen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #c9a961;
+            --accent-light: #e8d7b1;
+            --text: #e8e8e8;
+            --text-muted: #a8a8b8;
+            --success: #4ecca3;
+            --error: #e84545;
+            --metronome: #ffd700;
+        }
+
+        body {
+            font-family: 'Crimson Pro', serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(201, 169, 97, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(201, 169, 97, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            padding: 3rem 0;
+            border-bottom: 2px solid var(--accent);
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 10px rgba(201, 169, 97, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        .author {
+            margin-top: 1rem;
+            font-size: 1rem;
+            color: var(--accent-light);
+            font-style: italic;
+        }
+
+        .intro {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 4px solid var(--accent);
+            padding: 2rem;
+            margin-bottom: 3rem;
+            border-radius: 0 8px 8px 0;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 1s ease-out 0.3s both;
+        }
+
+        .intro p {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .intro p:last-child {
+            margin-bottom: 0;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            animation: fadeIn 1s ease-out 0.5s both;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--accent);
+            color: var(--text);
+            font-family: 'Cinzel', serif;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mode-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(201, 169, 97, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .mode-btn:hover::before {
+            left: 100%;
+        }
+
+        .mode-btn:hover {
+            background: rgba(201, 169, 97, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(201, 169, 97, 0.2);
+        }
+
+        .mode-btn.active {
+            background: var(--accent);
+            color: var(--primary);
+            font-weight: 600;
+            box-shadow: 0 4px 20px rgba(201, 169, 97, 0.3);
+        }
+
+        .trainer-interface {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 3rem;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(201, 169, 97, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 1s ease-out 0.7s both;
+        }
+
+        .tempo-display {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .tempo-number {
+            font-family: 'Cinzel', serif;
+            font-size: 6rem;
+            color: var(--accent);
+            font-weight: 700;
+            text-shadow: 0 4px 20px rgba(201, 169, 97, 0.4);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .bpm-label {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            letter-spacing: 3px;
+        }
+
+        .phase-indicator {
+            text-align: center;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            background: rgba(201, 169, 97, 0.1);
+            border-radius: 8px;
+            font-family: 'Cinzel', serif;
+            font-size: 1.2rem;
+            color: var(--accent-light);
+            letter-spacing: 1px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-family: 'Cinzel', serif;
+            color: var(--accent-light);
+            font-size: 1rem;
+            letter-spacing: 1px;
+        }
+
+        input[type="number"] {
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(201, 169, 97, 0.3);
+            color: var(--text);
+            font-size: 1.2rem;
+            font-family: 'Crimson Pro', serif;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 20px rgba(201, 169, 97, 0.2);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 1.2rem;
+            font-family: 'Cinzel', serif;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: var(--primary);
+        }
+
+        .btn-success:hover {
+            background: #5fd6b3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(78, 204, 163, 0.3);
+        }
+
+        .btn-error {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-error:hover {
+            background: #ff5555;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(232, 69, 69, 0.3);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-light);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(201, 169, 97, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            border: 2px solid var(--accent);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .message {
+            margin-top: 1.5rem;
+            padding: 1.2rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            text-align: center;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .message.success {
+            background: rgba(78, 204, 163, 0.2);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .message.info {
+            background: rgba(201, 169, 97, 0.2);
+            border: 1px solid var(--accent);
+            color: var(--accent-light);
+        }
+
+        .message.final {
+            background: linear-gradient(135deg, rgba(201, 169, 97, 0.3), rgba(201, 169, 97, 0.1));
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            font-family: 'Cinzel', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            padding: 2rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 2rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-light));
+            transition: width 0.5s ease;
+        }
+
+        footer {
+            text-align: center;
+            padding: 3rem 0 2rem;
+            margin-top: 4rem;
+            border-top: 1px solid rgba(201, 169, 97, 0.3);
+            color: var(--text-muted);
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        footer a:hover {
+            color: var(--accent-light);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .tempo-number {
+                font-size: 4rem;
+            }
+
+            .trainer-interface {
+                padding: 2rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .mode-selector {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Tempo Trainer</h1>
+            <p class="subtitle">Interactive Practice Tool</p>
+            <p class="author">by Timothy J. Owen, D.M.A.</p>
+        </header>
+
+        <div class="intro">
+            <p><strong>Welcome to Tempo Trainer!</strong> This tool helps you systematically improve your tempo performance using an efficient binary search algorithm.</p>
+            <p><strong>Untargeted Mode:</strong> Perfect for scales and exercises without a specific tempo goal. The trainer helps you discover your maximum tempo.</p>
+            <p><strong>Targeted Mode:</strong> Ideal for pieces with specific tempo markings. The trainer helps you identify trouble spots and build up to your goal tempo.</p>
+        </div>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="untargeted">Untargeted Mode</button>
+            <button class="mode-btn" data-mode="targeted">Targeted Mode</button>
+        </div>
+
+        <div class="trainer-interface">
+            <div id="startScreen">
+                <div class="controls">
+                    <div class="input-group">
+                        <label for="startTempo">Starting Tempo (30-240 BPM)</label>
+                        <input type="number" id="startTempo" min="30" max="240" placeholder="Leave empty for first time">
+                    </div>
+                    <div class="input-group" id="targetTempoGroup" style="display: none;">
+                        <label for="targetTempo">Target Tempo (BPM)</label>
+                        <input type="number" id="targetTempo" min="30" max="240" placeholder="Enter your goal tempo">
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" id="startBtn">Begin Training</button>
+                </div>
+            </div>
+
+            <div id="trainingScreen" style="display: none;">
+                <div class="phase-indicator" id="phaseIndicator">Initial Assessment</div>
+                <div class="tempo-display">
+                    <div class="tempo-number pulse" id="currentTempo">60</div>
+                    <div class="bpm-label">BPM</div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-success" id="successBtn">Success ✓</button>
+                    <button class="btn btn-error" id="failBtn">Failed ✗</button>
+                </div>
+                <div id="messageArea"></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div id="resultsScreen" style="display: none;">
+                <div class="tempo-display">
+                    <div class="tempo-number" id="finalTempo">120</div>
+                    <div class="bpm-label">BPM</div>
+                </div>
+                <div class="message final" id="finalMessage">
+                    Training Complete!
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" id="restartBtn">Start New Session</button>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Part of the <a href="https://timowen.me/saxophone" target="_blank">Timothy J. Owen Portfolio</a></p>
+            <p><a href="https://github.com/saxd0ct0r/Python/tree/main/Tempo%20Finder" target="_blank">View source code on GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // Tempo presets matching the Python script
+        const TEMPOS = [
+            30, 31.5, 33, 34.5, 36, 38, 40, 42,
+            44, 46, 48, 50, 52, 54, 56, 58,
+            60, 63, 66, 69, 72, 76, 80, 84,
+            88, 92, 96, 100, 104, 108, 112, 116,
+            120, 126, 132, 138, 144, 152, 160, 168,
+            176, 184, 192, 200, 208, 216, 224, 232,
+            240
+        ];
+        
+        const STEP_SIZES = [16, 8, 4, 2, 1, 1];
+        
+        let currentMode = 'untargeted';
+        let tempoIndex = 0;
+        let stepSizeIndex = 0;
+        let perfectRun = true;
+        let isFirstTime = true;
+        let phase = 'initial';
+        let targetTempo = null;
+        let startTempoIndex = 0;
+        let totalSteps = 0;
+        let currentStep = 0;
+        let maxTempoReached = false;
+
+        // DOM Elements
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        const startScreen = document.getElementById('startScreen');
+        const trainingScreen = document.getElementById('trainingScreen');
+        const resultsScreen = document.getElementById('resultsScreen');
+        const startTempoInput = document.getElementById('startTempo');
+        const targetTempoInput = document.getElementById('targetTempo');
+        const targetTempoGroup = document.getElementById('targetTempoGroup');
+        const startBtn = document.getElementById('startBtn');
+        const successBtn = document.getElementById('successBtn');
+        const failBtn = document.getElementById('failBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const currentTempoDisplay = document.getElementById('currentTempo');
+        const finalTempoDisplay = document.getElementById('finalTempo');
+        const phaseIndicator = document.getElementById('phaseIndicator');
+        const messageArea = document.getElementById('messageArea');
+        const progressFill = document.getElementById('progressFill');
+        const finalMessage = document.getElementById('finalMessage');
+
+        // Mode selection
+        modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modeButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentMode = btn.dataset.mode;
+                
+                if (currentMode === 'targeted') {
+                    targetTempoGroup.style.display = 'block';
+                } else {
+                    targetTempoGroup.style.display = 'none';
+                }
+            });
+        });
+
+        // Utility functions
+        function resolveTempo(tempo) {
+            if (TEMPOS.includes(tempo)) {
+                return TEMPOS.indexOf(tempo);
+            }
+            for (let i = TEMPOS.length - 1; i >= 0; i--) {
+                if (TEMPOS[i] < tempo) {
+                    return i;
+                }
+            }
+            return 0;
+        }
+
+        function checkUpperBound(tIndex, sIndex) {
+            let stepSize = STEP_SIZES[sIndex];
+            while (tIndex + stepSize > TEMPOS.length - 1 && sIndex < STEP_SIZES.length - 1) {
+                sIndex++;
+                stepSize = STEP_SIZES[sIndex];
+            }
+            return { stepSizeIndex: sIndex, stepSize: stepSize };
+        }
+
+        function checkLowerBound(tIndex, sIndex) {
+            let stepSize = STEP_SIZES[sIndex];
+            while (tIndex - stepSize < 0 && sIndex < STEP_SIZES.length - 1) {
+                sIndex++;
+                stepSize = STEP_SIZES[sIndex];
+            }
+            return { stepSizeIndex: sIndex, stepSize: stepSize };
+        }
+
+        function updateDisplay() {
+            currentTempoDisplay.textContent = TEMPOS[tempoIndex];
+            progressFill.style.width = `${(currentStep / totalSteps) * 100}%`;
+        }
+
+        function showMessage(text, type = 'info') {
+            messageArea.innerHTML = `<div class="message ${type}">${text}</div>`;
+        }
+
+        function updatePhase(newPhase) {
+            phase = newPhase;
+            const phaseTexts = {
+                'initial': 'Initial Assessment',
+                'review': 'Review Phase - Confirming Ability',
+                'growth': 'Growth Phase - Pushing Limits',
+                'targeted_search': 'Finding Your Threshold',
+                'hotspot': 'Identifying Challenge Points'
+            };
+            phaseIndicator.textContent = phaseTexts[newPhase] || newPhase;
+        }
+
+        // Start training
+        startBtn.addEventListener('click', () => {
+            const startTempoValue = startTempoInput.value;
+            
+            if (currentMode === 'targeted') {
+                const targetTempoValue = targetTempoInput.value;
+                if (!targetTempoValue || targetTempoValue < 30 || targetTempoValue > 240) {
+                    alert('Please enter a valid target tempo (30-240 BPM)');
+                    return;
+                }
+                targetTempo = parseInt(targetTempoValue);
+            }
+
+            startScreen.style.display = 'none';
+            trainingScreen.style.display = 'block';
+            
+            if (startTempoValue === '') {
+                isFirstTime = true;
+                tempoIndex = resolveTempo(60);
+                stepSizeIndex = 0;
+                totalSteps = 6; // Approximate for first time
+            } else {
+                isFirstTime = false;
+                const startTempo = parseInt(startTempoValue);
+                if (startTempo < 30 || startTempo > 240) {
+                    alert('Start tempo must be between 30 and 240 BPM');
+                    return;
+                }
+                startTempoIndex = resolveTempo(startTempo);
+                tempoIndex = startTempoIndex;
+                totalSteps = 12; // Approximate for continuation
+            }
+
+            currentStep = 0;
+            perfectRun = true;
+            maxTempoReached = false;
+            
+            if (currentMode === 'targeted') {
+                // Start 20% above target
+                const initialTempo = Math.round(targetTempo * 1.2);
+                tempoIndex = resolveTempo(initialTempo);
+                updatePhase('targeted_search');
+                showMessage(`Starting above your target tempo. Play until first error.`);
+            } else {
+                updatePhase('initial');
+                showMessage(`Play at this tempo. Click Success if you played it perfectly, or Failed if you made any mistakes.`);
+            }
+            
+            updateDisplay();
+        });
+
+        // Handle success
+        successBtn.addEventListener('click', () => {
+            currentStep++;
+            
+            // Check if at upper bound
+            if (TEMPOS[tempoIndex] === TEMPOS[TEMPOS.length - 1]) {
+                maxTempoReached = true;
+                showResults();
+                return;
+            }
+
+            // Increment tempo
+            const bounds = checkUpperBound(tempoIndex, stepSizeIndex);
+            stepSizeIndex = bounds.stepSizeIndex;
+            tempoIndex += bounds.stepSize;
+            stepSizeIndex++;
+
+            if (stepSizeIndex >= STEP_SIZES.length) {
+                showResults();
+                return;
+            }
+
+            updateDisplay();
+            showMessage('Great! Let\'s try a faster tempo.', 'success');
+        });
+
+        // Handle failure
+        failBtn.addEventListener('click', () => {
+            currentStep++;
+            perfectRun = false;
+
+            // Check if at lower bound
+            if (TEMPOS[tempoIndex] === TEMPOS[0]) {
+                showResults();
+                return;
+            }
+
+            // Decrement tempo
+            const bounds = checkLowerBound(tempoIndex, stepSizeIndex);
+            stepSizeIndex = bounds.stepSizeIndex;
+            tempoIndex -= bounds.stepSize;
+            stepSizeIndex++;
+
+            if (stepSizeIndex >= STEP_SIZES.length) {
+                showResults();
+                return;
+            }
+
+            updateDisplay();
+            showMessage('No problem! Let\'s try a slower tempo.');
+        });
+
+        // Show results
+        function showResults() {
+            trainingScreen.style.display = 'none';
+            resultsScreen.style.display = 'block';
+            
+            const finalTempo = TEMPOS[tempoIndex];
+            finalTempoDisplay.textContent = finalTempo;
+            
+            let message = `Your optimal tempo is ${finalTempo} BPM!`;
+            
+            if (maxTempoReached) {
+                message = `Excellent! You've maxed out at ${finalTempo} BPM! 🎵`;
+            } else if (currentMode === 'targeted' && targetTempo) {
+                if (finalTempo >= targetTempo) {
+                    message = `Success! You can perform at your target tempo of ${targetTempo} BPM!`;
+                } else {
+                    message = `You can currently perform at ${finalTempo} BPM. Continue practicing to reach ${targetTempo} BPM.`;
+                }
+            } else if (perfectRun) {
+                message = `Perfect run! Your tempo is ${finalTempo} BPM. Try again to push even higher!`;
+            }
+            
+            finalMessage.textContent = message;
+        }
+
+        // Restart
+        restartBtn.addEventListener('click', () => {
+            resultsScreen.style.display = 'none';
+            startScreen.style.display = 'block';
+            startTempoInput.value = '';
+            targetTempoInput.value = '';
+            messageArea.innerHTML = '';
+            progressFill.style.width = '0%';
+        });
+    </script>
+</body>
+</html>
