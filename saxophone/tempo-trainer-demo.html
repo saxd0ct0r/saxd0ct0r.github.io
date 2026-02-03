@@ -358,21 +358,6 @@
             padding: 2rem;
         }
 
-        .progress-bar {
-            width: 100%;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 2rem;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent), var(--accent-light));
-            transition: width 0.5s ease;
-        }
-
         footer {
             text-align: center;
             padding: 3rem 0 2rem;
@@ -467,27 +452,22 @@
         </header>
 
         <div class="intro">
-            <p><strong>Welcome to Tempo Trainer!</strong> This tool helps you systematically improve your tempo performance using an efficient binary search algorithm.</p>
-            <p><strong>Untargeted Mode:</strong> Perfect for scales and exercises without a specific tempo goal. The trainer helps you discover your maximum tempo.</p>
-            <p><strong>Targeted Mode:</strong> Ideal for pieces with specific tempo markings. The trainer helps you identify trouble spots and build up to your goal tempo.</p>
-        </div>
-
-        <div class="mode-selector">
-            <button class="mode-btn active" data-mode="untargeted">Untargeted Mode</button>
-            <button class="mode-btn" data-mode="targeted">Targeted Mode</button>
+            <p><strong>Welcome to Tempo Trainer!</strong> This tool helps you systematically find and improve your tempo using a divide-and-conquer search. After each attempt it narrows in on your limit in fewer and fewer steps.</p>
+            <p><strong>First session:</strong> Leave the tempo field empty. The trainer starts at 60 BPM and homes in on your current ability.</p>
+            <p><strong>Later sessions:</strong> Enter the tempo you reached last time. The trainer first confirms you can still hit that mark (review), then pushes you faster (growth).</p>
         </div>
 
         <div class="trainer-interface">
             <div id="startScreen">
                 <div class="controls">
                     <div class="input-group">
-                        <label for="startTempo">Starting Tempo (30-240 BPM)</label>
-                        <input type="number" id="startTempo" min="30" max="240" placeholder="Leave empty for first time">
+                        <label for="startTempo">Starting Tempo (30–240 BPM)</label>
+                        <input type="number" id="startTempo" min="30" max="240" placeholder="Leave empty for first session">
                     </div>
-                    <div class="input-group" id="targetTempoGroup" style="display: none;">
-                        <label for="targetTempo">Target Tempo (BPM)</label>
-                        <input type="number" id="targetTempo" min="30" max="240" placeholder="Enter your goal tempo">
-                    </div>
+                    <p style="color: var(--text-muted); font-size: 1rem; margin-top: 0.5rem;">
+                        First time using the tool? Leave the field empty and hit Begin.
+                        On later sessions, enter the tempo you reached last time.
+                    </p>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-primary" id="startBtn">Begin Training</button>
@@ -505,9 +485,6 @@
                     <button class="btn btn-error" id="failBtn">Failed ✗</button>
                 </div>
                 <div id="messageArea"></div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-                </div>
             </div>
 
             <div id="resultsScreen" style="display: none;">
@@ -531,254 +508,347 @@
     </div>
 
     <script>
-        // Tempo presets matching the Python script
-        const TEMPOS = [
-            30, 31.5, 33, 34.5, 36, 38, 40, 42,
-            44, 46, 48, 50, 52, 54, 56, 58,
-            60, 63, 66, 69, 72, 76, 80, 84,
-            88, 92, 96, 100, 104, 108, 112, 116,
-            120, 126, 132, 138, 144, 152, 160, 168,
-            176, 184, 192, 200, 208, 216, 224, 232,
-            240
-        ];
-        
-        const STEP_SIZES = [16, 8, 4, 2, 1, 1];
-        
-        let currentMode = 'untargeted';
-        let tempoIndex = 0;
-        let stepSizeIndex = 0;
-        let perfectRun = true;
-        let isFirstTime = true;
-        let phase = 'initial';
-        let targetTempo = null;
-        let startTempoIndex = 0;
-        let totalSteps = 0;
-        let currentStep = 0;
-        let maxTempoReached = false;
+    // ─── constants (match Python exactly) ────────────────────────────────
+    const TEMPOS = [
+        30, 31.5, 33, 34.5, 36, 38, 40, 42,
+        44, 46, 48, 50, 52, 54, 56, 58,
+        60, 63, 66, 69, 72, 76, 80, 84,
+        88, 92, 96, 100, 104, 108, 112, 116,
+        120, 126, 132, 138, 144, 152, 160, 168,
+        176, 184, 192, 200, 208, 216, 224, 232,
+        240
+    ];
+    const STEP_SIZES = [16, 8, 4, 2, 1, 1];
 
-        // DOM Elements
-        const modeButtons = document.querySelectorAll('.mode-btn');
-        const startScreen = document.getElementById('startScreen');
-        const trainingScreen = document.getElementById('trainingScreen');
-        const resultsScreen = document.getElementById('resultsScreen');
-        const startTempoInput = document.getElementById('startTempo');
-        const targetTempoInput = document.getElementById('targetTempo');
-        const targetTempoGroup = document.getElementById('targetTempoGroup');
-        const startBtn = document.getElementById('startBtn');
-        const successBtn = document.getElementById('successBtn');
-        const failBtn = document.getElementById('failBtn');
-        const restartBtn = document.getElementById('restartBtn');
-        const currentTempoDisplay = document.getElementById('currentTempo');
-        const finalTempoDisplay = document.getElementById('finalTempo');
-        const phaseIndicator = document.getElementById('phaseIndicator');
-        const messageArea = document.getElementById('messageArea');
-        const progressFill = document.getElementById('progressFill');
-        const finalMessage = document.getElementById('finalMessage');
+    // ─── state enum ───────────────────────────────────────────────────────
+    const S = {
+        START:              'START',
+        FIRST_TIME_SEARCH:  'FIRST_TIME_SEARCH',   // find_tempo(60,0,true)
+        FIRST_TIME_BONUS:   'FIRST_TIME_BONUS',    // bonus check after perfect first-time
+        REVIEW_FIRST_TRIAL: 'REVIEW_FIRST_TRIAL',  // check_success(start_tempo)
+        REVIEW_SEARCH:      'REVIEW_SEARCH',       // find_tempo(review start)
+        GROWTH_FIRST_TRIAL: 'GROWTH_FIRST_TRIAL',  // check_success(start_tempo) again
+        GROWTH_SEARCH:      'GROWTH_SEARCH',       // find_tempo(growth start)
+        GROWTH_BONUS:       'GROWTH_BONUS',        // bonus check after perfect growth
+        DONE:               'DONE'
+    };
 
-        // Mode selection
-        modeButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                modeButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentMode = btn.dataset.mode;
-                
-                if (currentMode === 'targeted') {
-                    targetTempoGroup.style.display = 'block';
-                } else {
-                    targetTempoGroup.style.display = 'none';
-                }
-            });
-        });
+    // ─── mutable session state ────────────────────────────────────────────
+    let state, tempoIndex, stepSizeIndex, perfectRun, maxxed;
+    let startTempoIndex;            // saved so growth can jump back to it
+    let firstTrialSuccess;          // result of REVIEW_FIRST_TRIAL
+    let growthStartSuccess;         // result of GROWTH_FIRST_TRIAL
+    let lastSuccess;                // the answer that was just given
 
-        // Utility functions
-        function resolveTempo(tempo) {
-            if (TEMPOS.includes(tempo)) {
-                return TEMPOS.indexOf(tempo);
-            }
-            for (let i = TEMPOS.length - 1; i >= 0; i--) {
-                if (TEMPOS[i] < tempo) {
-                    return i;
-                }
-            }
-            return 0;
+    // ─── pure helpers (direct ports of Python) ───────────────────────────
+    function resolveTempo(tempo) {
+        if (TEMPOS.includes(tempo)) return TEMPOS.indexOf(tempo);
+        for (let i = TEMPOS.length - 1; i >= 0; i--) {
+            if (TEMPOS[i] < tempo) return i;
         }
+        return 0;
+    }
 
-        function checkUpperBound(tIndex, sIndex) {
-            let stepSize = STEP_SIZES[sIndex];
-            while (tIndex + stepSize > TEMPOS.length - 1 && sIndex < STEP_SIZES.length - 1) {
-                sIndex++;
-                stepSize = STEP_SIZES[sIndex];
-            }
-            return { stepSizeIndex: sIndex, stepSize: stepSize };
+    function checkUpperBound(tIdx, sIdx) {
+        let step = STEP_SIZES[sIdx];
+        while (tIdx + step > TEMPOS.length - 1 && sIdx < STEP_SIZES.length - 1) {
+            sIdx++;
+            step = STEP_SIZES[sIdx];
         }
+        return { sIdx, step };
+    }
 
-        function checkLowerBound(tIndex, sIndex) {
-            let stepSize = STEP_SIZES[sIndex];
-            while (tIndex - stepSize < 0 && sIndex < STEP_SIZES.length - 1) {
-                sIndex++;
-                stepSize = STEP_SIZES[sIndex];
-            }
-            return { stepSizeIndex: sIndex, stepSize: stepSize };
+    function checkLowerBound(tIdx, sIdx) {
+        let step = STEP_SIZES[sIdx];
+        while (tIdx - step < 0 && sIdx < STEP_SIZES.length - 1) {
+            sIdx++;
+            step = STEP_SIZES[sIdx];
         }
+        return { sIdx, step };
+    }
 
-        function updateDisplay() {
-            currentTempoDisplay.textContent = TEMPOS[tempoIndex];
-            progressFill.style.width = `${(currentStep / totalSteps) * 100}%`;
-        }
-
-        function showMessage(text, type = 'info') {
-            messageArea.innerHTML = `<div class="message ${type}">${text}</div>`;
-        }
-
-        function updatePhase(newPhase) {
-            phase = newPhase;
-            const phaseTexts = {
-                'initial': 'Initial Assessment',
-                'review': 'Review Phase - Confirming Ability',
-                'growth': 'Growth Phase - Pushing Limits',
-                'targeted_search': 'Finding Your Threshold',
-                'hotspot': 'Identifying Challenge Points'
-            };
-            phaseIndicator.textContent = phaseTexts[newPhase] || newPhase;
-        }
-
-        // Start training
-        startBtn.addEventListener('click', () => {
-            const startTempoValue = startTempoInput.value;
-            
-            if (currentMode === 'targeted') {
-                const targetTempoValue = targetTempoInput.value;
-                if (!targetTempoValue || targetTempoValue < 30 || targetTempoValue > 240) {
-                    alert('Please enter a valid target tempo (30-240 BPM)');
-                    return;
-                }
-                targetTempo = parseInt(targetTempoValue);
-            }
-
-            startScreen.style.display = 'none';
-            trainingScreen.style.display = 'block';
-            
-            if (startTempoValue === '') {
-                isFirstTime = true;
-                tempoIndex = resolveTempo(60);
-                stepSizeIndex = 0;
-                totalSteps = 6; // Approximate for first time
-            } else {
-                isFirstTime = false;
-                const startTempo = parseInt(startTempoValue);
-                if (startTempo < 30 || startTempo > 240) {
-                    alert('Start tempo must be between 30 and 240 BPM');
-                    return;
-                }
-                startTempoIndex = resolveTempo(startTempo);
-                tempoIndex = startTempoIndex;
-                totalSteps = 12; // Approximate for continuation
-            }
-
-            currentStep = 0;
-            perfectRun = true;
-            maxTempoReached = false;
-            
-            if (currentMode === 'targeted') {
-                // Start 20% above target
-                const initialTempo = Math.round(targetTempo * 1.2);
-                tempoIndex = resolveTempo(initialTempo);
-                updatePhase('targeted_search');
-                showMessage(`Starting above your target tempo. Play until first error.`);
-            } else {
-                updatePhase('initial');
-                showMessage(`Play at this tempo. Click Success if you played it perfectly, or Failed if you made any mistakes.`);
-            }
-            
-            updateDisplay();
-        });
-
-        // Handle success
-        successBtn.addEventListener('click', () => {
-            currentStep++;
-            
-            // Check if at upper bound
-            if (TEMPOS[tempoIndex] === TEMPOS[TEMPOS.length - 1]) {
-                maxTempoReached = true;
-                showResults();
-                return;
-            }
-
-            // Increment tempo
-            const bounds = checkUpperBound(tempoIndex, stepSizeIndex);
-            stepSizeIndex = bounds.stepSizeIndex;
-            tempoIndex += bounds.stepSize;
-            stepSizeIndex++;
-
-            if (stepSizeIndex >= STEP_SIZES.length) {
-                showResults();
-                return;
-            }
-
-            updateDisplay();
-            showMessage('Great! Let\'s try a faster tempo.', 'success');
-        });
-
-        // Handle failure
-        failBtn.addEventListener('click', () => {
-            currentStep++;
+    // ─── find_tempo single-iteration engine ───────────────────────────────
+    // Call AFTER recording the user's answer in `lastSuccess`.
+    // Mutates tempoIndex, stepSizeIndex, perfectRun, maxxed.
+    // Returns true if the loop is finished, false if another attempt is needed.
+    function findTempoStep() {
+        if (lastSuccess) {
+            if (tempoIndex === TEMPOS.length - 1) { maxxed = true; return true; }
+            const b = checkUpperBound(tempoIndex, stepSizeIndex);
+            stepSizeIndex = b.sIdx;
+            tempoIndex += b.step;
+        } else {
             perfectRun = false;
+            if (tempoIndex === 0) return true;
+            const b = checkLowerBound(tempoIndex, stepSizeIndex);
+            stepSizeIndex = b.sIdx;
+            tempoIndex -= b.step;
+        }
+        stepSizeIndex += 1;
+        return stepSizeIndex >= STEP_SIZES.length;   // loop exhausted?
+    }
 
-            // Check if at lower bound
-            if (TEMPOS[tempoIndex] === TEMPOS[0]) {
-                showResults();
-                return;
-            }
+    // Apply the post-loop correction from Python:
+    //   if tempo_increases and not maxxed: tempo_index -= 1
+    function findTempoFinalize() {
+        if (lastSuccess && !maxxed) tempoIndex -= 1;
+    }
 
-            // Decrement tempo
-            const bounds = checkLowerBound(tempoIndex, stepSizeIndex);
-            stepSizeIndex = bounds.stepSizeIndex;
-            tempoIndex -= bounds.stepSize;
-            stepSizeIndex++;
+    // ─── DOM refs ─────────────────────────────────────────────────────────
+    const startScreen       = document.getElementById('startScreen');
+    const trainingScreen    = document.getElementById('trainingScreen');
+    const resultsScreen     = document.getElementById('resultsScreen');
+    const startTempoInput   = document.getElementById('startTempo');
+    const startBtn          = document.getElementById('startBtn');
+    const successBtn        = document.getElementById('successBtn');
+    const failBtn           = document.getElementById('failBtn');
+    const restartBtn        = document.getElementById('restartBtn');
+    const currentTempoDisp  = document.getElementById('currentTempo');
+    const finalTempoDisp    = document.getElementById('finalTempo');
+    const phaseIndicator    = document.getElementById('phaseIndicator');
+    const messageArea       = document.getElementById('messageArea');
+    const finalMessage      = document.getElementById('finalMessage');
 
-            if (stepSizeIndex >= STEP_SIZES.length) {
-                showResults();
-                return;
-            }
+    // ─── UI helpers ───────────────────────────────────────────────────────
+    function showTempo() { currentTempoDisp.textContent = TEMPOS[tempoIndex]; }
 
-            updateDisplay();
-            showMessage('No problem! Let\'s try a slower tempo.');
-        });
+    function setPhase(label) { phaseIndicator.textContent = label; }
 
-        // Show results
-        function showResults() {
-            trainingScreen.style.display = 'none';
-            resultsScreen.style.display = 'block';
-            
-            const finalTempo = TEMPOS[tempoIndex];
-            finalTempoDisplay.textContent = finalTempo;
-            
-            let message = `Your optimal tempo is ${finalTempo} BPM!`;
-            
-            if (maxTempoReached) {
-                message = `Excellent! You've maxed out at ${finalTempo} BPM! 🎵`;
-            } else if (currentMode === 'targeted' && targetTempo) {
-                if (finalTempo >= targetTempo) {
-                    message = `Success! You can perform at your target tempo of ${targetTempo} BPM!`;
+    function msg(text, cls = 'info') {
+        messageArea.innerHTML = `<div class="message ${cls}">${text}</div>`;
+    }
+
+    function enterState(newState) {
+        state = newState;
+        // On entering a new state, display the current tempo and
+        // an appropriate phase label / message.  No user input is consumed here.
+        switch (state) {
+            case S.FIRST_TIME_SEARCH:
+                setPhase('Initial Assessment');
+                showTempo();
+                msg('Play at this tempo. Click Success or Failed.');
+                break;
+
+            case S.FIRST_TIME_BONUS:
+                // tempo_index+1 is the bonus attempt
+                tempoIndex += 1;
+                setPhase('Bonus Attempt');
+                showTempo();
+                msg('Perfect so far! Try this slightly faster tempo.');
+                break;
+
+            case S.REVIEW_FIRST_TRIAL:
+                setPhase('Review Phase — Confirming Ability');
+                showTempo();                          // shows start_tempo
+                msg('Play at your previous best. Success or Failed?');
+                break;
+
+            case S.REVIEW_SEARCH:
+                setPhase('Review Phase — Slow Practice');
+                showTempo();
+                msg('Finding your comfortable baseline.');
+                break;
+
+            case S.GROWTH_FIRST_TRIAL:
+                // jump back to start_tempo for growth
+                tempoIndex = startTempoIndex;
+                setPhase('Growth Phase — Fast Practice');
+                showTempo();
+                msg('You nailed the review! Now play at your previous best again.');
+                break;
+
+            case S.GROWTH_SEARCH:
+                setPhase('Growth Phase — Pushing Limits');
+                showTempo();
+                msg('Let\'s see how much faster you can go.');
+                break;
+
+            case S.GROWTH_BONUS:
+                tempoIndex += 1;
+                setPhase('Growth Bonus Attempt');
+                showTempo();
+                msg('Incredible! One more stretch attempt.');
+                break;
+        }
+    }
+
+    // ─── transition: after the user clicks Success/Failed ─────────────────
+    // `lastSuccess` has already been set by the click handler.
+    function advance() {
+        switch (state) {
+
+        // ── first-time path ─────────────────────────────────────────────
+        case S.FIRST_TIME_SEARCH: {
+            const done = findTempoStep();
+            if (done) {
+                findTempoFinalize();
+                if (perfectRun && tempoIndex < TEMPOS.length - 1) {
+                    enterState(S.FIRST_TIME_BONUS);
                 } else {
-                    message = `You can currently perform at ${finalTempo} BPM. Continue practicing to reach ${targetTempo} BPM.`;
+                    finish();
                 }
-            } else if (perfectRun) {
-                message = `Perfect run! Your tempo is ${finalTempo} BPM. Try again to push even higher!`;
+            } else {
+                showTempo();
+                msg(lastSuccess ? 'Great! Try this faster tempo.' : 'No worries — let\'s try a slower one.', lastSuccess ? 'success' : 'info');
             }
-            
-            finalMessage.textContent = message;
+            break;
         }
 
-        // Restart
-        restartBtn.addEventListener('click', () => {
-            resultsScreen.style.display = 'none';
-            startScreen.style.display = 'block';
-            startTempoInput.value = '';
-            targetTempoInput.value = '';
-            messageArea.innerHTML = '';
-            progressFill.style.width = '0%';
-        });
+        case S.FIRST_TIME_BONUS: {
+            // lastSuccess here IS the bonus answer; adjust index accordingly
+            if (!lastSuccess) tempoIndex -= 1;   // undo the +1 we did on entry
+            finish();
+            break;
+        }
+
+        // ── returning path ──────────────────────────────────────────────
+        case S.REVIEW_FIRST_TRIAL: {
+            firstTrialSuccess = lastSuccess;
+            // Python: drop one step down, then start review search
+            stepSizeIndex = 0;
+            const b = checkLowerBound(tempoIndex, stepSizeIndex);
+            stepSizeIndex = b.sIdx;
+            if (tempoIndex > 0) {
+                tempoIndex -= b.step;
+            }
+            stepSizeIndex += 1;
+            // Now set up find_tempo state for review
+            perfectRun = firstTrialSuccess;   // start_perfect = first_trial_success
+            maxxed = false;
+            enterState(S.REVIEW_SEARCH);
+            break;
+        }
+
+        case S.REVIEW_SEARCH: {
+            const done = findTempoStep();
+            if (done) {
+                findTempoFinalize();
+                if (perfectRun) {
+                    // Transition to growth
+                    // Reset find_tempo state for growth phase
+                    stepSizeIndex = 1;                        // Python uses 1 here
+                    tempoIndex    = startTempoIndex;
+                    perfectRun    = true;
+                    maxxed        = false;
+                    enterState(S.GROWTH_FIRST_TRIAL);
+                } else {
+                    finish();
+                }
+            } else {
+                showTempo();
+                msg(lastSuccess ? 'Good — try a bit faster.' : 'That\'s fine — a bit slower.' , lastSuccess ? 'success' : 'info');
+            }
+            break;
+        }
+
+        case S.GROWTH_FIRST_TRIAL: {
+            growthStartSuccess = lastSuccess;
+            // Python: step UP one from start_tempo
+            const b = checkUpperBound(tempoIndex, stepSizeIndex);
+            stepSizeIndex = b.sIdx;
+            if (tempoIndex < TEMPOS.length - 1) {
+                tempoIndex += b.step;
+            }
+            stepSizeIndex += 1;
+            // Set up find_tempo state for growth
+            perfectRun = growthStartSuccess;  // start_perfect = growth_phase_start_success
+            maxxed = false;
+            enterState(S.GROWTH_SEARCH);
+            break;
+        }
+
+        case S.GROWTH_SEARCH: {
+            const done = findTempoStep();
+            if (done) {
+                findTempoFinalize();
+                if (perfectRun && tempoIndex < TEMPOS.length - 1) {
+                    enterState(S.GROWTH_BONUS);
+                } else {
+                    finish();
+                }
+            } else {
+                showTempo();
+                msg(lastSuccess ? 'Nice! Keep pushing.' : 'OK — pulling back a bit.', lastSuccess ? 'success' : 'info');
+            }
+            break;
+        }
+
+        case S.GROWTH_BONUS: {
+            if (!lastSuccess) tempoIndex -= 1;
+            finish();
+            break;
+        }
+        }
+    }
+
+    // ─── show final result ────────────────────────────────────────────────
+    function finish() {
+        state = S.DONE;
+        trainingScreen.style.display = 'none';
+        resultsScreen.style.display  = 'block';
+        finalTempoDisp.textContent   = TEMPOS[tempoIndex];
+
+        let txt;
+        if (maxxed) {
+            txt = `You maxed out at ${TEMPOS[tempoIndex]} BPM!`;
+        } else if (perfectRun) {
+            txt = `Perfect run! Your tempo is ${TEMPOS[tempoIndex]} BPM. Enter this as your start tempo next time to keep growing.`;
+        } else {
+            txt = `Your current tempo is ${TEMPOS[tempoIndex]} BPM. Keep practicing and try again!`;
+        }
+        finalMessage.textContent = txt;
+    }
+
+    // ─── event: Start button ──────────────────────────────────────────────
+    startBtn.addEventListener('click', () => {
+        const raw = startTempoInput.value.trim();
+
+        if (raw === '') {
+            // ── first-time path ─────────────────────────────────────────
+            tempoIndex     = resolveTempo(60);
+            stepSizeIndex  = 0;
+            perfectRun     = true;   // start_perfect = True
+            maxxed         = false;
+
+            startScreen.style.display    = 'none';
+            trainingScreen.style.display = 'block';
+            enterState(S.FIRST_TIME_SEARCH);
+
+        } else {
+            // ── returning path ──────────────────────────────────────────
+            const val = parseInt(raw);
+            if (isNaN(val) || val < 30 || val > 240) {
+                alert('Please enter an integer between 30 and 240.');
+                return;
+            }
+            startTempoIndex = resolveTempo(val);
+            tempoIndex      = startTempoIndex;
+            stepSizeIndex   = 0;
+            perfectRun      = true;
+            maxxed          = false;
+
+            startScreen.style.display    = 'none';
+            trainingScreen.style.display = 'block';
+            enterState(S.REVIEW_FIRST_TRIAL);
+        }
+    });
+
+    // ─── event: Success / Failed buttons ──────────────────────────────────
+    function handleAnswer(success) {
+        lastSuccess = success;
+        advance();
+    }
+    successBtn.addEventListener('click', () => handleAnswer(true));
+    failBtn.addEventListener('click', () => handleAnswer(false));
+
+    // ─── event: Restart ───────────────────────────────────────────────────
+    restartBtn.addEventListener('click', () => {
+        resultsScreen.style.display  = 'none';
+        startScreen.style.display    = 'block';
+        startTempoInput.value        = '';
+        messageArea.innerHTML        = '';
+        state = S.START;
+    });
     </script>
 </body>
 </html>
