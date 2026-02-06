@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tempo Trainer - Interactive Demo | Timothy J. Owen</title>
+    <link rel="stylesheet" href="tempo-trainer-styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Tempo Trainer</h1>
+            <p class="subtitle">Interactive Practice Tool</p>
+            <p class="author">by Timothy J. Owen, D.M.A.</p>
+        </header>
+
+        <div class="intro">
+            <p><strong>Welcome to Tempo Trainer!</strong> This tool helps you systematically find and improve your tempo using a divide-and-conquer search algorithm.</p>
+            <p><strong>Untargeted Mode:</strong> For exercises and scales without a goal tempo. First time: finds your max tempo. Later sessions: review phase (slow practice), then growth phase (fast practice).</p>
+            <p><strong>Targeted Mode:</strong> For pieces with a specific tempo marking. Identifies the hardest "hot spot" and the tempo at which you can play it. Toggle between <em>calculated</em> (precise) and <em>quantized</em> (nearest preset) tempo display.</p>
+        </div>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="setMode('untargeted')">
+                Untargeted Mode
+                <div class="mode-subtitle">Scales & Exercises</div>
+            </button>
+            <button class="mode-btn" onclick="setMode('targeted')">
+                Targeted Mode
+                <div class="mode-subtitle">Pieces with Goal Tempo</div>
+            </button>
+        </div>
+
+        <!-- UNTARGETED MODE -->
+        <div id="untargeted-mode">
+            <div class="card">
+                <div class="section-title">Setup</div>
+                <div class="input-group">
+                    <label for="startTempo">Starting Tempo (30–240 BPM)</label>
+                    <input type="number" id="startTempo" min="30" max="240" placeholder="Leave empty for first session">
+                </div>
+                <p style="color: var(--text-muted); font-size: 1rem; margin-top: 0.5rem;">
+                    First time? Leave empty and hit Begin. On later sessions, enter your previous best tempo for review + growth phases.
+                </p>
+                <button class="btn btn-primary" onclick="startUntargeted()">Begin Training</button>
+            </div>
+
+            <div id="untargeted-session" class="hidden">
+                <div class="card">
+                    <div class="step-display">
+                        <div class="section-title" id="untargeted-phase">Initial Assessment</div>
+                        <div class="tempo-info">
+                            <div class="tempo-stat">
+                                <div class="tempo-stat-label">Current Tempo</div>
+                                <div class="tempo-stat-value highlight pulse" id="untargeted-tempo">60</div>
+                            </div>
+                            <div class="tempo-stat">
+                                <div class="tempo-stat-label">Step Size</div>
+                                <div class="tempo-stat-value" id="untargeted-step-size">16</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-success" onclick="handleUntargetedResponse(true)">✓ Success</button>
+                        <button class="btn btn-error" onclick="handleUntargetedResponse(false)">✗ Failed</button>
+                    </div>
+                    <div class="history" id="untargeted-history"></div>
+                </div>
+            </div>
+
+            <div id="untargeted-result" class="hidden"></div>
+        </div>
+
+        <!-- TARGETED MODE -->
+        <div id="targeted-mode" class="hidden">
+            <div class="card">
+                <div class="section-title">Setup</div>
+                <div class="input-group">
+                    <label for="target-tempo">Target Tempo (BPM)</label>
+                    <input type="number" id="target-tempo" value="120" min="30" max="240">
+                </div>
+                <div class="measure-input-group">
+                    <div class="input-group">
+                        <label for="start-measure">Start Measure</label>
+                        <input type="text" id="start-measure" value="1" placeholder="e.g., 1, m.1">
+                    </div>
+                    <div class="input-group">
+                        <label for="end-measure">End Measure</label>
+                        <input type="text" id="end-measure" value="100" placeholder="e.g., 100, m.100">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="startTargeted()">Begin Training</button>
+            </div>
+
+            <div id="targeted-session" class="hidden">
+                <div class="card">
+                    <div class="step-display">
+                        <div class="section-title">
+                            Current Attempt
+                            <button class="btn btn-secondary" id="tempo-toggle-btn" 
+                                    onclick="toggleTempoDisplay()" 
+                                    style="float: right; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                                Switch to Quantized
+                            </button>
+                        </div>
+                        <div class="tempo-info">
+                            <div class="tempo-stat">
+                                <div class="tempo-stat-label">Tempo (BPM)</div>
+                                <div class="tempo-stat-value highlight pulse" id="targeted-tempo">142.7</div>
+                            </div>
+                            <div class="tempo-stat">
+                                <div class="tempo-stat-label">Step / Change</div>
+                                <div class="tempo-stat-value" id="targeted-step">+4</div>
+                            </div>
+                            <div class="tempo-stat">
+                                <div class="tempo-stat-label">Current Measure</div>
+                                <div class="tempo-stat-value" id="current-measure">1</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);" id="tempo-display-info">
+                            Calculated: 142.7 BPM | Quantized: 144 BPM
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="error-measure">If error occurred, enter measure number (leave blank if completed cleanly):</label>
+                        <input type="text" id="error-measure" placeholder="e.g., 47">
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="handleTargetedResponse()">Continue</button>
+                    
+                    <div class="history" id="targeted-history"></div>
+                </div>
+            </div>
+
+            <div id="targeted-result" class="hidden"></div>
+        </div>
+
+        <footer>
+            <p>Part of the <a href="https://timowen.me/saxophone" target="_blank">Timothy J. Owen Portfolio</a></p>
+            <p><a href="https://github.com/saxd0ct0r/Python/tree/main/Tempo%20Finder" target="_blank">View source code on GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // Constants
+        const TEMPOS = [
+            30, 31.5, 33, 34.5, 36, 38, 40, 42,
+            44, 46, 48, 50, 52, 54, 56, 58,
+            60, 63, 66, 69, 72, 76, 80, 84,
+            88, 92, 96, 100, 104, 108, 112, 116,
+            120, 126, 132, 138, 144, 152, 160, 168,
+            176, 184, 192, 200, 208, 216, 224, 232,
+            240
+        ];
+        const STEP_SIZES = [16, 8, 4, 2, 1, 1];
+        const STEPS_PER_DOUBLING = 16;
+        const HEADROOM_STEPS = 4;
+
+        let tempoDisplayMode = 'calculated';
+
+        // Utility functions
+        function stepToMultiplier(step) {
+            return Math.pow(2, step / STEPS_PER_DOUBLING);
+        }
+
+        function stepToBpm(step, targetBpm) {
+            return Math.round(targetBpm * stepToMultiplier(step) * 10) / 10;
+        }
+
+        function stepToBpmQuantized(step, targetBpm) {
+            const calculated = stepToBpm(step, targetBpm);
+            return TEMPOS.reduce((prev, curr) => 
+                Math.abs(curr - calculated) < Math.abs(prev - calculated) ? curr : prev
+            );
+        }
+
+        function stepToPercent(step) {
+            const multiplier = stepToMultiplier(step);
+            return Math.round((multiplier - 1) * 100 * 10) / 10;
+        }
+
+        function getDisplayTempo(step, targetBpm) {
+            return tempoDisplayMode === 'quantized' ? 
+                stepToBpmQuantized(step, targetBpm) : stepToBpm(step, targetBpm);
+        }
+
+        function toggleTempoDisplay() {
+            tempoDisplayMode = tempoDisplayMode === 'calculated' ? 'quantized' : 'calculated';
+            const btn = document.getElementById('tempo-toggle-btn');
+            if (btn) {
+                btn.textContent = tempoDisplayMode === 'calculated' ? 
+                    'Switch to Quantized' : 'Switch to Calculated';
+            }
+            if (!document.getElementById('targeted-session').classList.contains('hidden')) {
+                updateTargetedDisplay();
+            }
+        }
+
+        function resolveTempoIndex(tempo) {
+            if (TEMPOS.includes(tempo)) return TEMPOS.indexOf(tempo);
+            for (let i = TEMPOS.length - 1; i >= 0; i--) {
+                if (TEMPOS[i] < tempo) return i;
+            }
+            return 0;
+        }
+
+        function setMode(mode) {
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.mode-btn').classList.add('active');
+            
+            document.getElementById('untargeted-mode').classList.toggle('hidden', mode !== 'untargeted');
+            document.getElementById('targeted-mode').classList.toggle('hidden', mode !== 'targeted');
+        }
+
+        // UNTARGETED MODE with Review and Growth Phases
+        const untargetedState = {
+            tempoIndex: 0,
+            stepSizeIndex: 0,
+            perfectRun: true,
+            maxxed: false,
+            startTempoIndex: 0,
+            phase: 'initial',
+            firstTime: true,
+            firstTrialSuccess: false
+        };
+
+        function startUntargeted() {
+            const input = document.getElementById('startTempo').value.trim();
+            
+            if (input === '') {
+                // First time
+                untargetedState.tempoIndex = resolveTempoIndex(60);
+                untargetedState.stepSizeIndex = 0;
+                untargetedState.perfectRun = true;
+                untargetedState.maxxed = false;
+                untargetedState.phase = 'initial';
+                untargetedState.firstTime = true;
+            } else {
+                // Returning - start with review first trial
+                const startTempo = parseInt(input);
+                if (isNaN(startTempo) || startTempo < 30 || startTempo > 240) {
+                    alert('Please enter a tempo between 30 and 240 BPM');
+                    return;
+                }
+                untargetedState.startTempoIndex = resolveTempoIndex(startTempo);
+                untargetedState.tempoIndex = untargetedState.startTempoIndex;
+                untargetedState.stepSizeIndex = 0;
+                untargetedState.perfectRun = true;
+                untargetedState.phase = 'review_first_trial';
+                untargetedState.firstTime = false;
+            }
+            
+            document.getElementById('untargeted-session').classList.remove('hidden');
+            document.getElementById('untargeted-result').classList.add('hidden');
+            document.getElementById('untargeted-history').innerHTML = '';
+            updateUntargetedDisplay();
+        }
+
+        function updateUntargetedDisplay() {
+            const tempo = TEMPOS[untargetedState.tempoIndex];
+            const stepSize = STEP_SIZES[untargetedState.stepSizeIndex];
+            
+            document.getElementById('untargeted-tempo').textContent = tempo + ' BPM';
+            document.getElementById('untargeted-step-size').textContent = stepSize;
+            
+            const phaseLabels = {
+                'initial': 'Initial Assessment',
+                'initial_bonus': 'Bonus Attempt!',
+                'review_first_trial': 'Review Phase — Confirming Ability',
+                'review': 'Review Phase — Slow Practice',
+                'growth_first_trial': 'Growth Phase — Confirming Ability',
+                'growth': 'Growth Phase — Fast Practice',
+                'growth_bonus': 'Growth Bonus Attempt!'
+            };
+            
+            document.getElementById('untargeted-phase').textContent = 
+                phaseLabels[untargetedState.phase] || 'Training';
+        }
+
+        function checkUpperBound(tempoIndex, stepSizeIndex) {
+            let stepSize = STEP_SIZES[stepSizeIndex];
+            while (tempoIndex + stepSize > TEMPOS.length - 1 && stepSizeIndex < STEP_SIZES.length - 1) {
+                stepSizeIndex++;
+                stepSize = STEP_SIZES[stepSizeIndex];
+            }
+            return { stepSizeIndex, stepSize };
+        }
+
+        function checkLowerBound(tempoIndex, stepSizeIndex) {
+            let stepSize = STEP_SIZES[stepSizeIndex];
+            while (tempoIndex - stepSize < 0 && stepSizeIndex < STEP_SIZES.length - 1) {
+                stepSizeIndex++;
+                stepSize = STEP_SIZES[stepSizeIndex];
+            }
+            return { stepSizeIndex, stepSize };
+        }
+
+        function handleUntargetedResponse(success) {
+            const tempo = TEMPOS[untargetedState.tempoIndex];
+            
+            const historyItem = document.createElement('div');
+            historyItem.className = `history-item ${success ? 'success' : 'error'}`;
+            historyItem.textContent = `${tempo} BPM: ${success ? '✓ Success' : '✗ Failed'}`;
+            const historyEl = document.getElementById('untargeted-history');
+            historyEl.insertBefore(historyItem, historyEl.firstChild);
+            
+            // Handle review first trial
+            if (untargetedState.phase === 'review_first_trial') {
+                untargetedState.firstTrialSuccess = success;
+                
+                // Drop one step down
+                untargetedState.stepSizeIndex = 0;
+                const bounds = checkLowerBound(untargetedState.tempoIndex, untargetedState.stepSizeIndex);
+                untargetedState.stepSizeIndex = bounds.stepSizeIndex;
+                if (untargetedState.tempoIndex > 0) {
+                    untargetedState.tempoIndex -= bounds.stepSize;
+                }
+                untargetedState.stepSizeIndex++;
+                
+                untargetedState.perfectRun = untargetedState.firstTrialSuccess;
+                untargetedState.phase = 'review';
+                updateUntargetedDisplay();
+                return;
+            }
+            
+            // Handle growth first trial
+            if (untargetedState.phase === 'growth_first_trial') {
+                const growthStartSuccess = success;
+                
+                // Step up one from start tempo
+                const bounds = checkUpperBound(untargetedState.tempoIndex, untargetedState.stepSizeIndex);
+                untargetedState.stepSizeIndex = bounds.stepSizeIndex;
+                if (untargetedState.tempoIndex < TEMPOS.length - 1) {
+                    untargetedState.tempoIndex += bounds.stepSize;
+                }
+                untargetedState.stepSizeIndex++;
+                
+                untargetedState.perfectRun = growthStartSuccess;
+                untargetedState.phase = 'growth';
+                updateUntargetedDisplay();
+                return;
+            }
+            
+            // Handle bonus phases - don't run regular search logic
+            if (untargetedState.phase === 'initial_bonus') {
+                if (!success) {
+                    untargetedState.tempoIndex--;
+                }
+                showUntargetedResult();
+                return;
+            }
+            
+            if (untargetedState.phase === 'growth_bonus') {
+                if (!success) {
+                    untargetedState.tempoIndex--;
+                }
+                showUntargetedResult();
+                return;
+            }
+            
+            // Regular tempo search
+            if (success) {
+                if (untargetedState.tempoIndex < TEMPOS.length - 1) {
+                    const bounds = checkUpperBound(untargetedState.tempoIndex, untargetedState.stepSizeIndex);
+                    untargetedState.stepSizeIndex = bounds.stepSizeIndex;
+                    untargetedState.tempoIndex += bounds.stepSize;
+                } else {
+                    untargetedState.maxxed = true;
+                }
+            } else {
+                untargetedState.perfectRun = false;
+                if (untargetedState.tempoIndex > 0) {
+                    const bounds = checkLowerBound(untargetedState.tempoIndex, untargetedState.stepSizeIndex);
+                    untargetedState.stepSizeIndex = bounds.stepSizeIndex;
+                    untargetedState.tempoIndex -= bounds.stepSize;
+                }
+            }
+            
+            untargetedState.stepSizeIndex++;
+            
+            // Check if phase is done (either exhausted step sizes OR maxxed out)
+            if (untargetedState.stepSizeIndex >= STEP_SIZES.length || untargetedState.maxxed) {
+                if (success && !untargetedState.maxxed) {
+                    untargetedState.tempoIndex--;
+                }
+                
+                if (untargetedState.phase === 'initial') {
+                    // First time complete - check for bonus
+                    if (untargetedState.perfectRun && !untargetedState.maxxed && untargetedState.tempoIndex < TEMPOS.length - 1) {
+                        // Offer bonus attempt
+                        untargetedState.tempoIndex++;
+                        untargetedState.phase = 'initial_bonus';
+                        updateUntargetedDisplay();
+                    } else {
+                        showUntargetedResult();
+                    }
+                    
+                } else if (untargetedState.phase === 'review') {
+                    if (untargetedState.perfectRun) {
+                        // Start growth phase
+                        untargetedState.stepSizeIndex = 1;
+                        untargetedState.tempoIndex = untargetedState.startTempoIndex;
+                        untargetedState.perfectRun = true;
+                        untargetedState.maxxed = false;
+                        untargetedState.phase = 'growth_first_trial';
+                        updateUntargetedDisplay();
+                    } else {
+                        showUntargetedResult();
+                    }
+                    
+                } else if (untargetedState.phase === 'growth') {
+                    // Growth phase complete - check for bonus
+                    if (untargetedState.perfectRun && !untargetedState.maxxed && untargetedState.tempoIndex < TEMPOS.length - 1) {
+                        untargetedState.tempoIndex++;
+                        untargetedState.phase = 'growth_bonus';
+                        updateUntargetedDisplay();
+                    } else {
+                        showUntargetedResult();
+                    }
+                }
+            } else {
+                updateUntargetedDisplay();
+            }
+        }
+
+        function showUntargetedResult() {
+            const finalTempo = TEMPOS[untargetedState.tempoIndex];
+            
+            let message = `Final tempo: <strong>${finalTempo} BPM</strong><br>`;
+            if (untargetedState.maxxed) {
+                message += 'You maxed out!';
+            } else if (untargetedState.perfectRun) {
+                message += 'Perfect run! Enter this tempo next time to keep growing.';
+            } else {
+                message += 'Keep practicing and try again!';
+            }
+            
+            const resultHtml = `
+                <div class="result-card">
+                    <h3>Training Complete!</h3>
+                    <div class="result-info">${message}</div>
+                    <button class="btn btn-primary" style="margin-top: 20px;" onclick="startUntargeted()">
+                        Start New Session
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('untargeted-result').innerHTML = resultHtml;
+            document.getElementById('untargeted-result').classList.remove('hidden');
+            document.getElementById('untargeted-session').classList.add('hidden');
+        }
+
+        // TARGETED MODE
+        const targetedState = {
+            targetBpm: 120,
+            currentStep: 4,
+            currentMeasure: '1',
+            startMeasure: '1',
+            endMeasure: '100',
+            hotSpotMeasure: null,
+            lastSuccessfulStep: null,
+            searchPhase: 'initial',
+            searchPattern: [],
+            patternIndex: 0
+        };
+
+        function startTargeted() {
+            const targetBpm = parseFloat(document.getElementById('target-tempo').value);
+            const startMeasure = document.getElementById('start-measure').value;
+            const endMeasure = document.getElementById('end-measure').value;
+            
+            targetedState.targetBpm = targetBpm;
+            targetedState.currentStep = HEADROOM_STEPS;
+            targetedState.currentMeasure = startMeasure;
+            targetedState.startMeasure = startMeasure;
+            targetedState.endMeasure = endMeasure;
+            targetedState.hotSpotMeasure = null;
+            targetedState.lastSuccessfulStep = null;
+            targetedState.searchPhase = 'initial';
+            
+            document.getElementById('targeted-session').classList.remove('hidden');
+            document.getElementById('targeted-result').classList.add('hidden');
+            document.getElementById('targeted-history').innerHTML = '';
+            updateTargetedDisplay();
+        }
+
+        function updateTargetedDisplay() {
+            const bpm = getDisplayTempo(targetedState.currentStep, targetedState.targetBpm);
+            const bpmCalc = stepToBpm(targetedState.currentStep, targetedState.targetBpm);
+            const bpmQuant = stepToBpmQuantized(targetedState.currentStep, targetedState.targetBpm);
+            const percent = stepToPercent(targetedState.currentStep);
+            
+            const modeLabel = tempoDisplayMode === 'calculated' ? 'Calc' : 'Quant';
+            document.getElementById('targeted-tempo').innerHTML = 
+                `${bpm} <span style="font-size: 0.4em; opacity: 0.7;">${modeLabel}</span>`;
+            
+            document.getElementById('targeted-step').innerHTML = 
+                `${targetedState.currentStep >= 0 ? '+' : ''}${targetedState.currentStep}<br>` +
+                `<span style="font-size: 0.5em; opacity: 0.8;">${percent >= 0 ? '+' : ''}${percent}%</span>`;
+            
+            document.getElementById('current-measure').textContent = targetedState.currentMeasure;
+            document.getElementById('error-measure').value = '';
+            
+            document.getElementById('tempo-display-info').innerHTML = 
+                `Calculated: ${bpmCalc} BPM | Quantized: ${bpmQuant} BPM`;
+        }
+
+        function handleTargetedResponse() {
+            const errorMeasure = document.getElementById('error-measure').value.trim();
+            const bpmCalc = stepToBpm(targetedState.currentStep, targetedState.targetBpm);
+            const bpmQuant = stepToBpmQuantized(targetedState.currentStep, targetedState.targetBpm);
+            const percent = stepToPercent(targetedState.currentStep);
+            const success = errorMeasure === '';
+            
+            const historyItem = document.createElement('div');
+            historyItem.className = `history-item ${success ? 'success' : 'error'}`;
+            const stepStr = `${targetedState.currentStep >= 0 ? '+' : ''}${targetedState.currentStep}`;
+            historyItem.textContent = success
+                ? `Step ${stepStr} (${bpmCalc}/${bpmQuant} BPM, ${percent >= 0 ? '+' : ''}${percent}%): ✓ From m.${targetedState.currentMeasure}`
+                : `Step ${stepStr} (${bpmCalc}/${bpmQuant} BPM, ${percent >= 0 ? '+' : ''}${percent}%): ✗ Error at m.${errorMeasure}`;
+            const historyEl = document.getElementById('targeted-history');
+            historyEl.insertBefore(historyItem, historyEl.firstChild);
+            
+            processTargetedStep(success, errorMeasure);
+        }
+
+        function processTargetedStep(success, errorMeasure) {
+            if (targetedState.searchPhase === 'initial') {
+                if (success) {
+                    showTargetedResult(null, targetedState.currentStep);
+                    return;
+                }
+                targetedState.hotSpotMeasure = errorMeasure;
+                targetedState.currentMeasure = errorMeasure;
+                targetedState.currentStep -= 16;
+                targetedState.searchPhase = 'after_first_drop';
+                updateTargetedDisplay();
+                
+            } else if (targetedState.searchPhase === 'after_first_drop') {
+                if (!success) {
+                    if (errorMeasure !== targetedState.hotSpotMeasure) {
+                        targetedState.hotSpotMeasure = errorMeasure;
+                        targetedState.currentMeasure = errorMeasure;
+                    }
+                    targetedState.searchPhase = 'downward';
+                    targetedState.searchPattern = [8, 4, 2, 1];
+                    targetedState.patternIndex = 0;
+                    continueDownwardSearch();
+                } else {
+                    targetedState.lastSuccessfulStep = targetedState.currentStep;
+                    targetedState.searchPhase = 'upward';
+                    targetedState.searchPattern = [8, 4, 2, 1];
+                    targetedState.patternIndex = 0;
+                    continueUpwardSearch();
+                }
+                
+            } else if (targetedState.searchPhase === 'downward') {
+                if (success) {
+                    targetedState.lastSuccessfulStep = targetedState.currentStep;
+                    targetedState.searchPhase = 'upward';
+                    targetedState.searchPattern = [4, 2, 1];
+                    targetedState.patternIndex = 0;
+                    continueUpwardSearch();
+                } else {
+                    if (errorMeasure !== targetedState.hotSpotMeasure) {
+                        targetedState.hotSpotMeasure = errorMeasure;
+                        targetedState.currentMeasure = errorMeasure;
+                    }
+                    continueDownwardSearch();
+                }
+                
+            } else if (targetedState.searchPhase === 'upward') {
+                if (success) {
+                    targetedState.lastSuccessfulStep = targetedState.currentStep;
+                } else {
+                    if (errorMeasure !== targetedState.hotSpotMeasure) {
+                        targetedState.hotSpotMeasure = errorMeasure;
+                        targetedState.currentMeasure = errorMeasure;
+                    }
+                    targetedState.currentStep -= targetedState.searchPattern[targetedState.patternIndex - 1];
+                }
+                continueUpwardSearch();
+            }
+        }
+
+        function continueDownwardSearch() {
+            if (targetedState.patternIndex < targetedState.searchPattern.length) {
+                const dropAmount = targetedState.searchPattern[targetedState.patternIndex];
+                targetedState.currentStep -= dropAmount;
+                targetedState.patternIndex++;
+                
+                if (targetedState.currentStep < -27) {
+                    showFoundationalWorkWarning();
+                    return;
+                }
+                
+                updateTargetedDisplay();
+            } else {
+                showFoundationalWorkWarning();
+            }
+        }
+
+        function continueUpwardSearch() {
+            if (targetedState.patternIndex < targetedState.searchPattern.length) {
+                const raiseAmount = targetedState.searchPattern[targetedState.patternIndex];
+                targetedState.currentStep += raiseAmount;
+                targetedState.patternIndex++;
+                updateTargetedDisplay();
+            } else {
+                showTargetedResult(targetedState.hotSpotMeasure, targetedState.lastSuccessfulStep);
+            }
+        }
+
+        function showTargetedResult(hotSpotMeasure, step) {
+            const bpmCalc = stepToBpm(step, targetedState.targetBpm);
+            const bpmQuant = stepToBpmQuantized(step, targetedState.targetBpm);
+            const percent = stepToPercent(step);
+            
+            if (!hotSpotMeasure) {
+                const resultHtml = `
+                    <div class="result-card">
+                        <h3>🎉 No Hot Spots!</h3>
+                        <div class="result-info">
+                            Piece mastered at step ${step >= 0 ? '+' : ''}${step} (${percent >= 0 ? '+' : ''}${percent}%)<br>
+                            Calculated: ${bpmCalc} BPM | Quantized: ${bpmQuant} BPM
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="startTargeted()">
+                            Start New Session
+                        </button>
+                    </div>
+                `;
+                document.getElementById('targeted-result').innerHTML = resultHtml;
+            } else {
+                const resultHtml = `
+                    <div class="result-card">
+                        <h3>Hot Spot Identified</h3>
+                        <div class="result-info">
+                            <strong>Measure:</strong> ${hotSpotMeasure}<br>
+                            <strong>Step:</strong> ${step >= 0 ? '+' : ''}${step} (${percent >= 0 ? '+' : ''}${percent}%)<br>
+                            <strong>Calculated:</strong> ${bpmCalc} BPM<br>
+                            <strong>Quantized:</strong> ${bpmQuant} BPM
+                        </div>
+                        <div style="margin-top: 20px; font-size: 0.95em;">
+                            <strong>Next Steps:</strong><br>
+                            1. Create hot spot card for measure ${hotSpotMeasure}<br>
+                            2. Create child segment: ${targetedState.startMeasure} to (before ${hotSpotMeasure})<br>
+                            3. Create child segment: (after ${hotSpotMeasure}) to ${targetedState.endMeasure}
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="startTargeted()">
+                            Start New Session
+                        </button>
+                    </div>
+                `;
+                document.getElementById('targeted-result').innerHTML = resultHtml;
+            }
+            
+            document.getElementById('targeted-result').classList.remove('hidden');
+            document.getElementById('targeted-session').classList.add('hidden');
+        }
+
+        function showFoundationalWorkWarning() {
+            const bpmCalc = stepToBpm(targetedState.currentStep, targetedState.targetBpm);
+            const bpmQuant = stepToBpmQuantized(targetedState.currentStep, targetedState.targetBpm);
+            const warningHtml = `
+                <div class="warning-card">
+                    <h4>⚠ Passage Too Difficult</h4>
+                    <p>Still unable to complete at step ${targetedState.currentStep}:</p>
+                    <p>Calculated: ${bpmCalc} BPM | Quantized: ${bpmQuant} BPM<br>
+                    (for a ${targetedState.targetBpm} BPM piece)</p>
+                    <p style="margin-top: 10px;">
+                        <strong>Recommendation:</strong> This passage requires foundational work on smaller chunks. 
+                        Break down to even more isolated sections, potentially down to individual intervals or 
+                        note transitions.
+                    </p>
+                    <button class="btn btn-primary" style="margin-top: 15px;" onclick="startTargeted()">
+                        Start New Session
+                    </button>
+                </div>
+            `;
+            document.getElementById('targeted-result').innerHTML = warningHtml;
+            document.getElementById('targeted-result').classList.remove('hidden');
+            document.getElementById('targeted-session').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
