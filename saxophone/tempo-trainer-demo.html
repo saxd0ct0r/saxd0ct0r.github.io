@@ -4,444 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tempo Trainer - Interactive Demo | Timothy J. Owen</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:wght@300;400;600&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #1a1a2e;
-            --secondary: #16213e;
-            --accent: #c9a961;
-            --accent-light: #e8d7b1;
-            --text: #e8e8e8;
-            --text-muted: #a8a8b8;
-            --success: #4ecca3;
-            --error: #e84545;
-            --metronome: #ffd700;
-        }
-
-        body {
-            font-family: 'Crimson Pro', serif;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: var(--text);
-            min-height: 100vh;
-            line-height: 1.6;
-            position: relative;
-            overflow-x: hidden;
-        }
-
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 30%, rgba(201, 169, 97, 0.03) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(201, 169, 97, 0.05) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 2rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        header {
-            text-align: center;
-            padding: 3rem 0;
-            border-bottom: 2px solid var(--accent);
-            margin-bottom: 3rem;
-            animation: fadeInDown 0.8s ease-out;
-        }
-
-        h1 {
-            font-family: 'Cinzel', serif;
-            font-size: 3.5rem;
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 0.5rem;
-            letter-spacing: 2px;
-            text-shadow: 0 2px 10px rgba(201, 169, 97, 0.3);
-        }
-
-        .subtitle {
-            font-size: 1.2rem;
-            color: var(--text-muted);
-            font-weight: 300;
-            letter-spacing: 1px;
-        }
-
-        .author {
-            margin-top: 1rem;
-            font-size: 1rem;
-            color: var(--accent-light);
-            font-style: italic;
-        }
-
-        .intro {
-            background: rgba(255, 255, 255, 0.03);
-            border-left: 4px solid var(--accent);
-            padding: 2rem;
-            margin-bottom: 3rem;
-            border-radius: 0 8px 8px 0;
-            backdrop-filter: blur(10px);
-            animation: fadeIn 1s ease-out 0.3s both;
-        }
-
-        .intro p {
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
-        }
-
-        .intro p:last-child {
-            margin-bottom: 0;
-        }
-
-        .mode-selector {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 3rem;
-            animation: fadeIn 1s ease-out 0.5s both;
-        }
-
-        .mode-btn {
-            flex: 1;
-            padding: 1.5rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid var(--accent);
-            color: var(--text);
-            font-family: 'Cinzel', serif;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border-radius: 8px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .mode-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(201, 169, 97, 0.2), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .mode-btn:hover::before {
-            left: 100%;
-        }
-
-        .mode-btn:hover {
-            background: rgba(201, 169, 97, 0.1);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(201, 169, 97, 0.2);
-        }
-
-        .mode-btn.active {
-            background: var(--accent);
-            color: var(--primary);
-            font-weight: 600;
-            box-shadow: 0 4px 20px rgba(201, 169, 97, 0.3);
-        }
-
-        .trainer-interface {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 3rem;
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(201, 169, 97, 0.2);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            animation: fadeIn 1s ease-out 0.7s both;
-        }
-
-        .tempo-display {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .tempo-number {
-            font-family: 'Cinzel', serif;
-            font-size: 6rem;
-            color: var(--accent);
-            font-weight: 700;
-            text-shadow: 0 4px 20px rgba(201, 169, 97, 0.4);
-            line-height: 1;
-            margin-bottom: 0.5rem;
-        }
-
-        .bpm-label {
-            font-size: 1.5rem;
-            color: var(--text-muted);
-            letter-spacing: 3px;
-        }
-
-        .phase-indicator {
-            text-align: center;
-            padding: 1rem;
-            margin-bottom: 2rem;
-            background: rgba(201, 169, 97, 0.1);
-            border-radius: 8px;
-            font-family: 'Cinzel', serif;
-            font-size: 1.2rem;
-            color: var(--accent-light);
-            letter-spacing: 1px;
-        }
-
-        .controls {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        label {
-            font-family: 'Cinzel', serif;
-            color: var(--accent-light);
-            font-size: 1rem;
-            letter-spacing: 1px;
-        }
-
-        input[type="number"] {
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(201, 169, 97, 0.3);
-            color: var(--text);
-            font-size: 1.2rem;
-            font-family: 'Crimson Pro', serif;
-            border-radius: 6px;
-            transition: all 0.3s ease;
-        }
-
-        input[type="number"]:focus {
-            outline: none;
-            border-color: var(--accent);
-            background: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 0 20px rgba(201, 169, 97, 0.2);
-        }
-
-        .button-group {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 1.2rem;
-            font-family: 'Cinzel', serif;
-            font-size: 1.1rem;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            letter-spacing: 1px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        .btn:active::after {
-            width: 300px;
-            height: 300px;
-        }
-
-        .btn-success {
-            background: var(--success);
-            color: var(--primary);
-        }
-
-        .btn-success:hover {
-            background: #5fd6b3;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 24px rgba(78, 204, 163, 0.3);
-        }
-
-        .btn-error {
-            background: var(--error);
-            color: white;
-        }
-
-        .btn-error:hover {
-            background: #ff5555;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 24px rgba(232, 69, 69, 0.3);
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: var(--primary);
-            font-weight: 600;
-        }
-
-        .btn-primary:hover {
-            background: var(--accent-light);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 24px rgba(201, 169, 97, 0.4);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text);
-            border: 2px solid var(--accent);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.15);
-            transform: translateY(-2px);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-
-        .message {
-            margin-top: 1.5rem;
-            padding: 1.2rem;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            text-align: center;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .message.success {
-            background: rgba(78, 204, 163, 0.2);
-            border: 1px solid var(--success);
-            color: var(--success);
-        }
-
-        .message.info {
-            background: rgba(201, 169, 97, 0.2);
-            border: 1px solid var(--accent);
-            color: var(--accent-light);
-        }
-
-        .message.final {
-            background: linear-gradient(135deg, rgba(201, 169, 97, 0.3), rgba(201, 169, 97, 0.1));
-            border: 2px solid var(--accent);
-            color: var(--accent);
-            font-family: 'Cinzel', serif;
-            font-size: 1.5rem;
-            font-weight: 600;
-            padding: 2rem;
-        }
-
-        footer {
-            text-align: center;
-            padding: 3rem 0 2rem;
-            margin-top: 4rem;
-            border-top: 1px solid rgba(201, 169, 97, 0.3);
-            color: var(--text-muted);
-        }
-
-        footer a {
-            color: var(--accent);
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-
-        footer a:hover {
-            color: var(--accent-light);
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.05);
-            }
-        }
-
-        .pulse {
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 2.5rem;
-            }
-
-            .tempo-number {
-                font-size: 4rem;
-            }
-
-            .trainer-interface {
-                padding: 2rem;
-            }
-
-            .button-group {
-                flex-direction: column;
-            }
-
-            .mode-selector {
-                flex-direction: column;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="tempo-trainer-styles.css">
 </head>
 <body>
     <div class="container">
@@ -452,53 +15,125 @@
         </header>
 
         <div class="intro">
-            <p><strong>Welcome to Tempo Trainer!</strong> This tool helps you systematically find and improve your tempo using a divide-and-conquer search. After each attempt it narrows in on your limit in fewer and fewer steps.</p>
-            <p><strong>First session:</strong> Leave the tempo field empty. The trainer starts at 60 BPM and homes in on your current ability.</p>
-            <p><strong>Later sessions:</strong> Enter the tempo you reached last time. The trainer first confirms you can still hit that mark (review), then pushes you faster (growth).</p>
+            <p><strong>Welcome to Tempo Trainer!</strong> This tool helps you systematically find and improve your tempo using a divide-and-conquer search algorithm.</p>
+            <p><strong>Untargeted Mode:</strong> For exercises and scales without a goal tempo. First time: finds your max tempo. Later sessions: review phase (slow practice), then growth phase (fast practice).</p>
+            <p><strong>Targeted Mode:</strong> For pieces with a specific tempo marking. Identifies the hardest "hot spot" and the tempo at which you can play it. Toggle between <em>calculated</em> (precise) and <em>quantized</em> (nearest preset) tempo display.</p>
         </div>
 
-        <div class="trainer-interface">
-            <div id="startScreen">
-                <div class="controls">
-                    <div class="input-group">
-                        <label for="startTempo">Starting Tempo (30–240 BPM)</label>
-                        <input type="number" id="startTempo" min="30" max="240" placeholder="Leave empty for first session">
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="setMode('untargeted')">
+                Untargeted Mode
+                <div class="mode-subtitle">Scales & Exercises</div>
+            </button>
+            <button class="mode-btn" onclick="setMode('targeted')">
+                Targeted Mode
+                <div class="mode-subtitle">Pieces with Goal Tempo</div>
+            </button>
+        </div>
+
+        <!-- UNTARGETED MODE -->
+        <div id="untargeted-mode">
+            <div class="card">
+                <div class="section-title">Setup</div>
+                <div class="input-group">
+                    <label for="startTempo">Starting Tempo (30–240 BPM)</label>
+                    <input type="number" id="startTempo" min="30" max="240" placeholder="Leave empty for first session">
+                </div>
+                <p style="color: var(--text-muted); font-size: 1rem; margin-top: 0.5rem;">
+                    First time? Leave empty and hit Begin. On later sessions, enter your previous best tempo for review + growth phases.
+                </p>
+                <button class="btn btn-primary" onclick="startUntargeted()">Begin Training</button>
+            </div>
+
+            <div id="untargeted-session" class="hidden">
+                <div class="card">
+                    <div class="step-display">
+                        <div class="section-title" id="untargeted-phase">Initial Assessment</div>
+                        <div class="tempo-info">
+                            <div class="tempo-stat">
+                                <div class="tempo-stat-label">Current Tempo</div>
+                                <div class="tempo-stat-value highlight pulse" id="untargeted-tempo">60</div>
+                            </div>
+                            <div class="tempo-stat">
+                                <div class="tempo-stat-label">Step Size</div>
+                                <div class="tempo-stat-value" id="untargeted-step-size">16</div>
+                            </div>
+                        </div>
                     </div>
-                    <p style="color: var(--text-muted); font-size: 1rem; margin-top: 0.5rem;">
-                        First time using the tool? Leave the field empty and hit Begin.
-                        On later sessions, enter the tempo you reached last time.
-                    </p>
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-primary" id="startBtn">Begin Training</button>
+                    <div class="button-group">
+                        <button class="btn btn-success" onclick="handleUntargetedResponse(true)">✓ Success</button>
+                        <button class="btn btn-error" onclick="handleUntargetedResponse(false)">✗ Failed</button>
+                    </div>
+                    <div class="history" id="untargeted-history"></div>
                 </div>
             </div>
 
-            <div id="trainingScreen" style="display: none;">
-                <div class="phase-indicator" id="phaseIndicator">Initial Assessment</div>
-                <div class="tempo-display">
-                    <div class="tempo-number pulse" id="currentTempo">60</div>
-                    <div class="bpm-label">BPM</div>
+            <div id="untargeted-result" class="hidden"></div>
+        </div>
+
+        <!-- TARGETED MODE -->
+        <div id="targeted-mode" class="hidden">
+            <div class="card">
+                <div class="section-title">Setup</div>
+                <div class="input-group">
+                    <label for="target-tempo">Target Tempo (BPM)</label>
+                    <input type="number" id="target-tempo" value="120" min="30" max="240">
                 </div>
-                <div class="button-group">
-                    <button class="btn btn-success" id="successBtn">Success ✓</button>
-                    <button class="btn btn-error" id="failBtn">Failed ✗</button>
+                <div class="measure-input-group">
+                    <div class="input-group">
+                        <label for="start-measure">Start Measure</label>
+                        <input type="text" id="start-measure" value="1" placeholder="e.g., 1, m.1">
+                    </div>
+                    <div class="input-group">
+                        <label for="end-measure">End Measure</label>
+                        <input type="text" id="end-measure" value="100" placeholder="e.g., 100, m.100">
+                    </div>
                 </div>
-                <div id="messageArea"></div>
+                <button class="btn btn-primary" onclick="startTargeted()">Begin Training</button>
             </div>
 
-            <div id="resultsScreen" style="display: none;">
-                <div class="tempo-display">
-                    <div class="tempo-number" id="finalTempo">120</div>
-                    <div class="bpm-label">BPM</div>
-                </div>
-                <div class="message final" id="finalMessage">
-                    Training Complete!
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-primary" id="restartBtn">Start New Session</button>
+            <div id="targeted-session" class="hidden">
+                <div class="card">
+                    <div class="step-display">
+                        <div class="section-title">
+                            Current Attempt
+                            <button class="btn btn-secondary" id="tempo-toggle-btn" 
+                                    onclick="toggleTempoDisplay()" 
+                                    style="float: right; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                                Switch to Quantized
+                            </button>
+                        </div>
+                        <div class="tempo-info">
+                            <div class="tempo-stat">
+                                <div class="tempo-stat-label">Tempo (BPM)</div>
+                                <div class="tempo-stat-value highlight pulse" id="targeted-tempo">142.7</div>
+                            </div>
+                            <div class="tempo-stat">
+                                <div class="tempo-stat-label">Step / Change</div>
+                                <div class="tempo-stat-value" id="targeted-step">+4</div>
+                            </div>
+                            <div class="tempo-stat">
+                                <div class="tempo-stat-label">Current Measure</div>
+                                <div class="tempo-stat-value" id="current-measure">1</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);" id="tempo-display-info">
+                            Calculated: 142.7 BPM | Quantized: 144 BPM
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="error-measure">If error occurred, enter measure number (leave blank if completed cleanly):</label>
+                        <input type="text" id="error-measure" placeholder="e.g., 47">
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="handleTargetedResponse()">Continue</button>
+                    
+                    <div class="history" id="targeted-history"></div>
                 </div>
             </div>
+
+            <div id="targeted-result" class="hidden"></div>
         </div>
 
         <footer>
@@ -508,347 +143,545 @@
     </div>
 
     <script>
-    // ─── constants (match Python exactly) ────────────────────────────────
-    const TEMPOS = [
-        30, 31.5, 33, 34.5, 36, 38, 40, 42,
-        44, 46, 48, 50, 52, 54, 56, 58,
-        60, 63, 66, 69, 72, 76, 80, 84,
-        88, 92, 96, 100, 104, 108, 112, 116,
-        120, 126, 132, 138, 144, 152, 160, 168,
-        176, 184, 192, 200, 208, 216, 224, 232,
-        240
-    ];
-    const STEP_SIZES = [16, 8, 4, 2, 1, 1];
+        // Constants
+        const TEMPOS = [
+            30, 31.5, 33, 34.5, 36, 38, 40, 42,
+            44, 46, 48, 50, 52, 54, 56, 58,
+            60, 63, 66, 69, 72, 76, 80, 84,
+            88, 92, 96, 100, 104, 108, 112, 116,
+            120, 126, 132, 138, 144, 152, 160, 168,
+            176, 184, 192, 200, 208, 216, 224, 232,
+            240
+        ];
+        const STEP_SIZES = [16, 8, 4, 2, 1, 1];
+        const STEPS_PER_DOUBLING = 16;
+        const HEADROOM_STEPS = 4;
 
-    // ─── state enum ───────────────────────────────────────────────────────
-    const S = {
-        START:              'START',
-        FIRST_TIME_SEARCH:  'FIRST_TIME_SEARCH',   // find_tempo(60,0,true)
-        FIRST_TIME_BONUS:   'FIRST_TIME_BONUS',    // bonus check after perfect first-time
-        REVIEW_FIRST_TRIAL: 'REVIEW_FIRST_TRIAL',  // check_success(start_tempo)
-        REVIEW_SEARCH:      'REVIEW_SEARCH',       // find_tempo(review start)
-        GROWTH_FIRST_TRIAL: 'GROWTH_FIRST_TRIAL',  // check_success(start_tempo) again
-        GROWTH_SEARCH:      'GROWTH_SEARCH',       // find_tempo(growth start)
-        GROWTH_BONUS:       'GROWTH_BONUS',        // bonus check after perfect growth
-        DONE:               'DONE'
-    };
+        let tempoDisplayMode = 'calculated';
 
-    // ─── mutable session state ────────────────────────────────────────────
-    let state, tempoIndex, stepSizeIndex, perfectRun, maxxed;
-    let startTempoIndex;            // saved so growth can jump back to it
-    let firstTrialSuccess;          // result of REVIEW_FIRST_TRIAL
-    let growthStartSuccess;         // result of GROWTH_FIRST_TRIAL
-    let lastSuccess;                // the answer that was just given
-
-    // ─── pure helpers (direct ports of Python) ───────────────────────────
-    function resolveTempo(tempo) {
-        if (TEMPOS.includes(tempo)) return TEMPOS.indexOf(tempo);
-        for (let i = TEMPOS.length - 1; i >= 0; i--) {
-            if (TEMPOS[i] < tempo) return i;
+        // Utility functions
+        function stepToMultiplier(step) {
+            return Math.pow(2, step / STEPS_PER_DOUBLING);
         }
-        return 0;
-    }
 
-    function checkUpperBound(tIdx, sIdx) {
-        let step = STEP_SIZES[sIdx];
-        while (tIdx + step > TEMPOS.length - 1 && sIdx < STEP_SIZES.length - 1) {
-            sIdx++;
-            step = STEP_SIZES[sIdx];
+        function stepToBpm(step, targetBpm) {
+            return Math.round(targetBpm * stepToMultiplier(step) * 10) / 10;
         }
-        return { sIdx, step };
-    }
 
-    function checkLowerBound(tIdx, sIdx) {
-        let step = STEP_SIZES[sIdx];
-        while (tIdx - step < 0 && sIdx < STEP_SIZES.length - 1) {
-            sIdx++;
-            step = STEP_SIZES[sIdx];
+        function stepToBpmQuantized(step, targetBpm) {
+            const calculated = stepToBpm(step, targetBpm);
+            return TEMPOS.reduce((prev, curr) => 
+                Math.abs(curr - calculated) < Math.abs(prev - calculated) ? curr : prev
+            );
         }
-        return { sIdx, step };
-    }
 
-    // ─── find_tempo single-iteration engine ───────────────────────────────
-    // Call AFTER recording the user's answer in `lastSuccess`.
-    // Mutates tempoIndex, stepSizeIndex, perfectRun, maxxed.
-    // Returns true if the loop is finished, false if another attempt is needed.
-    function findTempoStep() {
-        if (lastSuccess) {
-            if (tempoIndex === TEMPOS.length - 1) { maxxed = true; return true; }
-            const b = checkUpperBound(tempoIndex, stepSizeIndex);
-            stepSizeIndex = b.sIdx;
-            tempoIndex += b.step;
-        } else {
-            perfectRun = false;
-            if (tempoIndex === 0) return true;
-            const b = checkLowerBound(tempoIndex, stepSizeIndex);
-            stepSizeIndex = b.sIdx;
-            tempoIndex -= b.step;
+        function stepToPercent(step) {
+            const multiplier = stepToMultiplier(step);
+            return Math.round((multiplier - 1) * 100 * 10) / 10;
         }
-        stepSizeIndex += 1;
-        return stepSizeIndex >= STEP_SIZES.length;   // loop exhausted?
-    }
 
-    // Apply the post-loop correction from Python:
-    //   if tempo_increases and not maxxed: tempo_index -= 1
-    function findTempoFinalize() {
-        if (lastSuccess && !maxxed) tempoIndex -= 1;
-    }
-
-    // ─── DOM refs ─────────────────────────────────────────────────────────
-    const startScreen       = document.getElementById('startScreen');
-    const trainingScreen    = document.getElementById('trainingScreen');
-    const resultsScreen     = document.getElementById('resultsScreen');
-    const startTempoInput   = document.getElementById('startTempo');
-    const startBtn          = document.getElementById('startBtn');
-    const successBtn        = document.getElementById('successBtn');
-    const failBtn           = document.getElementById('failBtn');
-    const restartBtn        = document.getElementById('restartBtn');
-    const currentTempoDisp  = document.getElementById('currentTempo');
-    const finalTempoDisp    = document.getElementById('finalTempo');
-    const phaseIndicator    = document.getElementById('phaseIndicator');
-    const messageArea       = document.getElementById('messageArea');
-    const finalMessage      = document.getElementById('finalMessage');
-
-    // ─── UI helpers ───────────────────────────────────────────────────────
-    function showTempo() { currentTempoDisp.textContent = TEMPOS[tempoIndex]; }
-
-    function setPhase(label) { phaseIndicator.textContent = label; }
-
-    function msg(text, cls = 'info') {
-        messageArea.innerHTML = `<div class="message ${cls}">${text}</div>`;
-    }
-
-    function enterState(newState) {
-        state = newState;
-        // On entering a new state, display the current tempo and
-        // an appropriate phase label / message.  No user input is consumed here.
-        switch (state) {
-            case S.FIRST_TIME_SEARCH:
-                setPhase('Initial Assessment');
-                showTempo();
-                msg('Play at this tempo. Click Success or Failed.');
-                break;
-
-            case S.FIRST_TIME_BONUS:
-                // tempo_index+1 is the bonus attempt
-                tempoIndex += 1;
-                setPhase('Bonus Attempt');
-                showTempo();
-                msg('Perfect so far! Try this slightly faster tempo.');
-                break;
-
-            case S.REVIEW_FIRST_TRIAL:
-                setPhase('Review Phase — Confirming Ability');
-                showTempo();                          // shows start_tempo
-                msg('Play at your previous best. Success or Failed?');
-                break;
-
-            case S.REVIEW_SEARCH:
-                setPhase('Review Phase — Slow Practice');
-                showTempo();
-                msg('Finding your comfortable baseline.');
-                break;
-
-            case S.GROWTH_FIRST_TRIAL:
-                // jump back to start_tempo for growth
-                tempoIndex = startTempoIndex;
-                setPhase('Growth Phase — Fast Practice');
-                showTempo();
-                msg('You nailed the review! Now play at your previous best again.');
-                break;
-
-            case S.GROWTH_SEARCH:
-                setPhase('Growth Phase — Pushing Limits');
-                showTempo();
-                msg('Let\'s see how much faster you can go.');
-                break;
-
-            case S.GROWTH_BONUS:
-                tempoIndex += 1;
-                setPhase('Growth Bonus Attempt');
-                showTempo();
-                msg('Incredible! One more stretch attempt.');
-                break;
+        function getDisplayTempo(step, targetBpm) {
+            return tempoDisplayMode === 'quantized' ? 
+                stepToBpmQuantized(step, targetBpm) : stepToBpm(step, targetBpm);
         }
-    }
 
-    // ─── transition: after the user clicks Success/Failed ─────────────────
-    // `lastSuccess` has already been set by the click handler.
-    function advance() {
-        switch (state) {
+        function toggleTempoDisplay() {
+            tempoDisplayMode = tempoDisplayMode === 'calculated' ? 'quantized' : 'calculated';
+            const btn = document.getElementById('tempo-toggle-btn');
+            if (btn) {
+                btn.textContent = tempoDisplayMode === 'calculated' ? 
+                    'Switch to Quantized' : 'Switch to Calculated';
+            }
+            if (!document.getElementById('targeted-session').classList.contains('hidden')) {
+                updateTargetedDisplay();
+            }
+        }
 
-        // ── first-time path ─────────────────────────────────────────────
-        case S.FIRST_TIME_SEARCH: {
-            const done = findTempoStep();
-            if (done) {
-                findTempoFinalize();
-                if (perfectRun && tempoIndex < TEMPOS.length - 1) {
-                    enterState(S.FIRST_TIME_BONUS);
-                } else {
-                    finish();
-                }
+        function resolveTempoIndex(tempo) {
+            if (TEMPOS.includes(tempo)) return TEMPOS.indexOf(tempo);
+            for (let i = TEMPOS.length - 1; i >= 0; i--) {
+                if (TEMPOS[i] < tempo) return i;
+            }
+            return 0;
+        }
+
+        function setMode(mode) {
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.mode-btn').classList.add('active');
+            
+            document.getElementById('untargeted-mode').classList.toggle('hidden', mode !== 'untargeted');
+            document.getElementById('targeted-mode').classList.toggle('hidden', mode !== 'targeted');
+        }
+
+        // UNTARGETED MODE with Review and Growth Phases
+        const untargetedState = {
+            tempoIndex: 0,
+            stepSizeIndex: 0,
+            perfectRun: true,
+            maxxed: false,
+            startTempoIndex: 0,
+            phase: 'initial',
+            firstTime: true,
+            firstTrialSuccess: false
+        };
+
+        function startUntargeted() {
+            const input = document.getElementById('startTempo').value.trim();
+            
+            if (input === '') {
+                // First time
+                untargetedState.tempoIndex = resolveTempoIndex(60);
+                untargetedState.stepSizeIndex = 0;
+                untargetedState.perfectRun = true;
+                untargetedState.maxxed = false;
+                untargetedState.phase = 'initial';
+                untargetedState.firstTime = true;
             } else {
-                showTempo();
-                msg(lastSuccess ? 'Great! Try this faster tempo.' : 'No worries — let\'s try a slower one.', lastSuccess ? 'success' : 'info');
-            }
-            break;
-        }
-
-        case S.FIRST_TIME_BONUS: {
-            // lastSuccess here IS the bonus answer; adjust index accordingly
-            if (!lastSuccess) tempoIndex -= 1;   // undo the +1 we did on entry
-            finish();
-            break;
-        }
-
-        // ── returning path ──────────────────────────────────────────────
-        case S.REVIEW_FIRST_TRIAL: {
-            firstTrialSuccess = lastSuccess;
-            // Python: drop one step down, then start review search
-            stepSizeIndex = 0;
-            const b = checkLowerBound(tempoIndex, stepSizeIndex);
-            stepSizeIndex = b.sIdx;
-            if (tempoIndex > 0) {
-                tempoIndex -= b.step;
-            }
-            stepSizeIndex += 1;
-            // Now set up find_tempo state for review
-            perfectRun = firstTrialSuccess;   // start_perfect = first_trial_success
-            maxxed = false;
-            enterState(S.REVIEW_SEARCH);
-            break;
-        }
-
-        case S.REVIEW_SEARCH: {
-            const done = findTempoStep();
-            if (done) {
-                findTempoFinalize();
-                if (perfectRun) {
-                    // Transition to growth
-                    // Reset find_tempo state for growth phase
-                    stepSizeIndex = 1;                        // Python uses 1 here
-                    tempoIndex    = startTempoIndex;
-                    perfectRun    = true;
-                    maxxed        = false;
-                    enterState(S.GROWTH_FIRST_TRIAL);
-                } else {
-                    finish();
+                // Returning - start with review first trial
+                const startTempo = parseInt(input);
+                if (isNaN(startTempo) || startTempo < 30 || startTempo > 240) {
+                    alert('Please enter a tempo between 30 and 240 BPM');
+                    return;
                 }
-            } else {
-                showTempo();
-                msg(lastSuccess ? 'Good — try a bit faster.' : 'That\'s fine — a bit slower.' , lastSuccess ? 'success' : 'info');
+                untargetedState.startTempoIndex = resolveTempoIndex(startTempo);
+                untargetedState.tempoIndex = untargetedState.startTempoIndex;
+                untargetedState.stepSizeIndex = 0;
+                untargetedState.perfectRun = true;
+                untargetedState.phase = 'review_first_trial';
+                untargetedState.firstTime = false;
             }
-            break;
+            
+            document.getElementById('untargeted-session').classList.remove('hidden');
+            document.getElementById('untargeted-result').classList.add('hidden');
+            document.getElementById('untargeted-history').innerHTML = '';
+            updateUntargetedDisplay();
         }
 
-        case S.GROWTH_FIRST_TRIAL: {
-            growthStartSuccess = lastSuccess;
-            // Python: step UP one from start_tempo
-            const b = checkUpperBound(tempoIndex, stepSizeIndex);
-            stepSizeIndex = b.sIdx;
-            if (tempoIndex < TEMPOS.length - 1) {
-                tempoIndex += b.step;
-            }
-            stepSizeIndex += 1;
-            // Set up find_tempo state for growth
-            perfectRun = growthStartSuccess;  // start_perfect = growth_phase_start_success
-            maxxed = false;
-            enterState(S.GROWTH_SEARCH);
-            break;
+        function updateUntargetedDisplay() {
+            const tempo = TEMPOS[untargetedState.tempoIndex];
+            const stepSize = STEP_SIZES[untargetedState.stepSizeIndex];
+            
+            document.getElementById('untargeted-tempo').textContent = tempo + ' BPM';
+            document.getElementById('untargeted-step-size').textContent = stepSize;
+            
+            const phaseLabels = {
+                'initial': 'Initial Assessment',
+                'initial_bonus': 'Bonus Attempt!',
+                'review_first_trial': 'Review Phase — Confirming Ability',
+                'review': 'Review Phase — Slow Practice',
+                'growth_first_trial': 'Growth Phase — Confirming Ability',
+                'growth': 'Growth Phase — Fast Practice',
+                'growth_bonus': 'Growth Bonus Attempt!'
+            };
+            
+            document.getElementById('untargeted-phase').textContent = 
+                phaseLabels[untargetedState.phase] || 'Training';
         }
 
-        case S.GROWTH_SEARCH: {
-            const done = findTempoStep();
-            if (done) {
-                findTempoFinalize();
-                if (perfectRun && tempoIndex < TEMPOS.length - 1) {
-                    enterState(S.GROWTH_BONUS);
-                } else {
-                    finish();
+        function checkUpperBound(tempoIndex, stepSizeIndex) {
+            let stepSize = STEP_SIZES[stepSizeIndex];
+            while (tempoIndex + stepSize > TEMPOS.length - 1 && stepSizeIndex < STEP_SIZES.length - 1) {
+                stepSizeIndex++;
+                stepSize = STEP_SIZES[stepSizeIndex];
+            }
+            return { stepSizeIndex, stepSize };
+        }
+
+        function checkLowerBound(tempoIndex, stepSizeIndex) {
+            let stepSize = STEP_SIZES[stepSizeIndex];
+            while (tempoIndex - stepSize < 0 && stepSizeIndex < STEP_SIZES.length - 1) {
+                stepSizeIndex++;
+                stepSize = STEP_SIZES[stepSizeIndex];
+            }
+            return { stepSizeIndex, stepSize };
+        }
+
+        function handleUntargetedResponse(success) {
+            const tempo = TEMPOS[untargetedState.tempoIndex];
+            
+            const historyItem = document.createElement('div');
+            historyItem.className = `history-item ${success ? 'success' : 'error'}`;
+            historyItem.textContent = `${tempo} BPM: ${success ? '✓ Success' : '✗ Failed'}`;
+            const historyEl = document.getElementById('untargeted-history');
+            historyEl.insertBefore(historyItem, historyEl.firstChild);
+            
+            // Handle review first trial
+            if (untargetedState.phase === 'review_first_trial') {
+                untargetedState.firstTrialSuccess = success;
+                
+                // Drop one step down
+                untargetedState.stepSizeIndex = 0;
+                const bounds = checkLowerBound(untargetedState.tempoIndex, untargetedState.stepSizeIndex);
+                untargetedState.stepSizeIndex = bounds.stepSizeIndex;
+                if (untargetedState.tempoIndex > 0) {
+                    untargetedState.tempoIndex -= bounds.stepSize;
                 }
-            } else {
-                showTempo();
-                msg(lastSuccess ? 'Nice! Keep pushing.' : 'OK — pulling back a bit.', lastSuccess ? 'success' : 'info');
-            }
-            break;
-        }
-
-        case S.GROWTH_BONUS: {
-            if (!lastSuccess) tempoIndex -= 1;
-            finish();
-            break;
-        }
-        }
-    }
-
-    // ─── show final result ────────────────────────────────────────────────
-    function finish() {
-        state = S.DONE;
-        trainingScreen.style.display = 'none';
-        resultsScreen.style.display  = 'block';
-        finalTempoDisp.textContent   = TEMPOS[tempoIndex];
-
-        let txt;
-        if (maxxed) {
-            txt = `You maxed out at ${TEMPOS[tempoIndex]} BPM!`;
-        } else if (perfectRun) {
-            txt = `Perfect run! Your tempo is ${TEMPOS[tempoIndex]} BPM. Enter this as your start tempo next time to keep growing.`;
-        } else {
-            txt = `Your current tempo is ${TEMPOS[tempoIndex]} BPM. Keep practicing and try again!`;
-        }
-        finalMessage.textContent = txt;
-    }
-
-    // ─── event: Start button ──────────────────────────────────────────────
-    startBtn.addEventListener('click', () => {
-        const raw = startTempoInput.value.trim();
-
-        if (raw === '') {
-            // ── first-time path ─────────────────────────────────────────
-            tempoIndex     = resolveTempo(60);
-            stepSizeIndex  = 0;
-            perfectRun     = true;   // start_perfect = True
-            maxxed         = false;
-
-            startScreen.style.display    = 'none';
-            trainingScreen.style.display = 'block';
-            enterState(S.FIRST_TIME_SEARCH);
-
-        } else {
-            // ── returning path ──────────────────────────────────────────
-            const val = parseInt(raw);
-            if (isNaN(val) || val < 30 || val > 240) {
-                alert('Please enter an integer between 30 and 240.');
+                untargetedState.stepSizeIndex++;
+                
+                untargetedState.perfectRun = untargetedState.firstTrialSuccess;
+                untargetedState.phase = 'review';
+                updateUntargetedDisplay();
                 return;
             }
-            startTempoIndex = resolveTempo(val);
-            tempoIndex      = startTempoIndex;
-            stepSizeIndex   = 0;
-            perfectRun      = true;
-            maxxed          = false;
-
-            startScreen.style.display    = 'none';
-            trainingScreen.style.display = 'block';
-            enterState(S.REVIEW_FIRST_TRIAL);
+            
+            // Handle growth first trial
+            if (untargetedState.phase === 'growth_first_trial') {
+                const growthStartSuccess = success;
+                
+                // Step up one from start tempo
+                const bounds = checkUpperBound(untargetedState.tempoIndex, untargetedState.stepSizeIndex);
+                untargetedState.stepSizeIndex = bounds.stepSizeIndex;
+                if (untargetedState.tempoIndex < TEMPOS.length - 1) {
+                    untargetedState.tempoIndex += bounds.stepSize;
+                }
+                untargetedState.stepSizeIndex++;
+                
+                untargetedState.perfectRun = growthStartSuccess;
+                untargetedState.phase = 'growth';
+                updateUntargetedDisplay();
+                return;
+            }
+            
+            // Handle bonus phases - don't run regular search logic
+            if (untargetedState.phase === 'initial_bonus') {
+                if (!success) {
+                    untargetedState.tempoIndex--;
+                }
+                showUntargetedResult();
+                return;
+            }
+            
+            if (untargetedState.phase === 'growth_bonus') {
+                if (!success) {
+                    untargetedState.tempoIndex--;
+                }
+                showUntargetedResult();
+                return;
+            }
+            
+            // Regular tempo search
+            if (success) {
+                if (untargetedState.tempoIndex < TEMPOS.length - 1) {
+                    const bounds = checkUpperBound(untargetedState.tempoIndex, untargetedState.stepSizeIndex);
+                    untargetedState.stepSizeIndex = bounds.stepSizeIndex;
+                    untargetedState.tempoIndex += bounds.stepSize;
+                } else {
+                    untargetedState.maxxed = true;
+                }
+            } else {
+                untargetedState.perfectRun = false;
+                if (untargetedState.tempoIndex > 0) {
+                    const bounds = checkLowerBound(untargetedState.tempoIndex, untargetedState.stepSizeIndex);
+                    untargetedState.stepSizeIndex = bounds.stepSizeIndex;
+                    untargetedState.tempoIndex -= bounds.stepSize;
+                }
+            }
+            
+            untargetedState.stepSizeIndex++;
+            
+            // Check if phase is done (either exhausted step sizes OR maxxed out)
+            if (untargetedState.stepSizeIndex >= STEP_SIZES.length || untargetedState.maxxed) {
+                if (success && !untargetedState.maxxed) {
+                    untargetedState.tempoIndex--;
+                }
+                
+                if (untargetedState.phase === 'initial') {
+                    // First time complete - check for bonus
+                    if (untargetedState.perfectRun && !untargetedState.maxxed && untargetedState.tempoIndex < TEMPOS.length - 1) {
+                        // Offer bonus attempt
+                        untargetedState.tempoIndex++;
+                        untargetedState.phase = 'initial_bonus';
+                        updateUntargetedDisplay();
+                    } else {
+                        showUntargetedResult();
+                    }
+                    
+                } else if (untargetedState.phase === 'review') {
+                    if (untargetedState.perfectRun) {
+                        // Start growth phase
+                        untargetedState.stepSizeIndex = 1;
+                        untargetedState.tempoIndex = untargetedState.startTempoIndex;
+                        untargetedState.perfectRun = true;
+                        untargetedState.maxxed = false;
+                        untargetedState.phase = 'growth_first_trial';
+                        updateUntargetedDisplay();
+                    } else {
+                        showUntargetedResult();
+                    }
+                    
+                } else if (untargetedState.phase === 'growth') {
+                    // Growth phase complete - check for bonus
+                    if (untargetedState.perfectRun && !untargetedState.maxxed && untargetedState.tempoIndex < TEMPOS.length - 1) {
+                        untargetedState.tempoIndex++;
+                        untargetedState.phase = 'growth_bonus';
+                        updateUntargetedDisplay();
+                    } else {
+                        showUntargetedResult();
+                    }
+                }
+            } else {
+                updateUntargetedDisplay();
+            }
         }
-    });
 
-    // ─── event: Success / Failed buttons ──────────────────────────────────
-    function handleAnswer(success) {
-        lastSuccess = success;
-        advance();
-    }
-    successBtn.addEventListener('click', () => handleAnswer(true));
-    failBtn.addEventListener('click', () => handleAnswer(false));
+        function showUntargetedResult() {
+            const finalTempo = TEMPOS[untargetedState.tempoIndex];
+            
+            let message = `Final tempo: <strong>${finalTempo} BPM</strong><br>`;
+            if (untargetedState.maxxed) {
+                message += 'You maxed out!';
+            } else if (untargetedState.perfectRun) {
+                message += 'Perfect run! Enter this tempo next time to keep growing.';
+            } else {
+                message += 'Keep practicing and try again!';
+            }
+            
+            const resultHtml = `
+                <div class="result-card">
+                    <h3>Training Complete!</h3>
+                    <div class="result-info">${message}</div>
+                    <button class="btn btn-primary" style="margin-top: 20px;" onclick="startUntargeted()">
+                        Start New Session
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('untargeted-result').innerHTML = resultHtml;
+            document.getElementById('untargeted-result').classList.remove('hidden');
+            document.getElementById('untargeted-session').classList.add('hidden');
+        }
 
-    // ─── event: Restart ───────────────────────────────────────────────────
-    restartBtn.addEventListener('click', () => {
-        resultsScreen.style.display  = 'none';
-        startScreen.style.display    = 'block';
-        startTempoInput.value        = '';
-        messageArea.innerHTML        = '';
-        state = S.START;
-    });
+        // TARGETED MODE
+        const targetedState = {
+            targetBpm: 120,
+            currentStep: 4,
+            currentMeasure: '1',
+            startMeasure: '1',
+            endMeasure: '100',
+            hotSpotMeasure: null,
+            lastSuccessfulStep: null,
+            searchPhase: 'initial',
+            searchPattern: [],
+            patternIndex: 0
+        };
+
+        function startTargeted() {
+            const targetBpm = parseFloat(document.getElementById('target-tempo').value);
+            const startMeasure = document.getElementById('start-measure').value;
+            const endMeasure = document.getElementById('end-measure').value;
+            
+            targetedState.targetBpm = targetBpm;
+            targetedState.currentStep = HEADROOM_STEPS;
+            targetedState.currentMeasure = startMeasure;
+            targetedState.startMeasure = startMeasure;
+            targetedState.endMeasure = endMeasure;
+            targetedState.hotSpotMeasure = null;
+            targetedState.lastSuccessfulStep = null;
+            targetedState.searchPhase = 'initial';
+            
+            document.getElementById('targeted-session').classList.remove('hidden');
+            document.getElementById('targeted-result').classList.add('hidden');
+            document.getElementById('targeted-history').innerHTML = '';
+            updateTargetedDisplay();
+        }
+
+        function updateTargetedDisplay() {
+            const bpm = getDisplayTempo(targetedState.currentStep, targetedState.targetBpm);
+            const bpmCalc = stepToBpm(targetedState.currentStep, targetedState.targetBpm);
+            const bpmQuant = stepToBpmQuantized(targetedState.currentStep, targetedState.targetBpm);
+            const percent = stepToPercent(targetedState.currentStep);
+            
+            const modeLabel = tempoDisplayMode === 'calculated' ? 'Calc' : 'Quant';
+            document.getElementById('targeted-tempo').innerHTML = 
+                `${bpm} <span style="font-size: 0.4em; opacity: 0.7;">${modeLabel}</span>`;
+            
+            document.getElementById('targeted-step').innerHTML = 
+                `${targetedState.currentStep >= 0 ? '+' : ''}${targetedState.currentStep}<br>` +
+                `<span style="font-size: 0.5em; opacity: 0.8;">${percent >= 0 ? '+' : ''}${percent}%</span>`;
+            
+            document.getElementById('current-measure').textContent = targetedState.currentMeasure;
+            document.getElementById('error-measure').value = '';
+            
+            document.getElementById('tempo-display-info').innerHTML = 
+                `Calculated: ${bpmCalc} BPM | Quantized: ${bpmQuant} BPM`;
+        }
+
+        function handleTargetedResponse() {
+            const errorMeasure = document.getElementById('error-measure').value.trim();
+            const bpmCalc = stepToBpm(targetedState.currentStep, targetedState.targetBpm);
+            const bpmQuant = stepToBpmQuantized(targetedState.currentStep, targetedState.targetBpm);
+            const percent = stepToPercent(targetedState.currentStep);
+            const success = errorMeasure === '';
+            
+            const historyItem = document.createElement('div');
+            historyItem.className = `history-item ${success ? 'success' : 'error'}`;
+            const stepStr = `${targetedState.currentStep >= 0 ? '+' : ''}${targetedState.currentStep}`;
+            historyItem.textContent = success
+                ? `Step ${stepStr} (${bpmCalc}/${bpmQuant} BPM, ${percent >= 0 ? '+' : ''}${percent}%): ✓ From m.${targetedState.currentMeasure}`
+                : `Step ${stepStr} (${bpmCalc}/${bpmQuant} BPM, ${percent >= 0 ? '+' : ''}${percent}%): ✗ Error at m.${errorMeasure}`;
+            const historyEl = document.getElementById('targeted-history');
+            historyEl.insertBefore(historyItem, historyEl.firstChild);
+            
+            processTargetedStep(success, errorMeasure);
+        }
+
+        function processTargetedStep(success, errorMeasure) {
+            if (targetedState.searchPhase === 'initial') {
+                if (success) {
+                    showTargetedResult(null, targetedState.currentStep);
+                    return;
+                }
+                targetedState.hotSpotMeasure = errorMeasure;
+                targetedState.currentMeasure = errorMeasure;
+                targetedState.currentStep -= 16;
+                targetedState.searchPhase = 'after_first_drop';
+                updateTargetedDisplay();
+                
+            } else if (targetedState.searchPhase === 'after_first_drop') {
+                if (!success) {
+                    if (errorMeasure !== targetedState.hotSpotMeasure) {
+                        targetedState.hotSpotMeasure = errorMeasure;
+                        targetedState.currentMeasure = errorMeasure;
+                    }
+                    targetedState.searchPhase = 'downward';
+                    targetedState.searchPattern = [8, 4, 2, 1];
+                    targetedState.patternIndex = 0;
+                    continueDownwardSearch();
+                } else {
+                    targetedState.lastSuccessfulStep = targetedState.currentStep;
+                    targetedState.searchPhase = 'upward';
+                    targetedState.searchPattern = [8, 4, 2, 1];
+                    targetedState.patternIndex = 0;
+                    continueUpwardSearch();
+                }
+                
+            } else if (targetedState.searchPhase === 'downward') {
+                if (success) {
+                    targetedState.lastSuccessfulStep = targetedState.currentStep;
+                    targetedState.searchPhase = 'upward';
+                    targetedState.searchPattern = [4, 2, 1];
+                    targetedState.patternIndex = 0;
+                    continueUpwardSearch();
+                } else {
+                    if (errorMeasure !== targetedState.hotSpotMeasure) {
+                        targetedState.hotSpotMeasure = errorMeasure;
+                        targetedState.currentMeasure = errorMeasure;
+                    }
+                    continueDownwardSearch();
+                }
+                
+            } else if (targetedState.searchPhase === 'upward') {
+                if (success) {
+                    targetedState.lastSuccessfulStep = targetedState.currentStep;
+                } else {
+                    if (errorMeasure !== targetedState.hotSpotMeasure) {
+                        targetedState.hotSpotMeasure = errorMeasure;
+                        targetedState.currentMeasure = errorMeasure;
+                    }
+                    targetedState.currentStep -= targetedState.searchPattern[targetedState.patternIndex - 1];
+                }
+                continueUpwardSearch();
+            }
+        }
+
+        function continueDownwardSearch() {
+            if (targetedState.patternIndex < targetedState.searchPattern.length) {
+                const dropAmount = targetedState.searchPattern[targetedState.patternIndex];
+                targetedState.currentStep -= dropAmount;
+                targetedState.patternIndex++;
+                
+                if (targetedState.currentStep < -27) {
+                    showFoundationalWorkWarning();
+                    return;
+                }
+                
+                updateTargetedDisplay();
+            } else {
+                showFoundationalWorkWarning();
+            }
+        }
+
+        function continueUpwardSearch() {
+            if (targetedState.patternIndex < targetedState.searchPattern.length) {
+                const raiseAmount = targetedState.searchPattern[targetedState.patternIndex];
+                targetedState.currentStep += raiseAmount;
+                targetedState.patternIndex++;
+                updateTargetedDisplay();
+            } else {
+                showTargetedResult(targetedState.hotSpotMeasure, targetedState.lastSuccessfulStep);
+            }
+        }
+
+        function showTargetedResult(hotSpotMeasure, step) {
+            const bpmCalc = stepToBpm(step, targetedState.targetBpm);
+            const bpmQuant = stepToBpmQuantized(step, targetedState.targetBpm);
+            const percent = stepToPercent(step);
+            
+            if (!hotSpotMeasure) {
+                const resultHtml = `
+                    <div class="result-card">
+                        <h3>🎉 No Hot Spots!</h3>
+                        <div class="result-info">
+                            Piece mastered at step ${step >= 0 ? '+' : ''}${step} (${percent >= 0 ? '+' : ''}${percent}%)<br>
+                            Calculated: ${bpmCalc} BPM | Quantized: ${bpmQuant} BPM
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="startTargeted()">
+                            Start New Session
+                        </button>
+                    </div>
+                `;
+                document.getElementById('targeted-result').innerHTML = resultHtml;
+            } else {
+                const resultHtml = `
+                    <div class="result-card">
+                        <h3>Hot Spot Identified</h3>
+                        <div class="result-info">
+                            <strong>Measure:</strong> ${hotSpotMeasure}<br>
+                            <strong>Step:</strong> ${step >= 0 ? '+' : ''}${step} (${percent >= 0 ? '+' : ''}${percent}%)<br>
+                            <strong>Calculated:</strong> ${bpmCalc} BPM<br>
+                            <strong>Quantized:</strong> ${bpmQuant} BPM
+                        </div>
+                        <div style="margin-top: 20px; font-size: 0.95em;">
+                            <strong>Next Steps:</strong><br>
+                            1. Create hot spot card for measure ${hotSpotMeasure}<br>
+                            2. Create child segment: ${targetedState.startMeasure} to (before ${hotSpotMeasure})<br>
+                            3. Create child segment: (after ${hotSpotMeasure}) to ${targetedState.endMeasure}
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="startTargeted()">
+                            Start New Session
+                        </button>
+                    </div>
+                `;
+                document.getElementById('targeted-result').innerHTML = resultHtml;
+            }
+            
+            document.getElementById('targeted-result').classList.remove('hidden');
+            document.getElementById('targeted-session').classList.add('hidden');
+        }
+
+        function showFoundationalWorkWarning() {
+            const bpmCalc = stepToBpm(targetedState.currentStep, targetedState.targetBpm);
+            const bpmQuant = stepToBpmQuantized(targetedState.currentStep, targetedState.targetBpm);
+            const warningHtml = `
+                <div class="warning-card">
+                    <h4>⚠ Passage Too Difficult</h4>
+                    <p>Still unable to complete at step ${targetedState.currentStep}:</p>
+                    <p>Calculated: ${bpmCalc} BPM | Quantized: ${bpmQuant} BPM<br>
+                    (for a ${targetedState.targetBpm} BPM piece)</p>
+                    <p style="margin-top: 10px;">
+                        <strong>Recommendation:</strong> This passage requires foundational work on smaller chunks. 
+                        Break down to even more isolated sections, potentially down to individual intervals or 
+                        note transitions.
+                    </p>
+                    <button class="btn btn-primary" style="margin-top: 15px;" onclick="startTargeted()">
+                        Start New Session
+                    </button>
+                </div>
+            `;
+            document.getElementById('targeted-result').innerHTML = warningHtml;
+            document.getElementById('targeted-result').classList.remove('hidden');
+            document.getElementById('targeted-session').classList.add('hidden');
+        }
     </script>
 </body>
 </html>
