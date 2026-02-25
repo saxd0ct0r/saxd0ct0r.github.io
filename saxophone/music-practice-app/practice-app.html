@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Practice SRS | Timothy J. Owen</title>
+    <link rel="stylesheet" href="practice-app-styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Music Practice SRS</h1>
+            <p class="subtitle">Incremental Processing with Spaced Repetition</p>
+            <p class="author">by Timothy J. Owen, D.M.A.</p>
+        </header>
+
+        <!-- MAIN MENU -->
+        <div id="main-menu">
+            <div class="stats-card">
+                <h3>Your Library</h3>
+                <div class="stats-grid">
+                    <div class="stat">
+                        <div class="stat-value" id="stat-pieces">0</div>
+                        <div class="stat-label">Pieces</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="stat-segments">0</div>
+                        <div class="stat-label">Segments</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="stat-hotspots">0</div>
+                        <div class="stat-label">Hot Spots</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value highlight" id="stat-due">0</div>
+                        <div class="stat-label">Due Now</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="menu-actions">
+                <button class="btn btn-primary btn-large" onclick="startPractice()">
+                    <span class="btn-icon">🎵</span>
+                    Start Practice
+                </button>
+                <button class="btn btn-secondary" onclick="showScreen('queue-screen')">
+                    View Queue
+                </button>
+                <button class="btn btn-secondary" onclick="showScreen('add-piece-screen')">
+                    Add New Piece
+                </button>
+                <button class="btn btn-secondary" onclick="showScreen('library-screen')">
+                    Browse Library
+                </button>
+                <button class="btn btn-secondary" onclick="showScreen('data-management-screen')">
+                    Data Management
+                </button>
+            </div>
+        </div>
+
+        <!-- ADD NEW PIECE :) -->
+        <div id="add-piece-screen" class="screen hidden">
+            <div class="card">
+                <div class="section-title">Add New Piece</div>
+                
+                <div class="input-group">
+                    <label for="new-piece-title">Title *</label>
+                    <input type="text" id="new-piece-title" placeholder="e.g., Adelaide Coles Sonata, Mvt. 1">
+                </div>
+
+                <div class="measure-input-group">
+                    <div class="input-group">
+                        <label for="new-piece-start">Start Measure</label>
+                        <input type="text" id="new-piece-start" value="1">
+                    </div>
+                    <div class="input-group">
+                        <label for="new-piece-end">End Measure</label>
+                        <input type="text" id="new-piece-end" value="100">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="new-piece-tempo">Target Tempo (BPM) *</label>
+                    <input type="number" id="new-piece-tempo" value="120" min="30" max="240">
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="addNewPiece()">Add Piece</button>
+                    <button class="btn btn-secondary" onclick="showScreen('main-menu')">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRACTICE QUEUE -->
+        <div id="queue-screen" class="screen hidden">
+            <div class="card">
+                <div class="section-title">Practice Queue</div>
+                <div id="queue-list"></div>
+                <button class="btn btn-secondary" style="margin-top: 1rem;" onclick="showScreen('main-menu')">
+                    Back to Menu
+                </button>
+            </div>
+        </div>
+
+        <!-- LIBRARY VIEW -->
+        <div id="library-screen" class="screen hidden">
+            <div class="card">
+                <div class="section-title">Library</div>
+                
+                <div class="library-tabs">
+                    <button class="tab-btn active" onclick="showLibraryTab('all')">All</button>
+                    <button class="tab-btn" onclick="showLibraryTab('pieces')">Pieces</button>
+                    <button class="tab-btn" onclick="showLibraryTab('segments')">Segments</button>
+                    <button class="tab-btn" onclick="showLibraryTab('hotspots')">Hot Spots</button>
+                </div>
+
+                <div id="library-list"></div>
+                
+                <button class="btn btn-secondary" style="margin-top: 1rem;" onclick="showScreen('main-menu')">
+                    Back to Menu
+                </button>
+            </div>
+        </div>
+
+        <!-- PRACTICE SESSION -->
+        <div id="practice-screen" class="screen hidden">
+            <div class="card">
+                <div class="practice-header">
+                    <h2 id="practice-title">Practicing...</h2>
+                    <div class="practice-meta">
+                        <span id="practice-type"></span>
+                        <span id="practice-measures"></span>
+                    </div>
+                </div>
+
+                <div class="tempo-display">
+                    <div class="tempo-info">
+                        <div class="tempo-stat">
+                            <div class="tempo-stat-label">Target Tempo</div>
+                            <div class="tempo-stat-value" id="practice-target-tempo">120 BPM</div>
+                        </div>
+                        <div class="tempo-stat">
+                            <div class="tempo-stat-label">Current Tempo</div>
+                            <div class="tempo-stat-value highlight pulse" id="practice-current-tempo">142.7 BPM</div>
+                        </div>
+                        <div class="tempo-stat">
+                            <div class="tempo-stat-label">Step / Change</div>
+                            <div class="tempo-stat-value" id="practice-step">+4</div>
+                        </div>
+                    </div>
+                    <div class="tempo-toggle">
+                        <button class="btn btn-secondary btn-small" id="tempo-mode-btn" onclick="toggleTempoMode()">
+                            Switch to Quantized
+                        </button>
+                    </div>
+                </div>
+
+                <div id="practice-prompt" class="practice-prompt">
+                    <p id="prompt-text">Playing from measure <span id="current-measure">1</span>...</p>
+                </div>
+
+                <div class="input-group">
+                    <label for="error-measure-input">
+                        If error occurred, enter measure number (leave blank if completed cleanly):
+                    </label>
+                    <input type="text" id="error-measure-input" placeholder="e.g., 47">
+                </div>
+
+                <button class="btn btn-primary btn-large" onclick="handlePracticeResponse()">
+                    Continue
+                </button>
+
+                <div class="history" id="practice-history"></div>
+            </div>
+        </div>
+
+        <!-- SESSION COMPLETE -->
+        <div id="session-complete-screen" class="screen hidden">
+            <div class="card">
+                <h2>Session Complete</h2>
+                
+                <div class="session-summary" id="session-summary">
+                    <!-- Filled by JavaScript -->
+                </div>
+
+                <div id="hot-spot-input" class="hidden" style="margin-top: 1.5rem;">
+                    <div class="input-group">
+                        <label for="hot-spot-notes">Notes about this hot spot:</label>
+                        <textarea id="hot-spot-notes" rows="3" 
+                                  placeholder="e.g., Difficult interval leap with awkward fingering"></textarea>
+                    </div>
+                </div>
+
+                <div class="button-group" style="margin-top: 1.5rem;">
+                    <button class="btn btn-primary" id="continue-practice-btn" onclick="continueToNext()">
+                        Continue to Next
+                    </button>
+                    <button class="btn btn-secondary" onclick="saveAndExit()">
+                        Back to Menu
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- DATA MANAGEMENT -->
+        <div id="data-management-screen" class="screen hidden">
+            <div class="card">
+                <div class="section-title">Data Management</div>
+                
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="color: var(--accent); margin-bottom: 1rem;">Export Data</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                        Download your practice data as JSON files for backup or transfer.
+                    </p>
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="exportData()">
+                            Download All Data
+                        </button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="color: var(--accent); margin-bottom: 1rem;">Import from Anki</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                        Import your existing practice data from Anki. Export your Anki deck as JSON first.
+                    </p>
+                    <div class="input-group">
+                        <label for="anki-import-file">Select Anki JSON export file:</label>
+                        <input type="file" id="anki-import-file" accept=".json" 
+                               style="padding: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(201,169,97,0.3); border-radius: 6px;">
+                    </div>
+                    <button class="btn btn-secondary" onclick="importAnkiData()">
+                        Import from Anki
+                    </button>
+                    <div id="import-status" style="margin-top: 1rem; color: var(--accent);"></div>
+                </div>
+
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="color: var(--warning); margin-bottom: 1rem;">⚠️ Clear All Data</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                        Delete all practice nodes and sessions. This cannot be undone!
+                        Use this to clear test/simulated data before starting real practice.
+                    </p>
+                    <button class="btn btn-secondary" onclick="confirmClearData()" 
+                            style="background: rgba(232, 69, 69, 0.2); border-color: var(--error);">
+                        Clear All Data
+                    </button>
+                </div>
+
+                <button class="btn btn-secondary" onclick="showScreen('main-menu')">
+                    Back to Menu
+                </button>
+            </div>
+        </div>
+
+        <footer>
+            <p>Part of the <a href="https://timowen.me/saxophone" target="_blank">Timothy J. Owen Portfolio</a></p>
+            <p>Data stored locally in your browser</p>
+        </footer>
+    </div>
+
+    <script src="practice-app.js"></script>
+</body>
+</html>
