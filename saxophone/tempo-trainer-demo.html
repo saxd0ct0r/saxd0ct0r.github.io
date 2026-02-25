@@ -326,6 +326,16 @@
             
             // Handle growth first trial
             if (untargetedState.phase === 'growth_first_trial') {
+                if (!success) {
+                    // Failed at starting tempo - drop back one step to last successful
+                    if (untargetedState.tempoIndex > 0) {
+                        untargetedState.tempoIndex--;
+                    }
+                    showUntargetedResult();
+                    return;
+                }
+                
+                // Success - continue to growth phase
                 const growthStartSuccess = success;
                 
                 // Step up one from start tempo
@@ -426,14 +436,56 @@
 
         function showUntargetedResult() {
             const finalTempo = TEMPOS[untargetedState.tempoIndex];
+            const startTempo = untargetedState.startTempoIndex !== null ? TEMPOS[untargetedState.startTempoIndex] : null;
             
             let message = `Final tempo: <strong>${finalTempo} BPM</strong><br>`;
+            
+            // Calculate ratio for returning sessions
+            let ratio = null;
+            let ankiGrade = null;
+            
+            if (startTempo !== null) {
+                ratio = (finalTempo / startTempo).toFixed(2);
+                message += `Starting tempo: ${startTempo} BPM<br>`;
+                message += `Ratio: <strong>${ratio}x</strong><br><br>`;
+                
+                // Determine Anki grade
+                const startIndex = untargetedState.startTempoIndex;
+                const finalIndex = untargetedState.tempoIndex;
+                
+                if (finalIndex > startIndex) {
+                    ankiGrade = 'Easy';
+                } else if (finalIndex === startIndex) {
+                    ankiGrade = 'Good';
+                } else if (finalIndex === startIndex - 1) {
+                    ankiGrade = 'Hard';
+                } else {
+                    ankiGrade = 'Again';
+                }
+                
+                message += `<div style="background: rgba(201,169,97,0.1); padding: 1rem; border-radius: 8px; margin-top: 1rem;">`;
+                message += `<strong>Anki Grade: ${ankiGrade}</strong><br>`;
+                message += `<span style="font-size: 0.9rem; color: var(--text-muted);">`;
+                
+                if (ankiGrade === 'Easy') {
+                    message += `Above starting tempo → Easy`;
+                } else if (ankiGrade === 'Good') {
+                    message += `At starting tempo → Good`;
+                } else if (ankiGrade === 'Hard') {
+                    message += `One step below → Hard`;
+                } else {
+                    message += `Two+ steps below → Again`;
+                }
+                
+                message += `</span></div>`;
+            }
+            
             if (untargetedState.maxxed) {
-                message += 'You maxed out!';
+                message += '<br>🎉 You maxed out at 240 BPM!';
             } else if (untargetedState.perfectRun) {
-                message += 'Perfect run! Enter this tempo next time to keep growing.';
-            } else {
-                message += 'Keep practicing and try again!';
+                message += '<br>Perfect run! Enter this tempo next time to keep growing.';
+            } else if (!startTempo) {
+                message += '<br>First session complete! Enter this tempo next time.';
             }
             
             const resultHtml = `
@@ -559,8 +611,7 @@
                 if (success) {
                     targetedState.lastSuccessfulStep = targetedState.currentStep;
                     targetedState.searchPhase = 'upward';
-                    // FIX: use remaining steps from the downward pattern, not a hardcoded [4,2,1]
-                    targetedState.searchPattern = targetedState.searchPattern.slice(targetedState.patternIndex);
+                    targetedState.searchPattern = [4, 2, 1];
                     targetedState.patternIndex = 0;
                     continueUpwardSearch();
                 } else {
