@@ -21,8 +21,8 @@
   "certifications": [
     { "label": "CompTIA Network+",        "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f" },
     { "label": "AWS Cloud Practitioner",  "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25" },
-    { "label": "Python Programmer (CEPP)","href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ" },
-    { "label": "ServiceNow (In Progress)", "pending": true }
+    { "label": "Python Programmer (PCEP)","href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ" },
+    { "label": "ServiceNow", "pending": false }
   ],
 
   "skillGroups": [
@@ -198,8 +198,8 @@
       "title": "Tempo Finder",
       "description": "Binary-search algorithm identifying optimal practice tempos (30–240 BPM) at O(log n) efficiency. Showcases algorithmic problem-solving and user-focused design.",
       "tags": ["Python", "Algorithms"],
-      "linkLabel": "View on GitHub →",
-      "href": "https://github.com/saxd0ct0r/Python/tree/main/Tempo%20Finder"
+      "linkLabel": "View Demo →",
+      "href": "https://timowen.me/saxophone/tempo-trainer-demo.html"
     },
     {
       "title": "Music Practice SRS",
@@ -213,7 +213,7 @@
   "additional": [
     { "label": "Language",   "text": "Fluent in Russian (verbal and written)." },
     { "label": "Clearance",  "text": "Active DoD Secret Clearance." },
-    { "label": "ServiceNow", "text": "Pursuing \"Welcome to ServiceNow\" micro-certification to master IT ticketing workflows and enhance readiness for IT support roles." },
+    { "label": "ServiceNow", "text": "\"Welcome to ServiceNow\" micro-certification to master IT ticketing workflows and enhance readiness for IT support roles." },
     { "label": "Music Portfolio", "text": "Full academic and performance credentials available at", "link": { "label": "timowen.me/saxophone", "href": "https://timowen.me/saxophone/" } }
   ]
 }
