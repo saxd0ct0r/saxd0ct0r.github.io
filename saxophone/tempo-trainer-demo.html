@@ -611,7 +611,7 @@
                 if (success) {
                     targetedState.lastSuccessfulStep = targetedState.currentStep;
                     targetedState.searchPhase = 'upward';
-                    targetedState.searchPattern = [4, 2, 1];
+                    targetedState.searchPattern = targetedState.searchPattern.slice(targetedState.patternIndex);
                     targetedState.patternIndex = 0;
                     continueUpwardSearch();
                 } else {
