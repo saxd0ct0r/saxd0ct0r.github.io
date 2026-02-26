@@ -1,0 +1,219 @@
+{
+  "meta": {
+    "pageTitle": "Timothy J. Owen — IT Resume",
+    "eyebrow": "Information Technology Resume"
+  },
+
+  "header": {
+    "name": "Dr. Timothy J. Owen",
+    "subtitle": "U.S. Army Veteran · IT Professional · South Puget Sound, WA",
+    "contact": [
+      { "label": "(757) 502-5970",              "href": "tel:7575025970" },
+      { "label": "timothy.j.owen@outlook.com",  "href": "mailto:timothy.j.owen@outlook.com" },
+      { "label": "LinkedIn",                    "href": "https://www.linkedin.com/in/timothy-j-owen", "external": true },
+      { "label": "GitHub",                      "href": "https://github.com/saxd0ct0r", "external": true },
+      { "label": "timowen.me",                  "href": "https://timowen.me" }
+    ]
+  },
+
+  "objective": "U.S. Army veteran with 20 years of leadership and an active **DoD Secret clearance**, transitioning from distinguished military service to Information Technology. Holding **CompTIA Network+**, **AWS Cloud Practitioner**, and **Certified Entry-Level Python Programmer** certifications, and a completed Washington Vets-to-Tech program (Dec 2025), I'm eager to deliver secure, compliant IT support in dynamic, mission-critical environments — ensuring seamless operations and exceptional customer service.",
+
+  "certifications": [
+    { "label": "CompTIA Network+",        "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f" },
+    { "label": "AWS Cloud Practitioner",  "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25" },
+    { "label": "Python Programmer (CEPP)","href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ" },
+    { "label": "ServiceNow (In Progress)", "pending": true }
+  ],
+
+  "skillGroups": [
+    {
+      "title": "Networking",
+      "items": ["IPv4 / IPv6 & Subnetting", "VPN Configuration", "Network Administration"]
+    },
+    {
+      "title": "Security",
+      "items": ["Cybersecurity (MFA, TLS)", "Ethical Hacking", "DoD Secret Clearance"]
+    },
+    {
+      "title": "Systems & Cloud",
+      "items": ["Windows Server / PowerShell", "Linux Bash Administration", "AWS EC2 / Ansible"]
+    },
+    {
+      "title": "Programming",
+      "items": ["Python (automation, scripting)", "C# (fundamentals)", "Hardware troubleshooting"]
+    },
+    {
+      "title": "Leadership",
+      "items": ["20 yrs military management", "Training & documentation", "Project & logistics mgmt"]
+    },
+    {
+      "title": "Additional",
+      "items": ["Fluent Russian", "Customer service excellence", "Compliance & HIPAA labs"]
+    }
+  ],
+
+  "transferableSkills": [
+    {
+      "icon": "🧠",
+      "title": "Analytical Thinking",
+      "description": "Designed SRS systems and AMPA rubrics — directly applicable to IT process optimization and troubleshooting workflows."
+    },
+    {
+      "icon": "⚙️",
+      "title": "Automation",
+      "description": "Built Python tools (Subnet Calculator, Tempo Finder) using algorithmic problem-solving relevant to IT scripting."
+    },
+    {
+      "icon": "⚡",
+      "title": "Adaptability",
+      "description": "Mastered high-pressure military operations and rapid IT upskilling — translatable to dynamic, fast-moving environments."
+    },
+    {
+      "icon": "📂",
+      "title": "Organization",
+      "description": "Managed HR, security clearances, library, and $300K+ equipment inventory — akin to IT asset and data management."
+    }
+  ],
+
+  "experience": [
+    {
+      "role": "IT Trainee — Cybersecurity",
+      "dates": "Aug–Dec 2025",
+      "org": "Washington Vets-to-Tech / Saint Martin's University",
+      "location": "Lacey, WA",
+      "bullets": [
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science",
+        "Mastered information security, ethical hacking, and threat intelligence through hands-on coursework",
+        "Implemented MFA and TLS encryption in labs; ensured compliance with HIPAA standards for clinical environments"
+      ],
+      "tags": ["Cybersecurity", "Ethical Hacking", "HIPAA", "MFA", "TLS"]
+    },
+    {
+      "role": "IT Trainee — Server & Cloud Administration",
+      "dates": "May–Aug 2025",
+      "org": "Washington Vets-to-Tech / Saint Martin's University",
+      "location": "Lacey, WA",
+      "bullets": [
+        "Gained hands-on experience with network configuration (IPv4/v6, subnetting, VPN) — 100% lab completion rate",
+        "Acquired Python proficiency for automating end-user support tasks and data analysis labs",
+        "Configured Windows Server via PowerShell; deployed AWS EC2 applications, optimizing performance for clinical IT"
+      ],
+      "tags": ["Python", "AWS EC2", "Windows Server", "PowerShell", "Linux", "Ansible"]
+    },
+    {
+      "role": "Saxophonist / Library Mgr / Security Mgr / Ops Mgr",
+      "dates": "Oct 2013–Jun 2025",
+      "org": "56th Army Band, U.S. Army",
+      "location": "Joint Base Lewis-McChord, WA",
+      "bullets": [
+        "Coordinated 50+ high-stakes missions across multiple sites for audiences totaling 2.5M+",
+        "Managed $300K in IT/musical equipment; maintained 100% readiness across 400+ missions",
+        "Oversaw DoD Secret clearances for 40+ personnel, ensuring ongoing security compliance",
+        "Facilitated Master Resilience Training (Level II) for 600+ students across 10 cohorts"
+      ],
+      "tags": ["Security Clearance", "Asset Management", "Compliance", "Leadership"]
+    },
+    {
+      "role": "Saxophone Instructor / Curriculum Writer",
+      "dates": "Jul 2009–Oct 2013",
+      "org": "U.S. Army School of Music",
+      "location": "JEB Little Creek-Fort Story, VA",
+      "bullets": [
+        "Instructed 100+ trainees (beginner to DMA level) to a **100% pass rate**; maintained detailed weekly progress records analogous to IT trouble ticket documentation",
+        "Developed AMPA rubric (ASOM Form 1-9L), achieving qualification for all but one student",
+        "Contributed to 2010 curriculum transition — reduced training time by 58% for 5,000+ employees",
+        "Earned Distinguished Leader Award at Warrior Leader Course (2010)"
+      ],
+      "tags": ["Training", "Documentation", "Curriculum Design"]
+    },
+    {
+      "role": "Saxophonist / Library Manager",
+      "dates": "Feb 2006–Jun 2009",
+      "org": "1st Armored Division Band, U.S. Army",
+      "location": "Wiesbaden, Germany",
+      "bullets": [
+        "Performed 120–150 missions including 60 overseas deployments; managed HR and library for 40+ members",
+        "Earned E5 promotion (2008) using SuperMemo spaced-repetition system for board preparation"
+      ],
+      "tags": []
+    },
+    {
+      "role": "WordPress Admin / Sound Reinforcement",
+      "dates": "Sep 2016–Present",
+      "org": "Olympia Musical Theatre",
+      "location": "Olympia, WA (Volunteer)",
+      "bullets": [
+        "Managed WordPress site and Google Forms for event publicity, streamlining workflows analogous to IT ticketing",
+        "Provided sound reinforcement for 100+ events, ensuring technical reliability"
+      ],
+      "tags": ["WordPress", "A/V Technical Support"]
+    }
+  ],
+
+  "education": [
+    {
+      "degree": "Washington Vets-to-Tech Cybersecurity Certificate",
+      "date": "Dec 2025",
+      "school": "Saint Martin's University",
+      "location": "Lacey, WA",
+      "note": "CSC 325 Computer Security · CSC 364 Cybersecurity Threat Intelligence"
+    },
+    {
+      "degree": "Washington Vets-to-Tech Server & Cloud Application Certificate",
+      "date": "Aug 2025",
+      "school": "Saint Martin's University",
+      "location": "Lacey, WA",
+      "note": "CSC 160, 330, 395, 331, 235, 456 — Networking, Linux, Windows Server, Cloud"
+    },
+    {
+      "degree": "Doctor of Musical Arts, Performance",
+      "date": "Dec 2005",
+      "school": "University of Iowa",
+      "location": "Iowa City, IA",
+      "note": "Dissertation: \"Integrating the Music Learning Theory of Edwin E. Gordon with a Beginning Saxophone Curriculum\""
+    },
+    {
+      "degree": "Master of Music, Performance",
+      "date": "1999",
+      "school": "Brigham Young University",
+      "location": "Provo, UT"
+    },
+    {
+      "degree": "Bachelor of Music, Performance & Pedagogy",
+      "date": "1997",
+      "school": "Brigham Young University",
+      "location": "Provo, UT"
+    }
+  ],
+
+  "projects": [
+    {
+      "title": "Subnet Calculator",
+      "description": "Python tool automating IPv4 subnet calculations for network troubleshooting. Demonstrates scripting, documentation, and process optimization.",
+      "tags": ["Python", "Networking"],
+      "linkLabel": "View on GitHub →",
+      "href": "https://github.com/saxd0ct0r/Python/tree/main/subnet_calc"
+    },
+    {
+      "title": "Tempo Finder",
+      "description": "Binary-search algorithm identifying optimal practice tempos (30–240 BPM) at O(log n) efficiency. Showcases algorithmic problem-solving and user-focused design.",
+      "tags": ["Python", "Algorithms"],
+      "linkLabel": "View on GitHub →",
+      "href": "https://github.com/saxd0ct0r/Python/tree/main/Tempo%20Finder"
+    },
+    {
+      "title": "Music Practice SRS",
+      "description": "Anki-based spaced repetition system for saxophone practice and military board preparation. Applied SuperMemo principles to automated scale/pattern generation.",
+      "tags": ["Python", "Automation"],
+      "linkLabel": "View Demo →",
+      "href": "https://timowen.me/saxophone/music-practice-app/practice-app.html"
+    }
+  ],
+
+  "additional": [
+    { "label": "Language",   "text": "Fluent in Russian (verbal and written)." },
+    { "label": "Clearance",  "text": "Active DoD Secret Clearance." },
+    { "label": "ServiceNow", "text": "Pursuing \"Welcome to ServiceNow\" micro-certification to master IT ticketing workflows and enhance readiness for IT support roles." },
+    { "label": "Music Portfolio", "text": "Full academic and performance credentials available at", "link": { "label": "timowen.me/saxophone", "href": "https://timowen.me/saxophone/" } }
+  ]
+}

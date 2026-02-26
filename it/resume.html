@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Timothy J. Owen — IT Resume</title>
+  <link rel="stylesheet" href="../shared.css" />
+  <style>
+    /* Page-specific tweaks */
+    .objective-block {
+      background: var(--cream);
+      border-left: 5px solid var(--gold);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 18px 22px;
+      margin-top: 32px;
+      font-size: .96rem;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+    .objective-block strong { color: var(--navy); }
+
+    .cert-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .cert-badge {
+      background: var(--navy);
+      color: var(--gold-light);
+      font-family: var(--mono);
+      font-size: .78rem;
+      padding: 5px 14px;
+      border-radius: 20px;
+      letter-spacing: .06em;
+      text-decoration: none;
+      transition: background .2s;
+      white-space: nowrap;
+    }
+    .cert-badge:hover { background: var(--navy-light); color: #fff; }
+    .cert-badge.pending { background: #444; color: rgba(255,255,255,.6); cursor: default; }
+
+    .additional-note {
+      background: var(--cream);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      font-size: .88rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .additional-note strong { color: var(--navy); }
+
+    /* Transferable skills special row */
+    .transfer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 6px;
+    }
+    .transfer-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .transfer-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--gold-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .transfer-item h5 { font-size: .88rem; font-weight: 600; color: var(--navy); }
+    .transfer-item p { font-size: .82rem; color: var(--text-muted); margin: 0; }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <p class="eyebrow">Information Technology Resume</p>
+    <h1>Dr. Timothy J. Owen</h1>
+    <p class="subtitle">U.S. Army Veteran · IT Professional · South Puget Sound, WA</p>
+    <div class="contact-bar">
+      <a href="tel:7575025970">(757) 502-5970</a>
+      <span>|</span>
+      <a href="mailto:timothy.j.owen@outlook.com">timothy.j.owen@outlook.com</a>
+      <span>|</span>
+      <a href="https://www.linkedin.com/in/timothy-j-owen" target="_blank">LinkedIn</a>
+      <span>|</span>
+      <a href="https://github.com/saxd0ct0r" target="_blank">GitHub</a>
+      <span>|</span>
+      <a href="https://timowen.me">timowen.me</a>
+    </div>
+  </header>
+
+  <!-- NAV -->
+  <nav class="nav-strip">
+    <a href="https://timowen.me">← Home</a>
+    <a href="https://timowen.me/it/index.html" class="active">IT Resume</a>
+    <a href="https://timowen.me/saxophone/index.html">Music Portfolio</a>
+  </nav>
+
+  <div class="page-wrap">
+
+    <!-- OBJECTIVE -->
+    <div class="objective-block">
+      <strong>Objective:</strong> U.S. Army veteran with 20 years of leadership and an active
+      <strong>DoD Secret clearance</strong>, transitioning from distinguished military service to
+      Information Technology. Holding <strong>CompTIA Network+</strong>, <strong>AWS Cloud
+      Practitioner</strong>, and <strong>Certified Entry-Level Python Programmer</strong>
+      certifications, with hands-on Washington Vets-to-Tech training, I'm eager to deliver secure,
+      compliant IT support in dynamic, mission-critical environments — ensuring seamless operations
+      and exceptional customer service.
+    </div>
+
+    <!-- SKILLS & CERTIFICATIONS -->
+    <section class="section">
+      <h2 class="section-title">Skills &amp; Certifications</h2>
+
+      <div style="margin-bottom:18px;">
+        <p style="font-size:.82rem;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Verified Certifications</p>
+        <div class="cert-list">
+          <a class="cert-badge" href="https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f" target="_blank">CompTIA Network+</a>
+          <a class="cert-badge" href="https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25" target="_blank">AWS Cloud Practitioner</a>
+          <a class="cert-badge" href="https://verify.openedg.org/?id=WpfY.QKor.dfaZ" target="_blank">Python Programmer (CEPP)</a>
+          <span class="cert-badge pending">ServiceNow (In Progress)</span>
+        </div>
+      </div>
+
+      <div class="skills-grid">
+        <div class="skill-card">
+          <h4>Networking</h4>
+          <ul>
+            <li>IPv4 / IPv6 &amp; Subnetting</li>
+            <li>VPN Configuration</li>
+            <li>Network Administration</li>
+          </ul>
+        </div>
+        <div class="skill-card">
+          <h4>Security</h4>
+          <ul>
+            <li>Cybersecurity (MFA, TLS)</li>
+            <li>Ethical Hacking</li>
+            <li>DoD Secret Clearance</li>
+          </ul>
+        </div>
+        <div class="skill-card">
+          <h4>Systems &amp; Cloud</h4>
+          <ul>
+            <li>Windows Server / PowerShell</li>
+            <li>Linux Bash Administration</li>
+            <li>AWS EC2 / Ansible</li>
+          </ul>
+        </div>
+        <div class="skill-card">
+          <h4>Programming</h4>
+          <ul>
+            <li>Python (automation, scripting)</li>
+            <li>C# (fundamentals)</li>
+            <li>Hardware troubleshooting</li>
+          </ul>
+        </div>
+        <div class="skill-card">
+          <h4>Leadership</h4>
+          <ul>
+            <li>20 yrs military management</li>
+            <li>Training &amp; documentation</li>
+            <li>Project &amp; logistics mgmt</li>
+          </ul>
+        </div>
+        <div class="skill-card">
+          <h4>Additional</h4>
+          <ul>
+            <li>Fluent Russian</li>
+            <li>Customer service excellence</li>
+            <li>Compliance &amp; HIPAA labs</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRANSFERABLE SKILLS -->
+    <section class="section">
+      <h2 class="section-title">Transferable Skills</h2>
+      <div class="transfer-grid">
+        <div class="transfer-item">
+          <div class="transfer-icon">🧠</div>
+          <div>
+            <h5>Analytical Thinking</h5>
+            <p>Designed SRS systems and AMPA rubrics — directly applicable to IT process optimization and troubleshooting workflows.</p>
+          </div>
+        </div>
+        <div class="transfer-item">
+          <div class="transfer-icon">⚙️</div>
+          <div>
+            <h5>Automation</h5>
+            <p>Built Python tools (Subnet Calculator, Tempo Finder) using algorithmic problem-solving relevant to IT scripting.</p>
+          </div>
+        </div>
+        <div class="transfer-item">
+          <div class="transfer-icon">⚡</div>
+          <div>
+            <h5>Adaptability</h5>
+            <p>Mastered high-pressure military operations and rapid IT upskilling — translatable to dynamic, fast-moving environments.</p>
+          </div>
+        </div>
+        <div class="transfer-item">
+          <div class="transfer-icon">📂</div>
+          <div>
+            <h5>Organization</h5>
+            <p>Managed HR, security clearances, library, and $300K+ equipment inventory — akin to IT asset and data management.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXPERIENCE -->
+    <section class="section">
+      <h2 class="section-title">Experience</h2>
+
+      <div class="entry">
+        <div class="entry-header">
+          <span class="entry-role">IT Trainee — Cybersecurity</span>
+          <span class="entry-dates">Aug 2025–Present</span>
+        </div>
+        <p class="entry-org">Washington Vets-to-Tech / Saint Martin's University · Lacey, WA</p>
+        <ul>
+          <li>Enrolled in a 16-week intensive program earning 18 college credits toward a B.S. in Computer Science</li>
+          <li>Mastered information security, ethical hacking, and threat intelligence through hands-on coursework</li>
+          <li>Implemented MFA and TLS encryption in labs; ensured compliance with HIPAA standards for clinical environments</li>
+        </ul>
+        <div style="margin-top:8px;">
+          <span class="tag">Cybersecurity</span><span class="tag">Ethical Hacking</span><span class="tag">HIPAA</span><span class="tag">MFA</span><span class="tag">TLS</span>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-header">
+          <span class="entry-role">IT Trainee — Server &amp; Cloud Administration</span>
+          <span class="entry-dates">May–Aug 2025</span>
+        </div>
+        <p class="entry-org">Washington Vets-to-Tech / Saint Martin's University · Lacey, WA</p>
+        <ul>
+          <li>Gained hands-on experience with network configuration (IPv4/v6, subnetting, VPN) — 100% lab completion rate</li>
+          <li>Acquired Python proficiency for automating end-user support tasks and data analysis labs</li>
+          <li>Configured Windows Server via PowerShell; deployed AWS EC2 applications, optimizing performance for clinical IT</li>
+        </ul>
+        <div style="margin-top:8px;">
+          <span class="tag">Python</span><span class="tag">AWS EC2</span><span class="tag">Windows Server</span><span class="tag">PowerShell</span><span class="tag">Linux</span><span class="tag">Ansible</span>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-header">
+          <span class="entry-role">Saxophonist / Library Mgr / Security Mgr / Ops Mgr</span>
+          <span class="entry-dates">Oct 2013–Jun 2025</span>
+        </div>
+        <p class="entry-org">56th Army Band, U.S. Army · Joint Base Lewis-McChord, WA</p>
+        <ul>
+          <li>Coordinated 50+ high-stakes missions across multiple sites for audiences totaling 2.5M+</li>
+          <li>Managed $300K in IT/musical equipment; maintained 100% readiness across 400+ events</li>
+          <li>Oversaw DoD Secret clearances for 40+ personnel, ensuring ongoing security compliance</li>
+          <li>Facilitated Master Resilience Training (Level II) for 600+ students across 10 cohorts</li>
+        </ul>
+        <div style="margin-top:8px;">
+          <span class="tag">Security Clearance</span><span class="tag">Asset Management</span><span class="tag">Compliance</span><span class="tag">Leadership</span>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-header">
+          <span class="entry-role">Saxophone Instructor / Curriculum Writer</span>
+          <span class="entry-dates">Jul 2009–Oct 2013</span>
+        </div>
+        <p class="entry-org">U.S. Army School of Music · JEB Little Creek-Fort Story, VA</p>
+        <ul>
+          <li>Instructed 100+ trainees (beginner to DMA level) to a <strong>100% pass rate</strong>; maintained detailed weekly progress records analogous to IT trouble ticket documentation</li>
+          <li>Developed AMPA rubric (ASOM Form 1-9L), achieving qualification for all but one student</li>
+          <li>Contributed to 2010 curriculum transition — reduced training time by 58% for 5,000+ employees</li>
+          <li>Earned Distinguished Leader Award at Warrior Leader Course (2010)</li>
+        </ul>
+        <div style="margin-top:8px;">
+          <span class="tag">Training</span><span class="tag">Documentation</span><span class="tag">Curriculum Design</span>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-header">
+          <span class="entry-role">Saxophonist / Library Manager</span>
+          <span class="entry-dates">Feb 2006–Jun 2009</span>
+        </div>
+        <p class="entry-org">1st Armored Division Band, U.S. Army · Wiesbaden, Germany</p>
+        <ul>
+          <li>Performed 120–150 gigs including 60 overseas missions; managed HR and library for 40+ members</li>
+          <li>Earned E5 promotion (2008) using SuperMemo spaced-repetition system for board preparation</li>
+        </ul>
+      </div>
+
+      <div class="entry">
+        <div class="entry-header">
+          <span class="entry-role">WordPress Admin / Sound Reinforcement</span>
+          <span class="entry-dates">Sep 2016–Present</span>
+        </div>
+        <p class="entry-org">Olympia Musical Theatre · Olympia, WA (Volunteer)</p>
+        <ul>
+          <li>Managed WordPress site and Google Forms for event publicity, streamlining workflows analogous to IT ticketing</li>
+          <li>Provided sound reinforcement for 100+ events, ensuring technical reliability</li>
+        </ul>
+        <div style="margin-top:8px;">
+          <span class="tag">WordPress</span><span class="tag">A/V Technical Support</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- EDUCATION -->
+    <section class="section">
+      <h2 class="section-title">Education</h2>
+
+      <div class="edu-entry">
+        <p class="edu-degree">Washington Vets-to-Tech Cybersecurity Certificate <span style="font-weight:300;font-size:.9em;">(Expected Dec 2025)</span></p>
+        <p class="edu-school">Saint Martin's University · Lacey, WA</p>
+        <p class="edu-note">CSC 325 Computer Security · CSC 364 Cybersecurity Threat Intelligence</p>
+      </div>
+      <div class="edu-entry">
+        <p class="edu-degree">Washington Vets-to-Tech Server &amp; Cloud Application Certificate <span style="font-weight:300;font-size:.9em;">(Aug 2025)</span></p>
+        <p class="edu-school">Saint Martin's University · Lacey, WA</p>
+        <p class="edu-note">CSC 160, 330, 395, 331, 235, 456 — Networking, Linux, Windows Server, Cloud</p>
+      </div>
+      <div class="edu-entry">
+        <p class="edu-degree">Doctor of Musical Arts, Performance <span style="font-weight:300;font-size:.9em;">(Dec 2005)</span></p>
+        <p class="edu-school">University of Iowa · Iowa City, IA</p>
+        <p class="edu-note">Dissertation: <em>"Integrating the Music Learning Theory of Edwin E. Gordon with a Beginning Saxophone Curriculum"</em></p>
+      </div>
+      <div class="edu-entry">
+        <p class="edu-degree">Master of Music, Performance <span style="font-weight:300;font-size:.9em;">(1999)</span> &nbsp;·&nbsp; Bachelor of Music, Performance &amp; Pedagogy <span style="font-weight:300;font-size:.9em;">(1997)</span></p>
+        <p class="edu-school">Brigham Young University · Provo, UT</p>
+      </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section class="section">
+      <h2 class="section-title">Technical Projects</h2>
+      <div class="project-grid">
+
+        <div class="project-card">
+          <h4>Subnet Calculator</h4>
+          <p>Python tool automating IPv4 subnet calculations for network troubleshooting. Demonstrates scripting, documentation, and process optimization.</p>
+          <div style="margin-bottom:10px;">
+            <span class="tag">Python</span><span class="tag">Networking</span>
+          </div>
+          <a href="https://github.com/saxd0ct0r/Python/tree/main/subnet_calc" target="_blank">View on GitHub →</a>
+        </div>
+
+        <div class="project-card">
+          <h4>Tempo Finder</h4>
+          <p>Binary-search algorithm identifying optimal practice tempos (30–240 BPM) at O(log n) efficiency. Showcases algorithmic problem-solving and user-focused design.</p>
+          <div style="margin-bottom:10px;">
+            <span class="tag">Python</span><span class="tag">Algorithms</span>
+          </div>
+          <a href="https://github.com/saxd0ct0r/Python/tree/main/Tempo%20Finder" target="_blank">View on GitHub →</a>
+        </div>
+
+        <div class="project-card">
+          <h4>Music Practice SRS</h4>
+          <p>Anki-based spaced repetition system for saxophone practice and military board preparation. Applied SuperMemo principles to automated scale/pattern generation.</p>
+          <div style="margin-bottom:10px;">
+            <span class="tag">Python</span><span class="tag">Automation</span>
+          </div>
+          <a href="https://timowen.me/saxophone/music-practice-app/practice-app.html" target="_blank">View Demo →</a>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ADDITIONAL -->
+    <section class="section">
+      <h2 class="section-title">Additional Information</h2>
+      <div class="additional-note">
+        <strong>Language:</strong> Fluent in Russian (verbal and written).
+      </div>
+      <div class="additional-note">
+        <strong>Clearance:</strong> Active DoD Secret Clearance.
+      </div>
+      <div class="additional-note">
+        <strong>ServiceNow:</strong> Pursuing "Welcome to ServiceNow" micro-certification to master IT ticketing workflows and enhance readiness for IT support roles.
+      </div>
+      <div class="additional-note">
+        <strong>Music Portfolio:</strong> Full academic and performance credentials available at <a href="https://timowen.me/saxophone/">timowen.me/saxophone</a>.
+      </div>
+    </section>
+
+  </div><!-- /page-wrap -->
+
+  <footer class="site-footer">
+    <p>© 2026 Timothy J. Owen &nbsp;·&nbsp; <a href="mailto:timothy.j.owen@outlook.com">timothy.j.owen@outlook.com</a> &nbsp;·&nbsp; <a href="https://timowen.me">timowen.me</a></p>
+    <p style="margin-top:6px;"><a href="https://timowen.me">← Back to Portfolio Home</a></p>
+  </footer>
+
+</body>
+</html>
