@@ -1,0 +1,231 @@
+{
+  "meta": {
+    "pageTitle": "Timothy J. Owen — Data Center Technician Resume",
+    "eyebrow": "Data Center Technician | Oracle WaV2T Pipeline"
+  },
+
+  "header": {
+    "name": "Dr. Timothy J. Owen",
+    "subtitle": "U.S. Army Veteran · Data Center Technician · South Puget Sound, WA",
+    "contact": [
+      { "label": "(757) 502-5970",              "href": "tel:7575025970" },
+      { "label": "timothy.j.owen@outlook.com",  "href": "mailto:timothy.j.owen@outlook.com" },
+      { "label": "LinkedIn",                    "href": "https://www.linkedin.com/in/timothy-j-owen", "external": true },
+      { "label": "GitHub",                      "href": "https://github.com/saxd0ct0r", "external": true },
+      { "label": "timowen.me/dct",              "href": "https://timowen.me/dct" }
+    ]
+  },
+
+  "objective": "Washington Vets-to-Tech graduate and retired 20-year U.S. Army veteran with hands-on training in server administration, cloud infrastructure, networking, and cybersecurity. Proven record of maintaining mission-critical operations around the clock, executing structured procedures with precision, and documenting complex processes for accountability and continuity. Holds an active **federal Secret-level security clearance**. Holding **CompTIA Network+**, **AWS Cloud Practitioner**, **Foundational C#**, and **PCEP Python** certifications. Ready to apply military-forged operational discipline and WaV2T technical training to Oracle's data center environment.",
+
+  "certifications": [
+    { "label": "CompTIA Network+",        "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f" },
+    { "label": "AWS Cloud Practitioner",  "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25" },
+    { "label": "Python Programmer (PCEP)","href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ" },
+    { "label": "Foundational C#",         "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft" }
+  ],
+
+  "skillGroups": [
+    {
+      "title": "Networking & Infrastructure",
+      "items": ["IPv4 / IPv6 & Subnetting", "VPN Configuration", "Network Administration", "Structured Cabling Fundamentals"]
+    },
+    {
+      "title": "Systems & Cloud",
+      "items": ["Windows Server / PowerShell", "Linux / Bash Administration", "AWS EC2", "Ansible", "Virtualization", "Cloud Technologies (CSC 455)"]
+    },
+    {
+      "title": "Security & Compliance",
+      "items": ["Cybersecurity Fundamentals", "Ethical Hacking", "Threat Intelligence", "Vulnerability Assessment (CSC 426)", "MFA / TLS Encryption", "HIPAA Compliance"]
+    },
+    {
+      "title": "Programming & Automation",
+      "items": ["Python (scripting, automation)", "C# (fundamentals)", "Bash Scripting", "Jupyter Notebooks"]
+    },
+    {
+      "title": "Operations & Documentation",
+      "items": ["Mission-critical 24/7 operations", "Asset accountability ($300K+)", "Structured procedure execution", "Technical documentation & runbooks", "Federal Secret Clearance"]
+    },
+    {
+      "title": "Additional",
+      "items": ["Fluent Russian (verbal & written)", "~60 WPM typing", "10-key: 5,280 net KPH @ 94.6%"]
+    }
+  ],
+
+  "transferableSkills": [
+    {
+      "icon": "🔧",
+      "title": "Operational Discipline",
+      "description": "20 years maintaining 100% mission readiness across 400+ high-stakes operations — the same standard Oracle's 24/7 data centers require every shift."
+    },
+    {
+      "icon": "📋",
+      "title": "Documentation Rigor",
+      "description": "Maintained training records for 80 personnel, assessed 400+ performances, and contributed to policy development affecting 5,000+ employees — directly applicable to data center runbooks and escalation logs."
+    },
+    {
+      "icon": "⚙️",
+      "title": "Automation & Scripting",
+      "description": "Built Python tools for subnet calculations, VA ratings, and tempo optimization — applying algorithmic problem-solving to real infrastructure and support workflows."
+    },
+    {
+      "icon": "🔒",
+      "title": "Security & Compliance",
+      "description": "Administered federal Secret-level clearance compliance for 40+ personnel and completed two WaV2T security programs — bringing both operational and academic security discipline to data center work."
+    }
+  ],
+
+  "experience": [
+    {
+      "role": "Information Services Intern",
+      "dates": "Nov 2025 – Jan 2026",
+      "org": "Washington State Department of Licensing",
+      "location": "Olympia, WA",
+      "bullets": [
+        "Executed IT service requests in a regulated government environment, maintaining procedural compliance and detailed documentation — directly parallel to data center ticketing and escalation workflows",
+        "Processed constituent records with 100% compliance with state data privacy policies across a 3-month engagement",
+        "Communicated technical information clearly to non-technical stakeholders"
+      ],
+      "tags": ["Government IT", "Documentation", "Compliance", "Service Requests"]
+    },
+    {
+      "role": "IT Trainee — Cybersecurity",
+      "dates": "Aug – Dec 2025",
+      "org": "Washington Vets-to-Tech / Saint Martin's University",
+      "location": "Lacey, WA",
+      "bullets": [
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science — 100% lab completion rate",
+        "Mastered information security, ethical hacking, and threat intelligence (CSC 325, CSC 364, CSC 426, CSC 455)",
+        "Implemented multi-factor authentication and Transport Layer Security encryption; ensured HIPAA compliance in simulated clinical environments",
+        "Advanced expertise in network server architectures and cloud computing, configuring Windows Server and deploying AWS applications"
+      ],
+      "tags": ["Cybersecurity", "Ethical Hacking", "Threat Intelligence", "Vulnerability Assessment", "HIPAA", "MFA", "TLS", "Cloud Technologies"]
+    },
+    {
+      "role": "IT Trainee — Server & Cloud Administration",
+      "dates": "May – Aug 2025",
+      "org": "Washington Vets-to-Tech / Saint Martin's University",
+      "location": "Lacey, WA",
+      "bullets": [
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science — 100% lab completion rate",
+        "Configured network environments (IPv4/v6, subnetting, VPN); administered Linux and Windows Server via PowerShell",
+        "Deployed AWS EC2 applications and configured Ansible for infrastructure automation",
+        "Developed Python automation scripts for end-user support tasks and data analysis"
+      ],
+      "tags": ["Python", "AWS EC2", "Windows Server", "PowerShell", "Linux", "Ansible", "Networking"]
+    },
+    {
+      "role": "Saxophonist / Library, Security & Operations Manager",
+      "dates": "Oct 2013 – Jun 2025",
+      "org": "56th Army Band, U.S. Army",
+      "location": "Joint Base Lewis-McChord, WA",
+      "bullets": [
+        "Sustained mission-critical operations across 400+ high-stakes performances with 100% readiness — the round-the-clock operational standard data centers demand",
+        "Managed $300K in equipment inventory with zero discrepancy, applying asset accountability and hardware lifecycle discipline central to data center technician work",
+        "Administered federal security clearance compliance for 40+ personnel with precision and confidentiality",
+        "Facilitated training and certification of 200 Master Resilience Trainers as a Level 2 Facilitator — demonstrating the structured instruction and documentation discipline that data center runbooks require"
+      ],
+      "tags": ["Mission-Critical Operations", "Asset Management", "Security Compliance", "Training & Documentation"]
+    },
+    {
+      "role": "Lead Saxophone Instructor / Curriculum Writer",
+      "dates": "Jul 2009 – Oct 2013",
+      "org": "U.S. Army School of Music",
+      "location": "JEB Little Creek-Fort Story, VA",
+      "bullets": [
+        "Instructed 100+ new trainees and 20 mid-level leaders — 100% program pass rate; maintained training records for 80 personnel",
+        "Advised 40 senior leaders as subject-matter expert in administering field assessments, improving assessment quality and consistency",
+        "Assessed 400+ student performances; coached 12 small and medium-sized teams",
+        "Contributed to curriculum and policy development for 5,000+ personnel, resulting in 58% reduction in training cycle time",
+        "Earned Distinguished Leader Award, Army Leadership Development Program (2010)"
+      ],
+      "tags": ["Documentation", "Training", "Curriculum Design", "Leadership", "Process Improvement"]
+    },
+    {
+      "role": "Saxophonist / Library & HR Manager",
+      "dates": "Feb 2006 – Jun 2009",
+      "org": "1st Armored Division Band, U.S. Army",
+      "location": "Wiesbaden, Germany",
+      "bullets": [
+        "Maintained operational readiness across 120–150 performances including 60 international assignments; deployed in support of Operation Iraqi Freedom (2007)",
+        "Managed HR administration and library assets for 40+ personnel with full documentation accuracy",
+        "Earned promotion to Sergeant (E-5) in 2008"
+      ],
+      "tags": ["International Operations", "HR Management", "Asset Management"]
+    }
+  ],
+
+  "education": [
+    {
+      "degree": "Washington Vets-to-Tech Cybersecurity Certificate (18 credits, B.S. Computer Science)",
+      "date": "Dec 2025",
+      "school": "Saint Martin's University",
+      "location": "Lacey, WA",
+      "note": "CSC 325 Computer Security · CSC 364 Cybersecurity Threat Intelligence · CSC 426 Vulnerability Assessment · CSC 455 Cloud Technologies"
+    },
+    {
+      "degree": "Washington Vets-to-Tech Server & Cloud Administration Certificate (18 credits, B.S. Computer Science)",
+      "date": "Aug 2025",
+      "school": "Saint Martin's University",
+      "location": "Lacey, WA",
+      "note": "CSC 160, 330, 395, 331, 235, 456 — Networking, Linux, Windows Server, Cloud"
+    },
+    {
+      "degree": "Doctor of Musical Arts (D.M.A.), Performance",
+      "date": "Dec 2005",
+      "school": "University of Iowa",
+      "location": "Iowa City, IA",
+      "note": "Dissertation: \"Integrating the Music Learning Theory of Edwin E. Gordon with a Beginning Saxophone Curriculum\""
+    },
+    {
+      "degree": "Master of Music (M.M.), Performance",
+      "date": "Jul 1999",
+      "school": "Brigham Young University",
+      "location": "Provo, UT"
+    },
+    {
+      "degree": "Bachelor of Music (B.M.), Performance & Pedagogy",
+      "date": "Apr 1997",
+      "school": "Brigham Young University",
+      "location": "Provo, UT"
+    }
+  ],
+
+  "projects": [
+    {
+      "title": "Subnet Calculator",
+      "description": "Python tool automating IPv4 subnet calculations for network troubleshooting. Demonstrates scripting and problem-solving directly applicable to data center infrastructure support.",
+      "tags": ["Python", "Networking", "Infrastructure"],
+      "linkLabel": "View on GitHub →",
+      "href": "https://github.com/saxd0ct0r/Python/tree/main/subnet_calc"
+    },
+    {
+      "title": "VA Ratings Calculator",
+      "description": "Python tool automating VA disability ratings calculations, demonstrating scripting, data processing, and systematic problem solving.",
+      "tags": ["Python", "Automation"],
+      "linkLabel": "View on GitHub →",
+      "href": "https://github.com/saxd0ct0r/Python/tree/main/VA-Rating-calc"
+    },
+    {
+      "title": "Tempo Finder",
+      "description": "Binary-search algorithm identifying optimal practice tempos at O(log n) efficiency. Showcases algorithmic problem-solving transferable to infrastructure diagnostics.",
+      "tags": ["Python", "Algorithms"],
+      "linkLabel": "View Demo →",
+      "href": "https://timowen.me/saxophone/tempo-trainer-demo.html"
+    },
+    {
+      "title": "Music Practice SRS",
+      "description": "Anki-based spaced repetition system applying SuperMemo principles to automated pattern generation — the conceptual foundation for the SIP practice scheduling application.",
+      "tags": ["Python", "Automation", "SRS"],
+      "linkLabel": "View Demo →",
+      "href": "https://timowen.me/saxophone/music-practice-app/practice-app.html"
+    }
+  ],
+
+  "additional": [
+    { "label": "Language",  "text": "Fluent in Russian (verbal and written)." },
+    { "label": "Clearance", "text": "Active federal Secret-level security clearance." },
+    { "label": "Typing",    "text": "Approximately 60 WPM; 10-key proficiency at 5,280 net KPH (94.6% accuracy)." },
+    { "label": "IT Resume", "text": "General IT resume available at", "link": { "label": "timowen.me/it", "href": "https://timowen.me/it" } }
+  ]
+}
