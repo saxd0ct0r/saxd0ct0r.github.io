@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loading…</title>
+  <link rel="stylesheet" href="../shared.css" />
+  <style>
+    .objective-block {
+      background: var(--cream);
+      border-left: 5px solid var(--gold);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 18px 22px;
+      margin-top: 32px;
+      font-size: .96rem;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+    .objective-block strong { color: var(--navy); }
+
+    .cert-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .cert-badge {
+      background: var(--navy);
+      color: var(--gold-light);
+      font-family: var(--mono);
+      font-size: .78rem;
+      padding: 5px 14px;
+      border-radius: 20px;
+      letter-spacing: .06em;
+      text-decoration: none;
+      transition: background .2s;
+      white-space: nowrap;
+    }
+    .cert-badge:hover { background: var(--navy-light); color: #fff; }
+    .cert-badge.pending { background: #444; color: rgba(255,255,255,.6); cursor: default; }
+
+    .additional-note {
+      background: var(--cream);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      font-size: .88rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .additional-note strong { color: var(--navy); }
+
+    .transfer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 6px;
+    }
+    .transfer-item { display: flex; gap: 12px; align-items: flex-start; }
+    .transfer-icon {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--gold-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; flex-shrink: 0;
+    }
+    .transfer-item h5 { font-size: .88rem; font-weight: 600; color: var(--navy); }
+    .transfer-item p  { font-size: .82rem; color: var(--text-muted); margin: 0; }
+  </style>
+</head>
+<body>
+
+  <div id="root"></div>
+
+  <script>
+  // ── Helpers ──────────────────────────────────
+
+  // Convert **bold** markers to <strong> tags
+  function md(text) {
+    return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  }
+
+  // Pipe-separated contact bar
+  function contactBar(contacts) {
+    return contacts.map((c, i) => {
+      const target = c.external ? ' target="_blank"' : '';
+      const link = `<a href="${c.href}"${target}>${c.label}</a>`;
+      return i < contacts.length - 1 ? link + ' <span>|</span>' : link;
+    }).join(' ');
+  }
+
+  // Tag chips
+  function tags(list) {
+    if (!list || !list.length) return '';
+    return `<div style="margin-top:8px;">${list.map(t => `<span class="tag">${t}</span>`).join('')}</div>`;
+  }
+
+  // ── Section renderers ─────────────────────────
+
+  function renderHeader(h, eyebrow) {
+    return `
+      <header class="site-header">
+        <p class="eyebrow">${eyebrow}</p>
+        <h1>${h.name}</h1>
+        <p class="subtitle">${h.subtitle}</p>
+        <div class="contact-bar">${contactBar(h.contact)}</div>
+      </header>`;
+  }
+
+  function renderNav() {
+    return `
+      <nav class="nav-strip">
+        <a href="https://timowen.me">&#8592; Home</a>
+        <a href="https://timowen.me/it/index.html" class="active">IT Resume</a>
+        <a href="https://timowen.me/saxophone/index.html">Music Portfolio</a>
+      </nav>`;
+  }
+
+  function renderObjective(text) {
+    return `<div class="objective-block"><strong>Objective:</strong> ${md(text)}</div>`;
+  }
+
+  function renderCertifications(certs) {
+    const badges = certs.map(c =>
+      c.pending
+        ? `<span class="cert-badge pending">${c.label}</span>`
+        : `<a class="cert-badge" href="${c.href}" target="_blank">${c.label}</a>`
+    ).join('');
+    return `
+      <div style="margin-bottom:18px;">
+        <p style="font-size:.82rem;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Verified Certifications</p>
+        <div class="cert-list">${badges}</div>
+      </div>`;
+  }
+
+  function renderSkillGroups(groups) {
+    return `<div class="skills-grid">${groups.map(g => `
+      <div class="skill-card">
+        <h4>${g.title}</h4>
+        <ul>${g.items.map(i => `<li>${i}</li>`).join('')}</ul>
+      </div>`).join('')}</div>`;
+  }
+
+  function renderTransferableSkills(skills) {
+    return `<div class="transfer-grid">${skills.map(s => `
+      <div class="transfer-item">
+        <div class="transfer-icon">${s.icon}</div>
+        <div><h5>${s.title}</h5><p>${s.description}</p></div>
+      </div>`).join('')}</div>`;
+  }
+
+  function renderExperience(entries) {
+    return entries.map(e => `
+      <div class="entry">
+        <div class="entry-header">
+          <span class="entry-role">${e.role}</span>
+          <span class="entry-dates">${e.dates}</span>
+        </div>
+        <p class="entry-org">${e.org} &middot; ${e.location}</p>
+        <ul>${e.bullets.map(b => `<li>${md(b)}</li>`).join('')}</ul>
+        ${tags(e.tags)}
+      </div>`).join('');
+  }
+
+  function renderEducation(entries) {
+    return entries.map(e => `
+      <div class="edu-entry">
+        <p class="edu-degree">${e.degree} <span style="font-weight:300;font-size:.9em;">(${e.date})</span></p>
+        <p class="edu-school">${e.school} &middot; ${e.location}</p>
+        ${e.note ? `<p class="edu-note">${e.note}</p>` : ''}
+      </div>`).join('');
+  }
+
+  function renderProjects(projects) {
+    return `<div class="project-grid">${projects.map(p => `
+      <div class="project-card">
+        <h4>${p.title}</h4>
+        <p>${p.description}</p>
+        <div style="margin-bottom:10px;">${p.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+        <a href="${p.href}" target="_blank">${p.linkLabel}</a>
+      </div>`).join('')}</div>`;
+  }
+
+  function renderAdditional(items) {
+    return items.map(item => {
+      const body = item.link
+        ? `${item.text} <a href="${item.link.href}">${item.link.label}</a>`
+        : item.text;
+      return `<div class="additional-note"><strong>${item.label}:</strong> ${body}</div>`;
+    }).join('');
+  }
+
+  // ── Main render ───────────────────────────────
+
+  function render(data) {
+    document.title = data.meta.pageTitle;
+    document.getElementById('root').innerHTML = `
+      ${renderHeader(data.header, data.meta.eyebrow)}
+      ${renderNav()}
+      <div class="page-wrap">
+        ${renderObjective(data.objective)}
+
+        <section class="section">
+          <h2 class="section-title">Skills &amp; Certifications</h2>
+          ${renderCertifications(data.certifications)}
+          ${renderSkillGroups(data.skillGroups)}
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">Transferable Skills</h2>
+          ${renderTransferableSkills(data.transferableSkills)}
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">Experience</h2>
+          ${renderExperience(data.experience)}
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">Education</h2>
+          ${renderEducation(data.education)}
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">Technical Projects</h2>
+          ${renderProjects(data.projects)}
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">Additional Information</h2>
+          ${renderAdditional(data.additional)}
+        </section>
+      </div>
+
+      <footer class="site-footer">
+        <p>&copy; 2026 ${data.header.name} &nbsp;&middot;&nbsp;
+           <a href="mailto:timothy.j.owen@outlook.com">timothy.j.owen@outlook.com</a> &nbsp;&middot;&nbsp;
+           <a href="https://timowen.me">timowen.me</a></p>
+        <p style="margin-top:6px;"><a href="https://timowen.me">&larr; Back to Portfolio Home</a></p>
+      </footer>`;
+  }
+
+  // ── Bootstrap ─────────────────────────────────
+
+  fetch('resume-data.json')
+    .then(res => {
+      if (!res.ok) throw new Error(`Could not load resume-data.json (${res.status})`);
+      return res.json();
+    })
+    .then(render)
+    .catch(err => {
+      document.getElementById('root').innerHTML =
+        `<p style="padding:2rem;color:red;font-family:monospace;">
+           Failed to load resume data: ${err.message}
+         </p>`;
+    });
+  </script>
+
+</body>
+</html>
