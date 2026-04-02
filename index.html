@@ -1,323 +1,413 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Timothy J. Owen, D.M.A. — Portfolio</title>
-  <link rel="stylesheet" href="shared.css" />
-  <style>
-    /* Landing-specific overrides */
-    body { background: var(--warm-white); }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timothy J. Owen, D.M.A. — Portfolio</title>
+    <link rel="stylesheet" href="shared.css" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <style>
+      /* Landing-specific overrides */
+      body {
+        background: var(--warm-white);
+      }
 
-    .hero {
-      background: var(--navy);
-      color: #fff;
-      padding: 72px 24px 60px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    .hero::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: repeating-linear-gradient(
-        -55deg, transparent, transparent 40px,
-        rgba(255,255,255,.025) 40px, rgba(255,255,255,.025) 41px
-      );
-      pointer-events: none;
-    }
-    .hero::after {
-      content: '';
-      position: absolute;
-      bottom: -1px; left: 0; right: 0;
-      height: 48px;
-      background: var(--warm-white);
-      clip-path: ellipse(55% 100% at 50% 100%);
-      pointer-events: none;
-    }
-    .hero .eyebrow {
-      font-family: var(--mono);
-      font-size: .78rem;
-      letter-spacing: .2em;
-      text-transform: uppercase;
-      color: var(--gold-light);
-      margin-bottom: 14px;
-    }
-    .hero h1 {
-      font-family: var(--serif);
-      font-size: clamp(2.4rem, 6vw, 3.6rem);
-      font-weight: 700;
-      letter-spacing: .02em;
-      line-height: 1.1;
-      margin-bottom: 16px;
-    }
-    .hero .tagline {
-      font-size: 1.05rem;
-      font-weight: 300;
-      color: rgba(255,255,255,.8);
-      max-width: 580px;
-      margin: 0 auto 28px;
-      line-height: 1.6;
-    }
-    .hero .contact-bar {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 8px 20px;
-      font-size: .88rem;
-      color: rgba(255,255,255,.6);
-      padding-bottom: 30px;
-    }
-    .hero .contact-bar a { color: var(--gold-light); text-decoration: none; }
-    .hero .contact-bar a:hover { color: #fff; }
-    .hero .contact-bar span { color: rgba(255,255,255,.25); }
+      .hero {
+        background: var(--navy);
+        color: #fff;
+        padding: 72px 24px 60px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+          -55deg,
+          transparent,
+          transparent 40px,
+          rgba(255, 255, 255, 0.025) 40px,
+          rgba(255, 255, 255, 0.025) 41px
+        );
+        pointer-events: none;
+      }
+      .hero::after {
+        content: "";
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 48px;
+        background: var(--warm-white);
+        clip-path: ellipse(55% 100% at 50% 100%);
+        pointer-events: none;
+      }
+      .hero .eyebrow {
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--gold-light);
+        margin-bottom: 14px;
+      }
+      .hero h1 {
+        font-family: var(--serif);
+        font-size: clamp(2.4rem, 6vw, 3.6rem);
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        line-height: 1.1;
+        margin-bottom: 16px;
+      }
+      .hero .tagline {
+        font-size: 1.05rem;
+        font-weight: 300;
+        color: rgba(255, 255, 255, 0.8);
+        max-width: 580px;
+        margin: 0 auto 28px;
+        line-height: 1.6;
+      }
+      .hero .contact-bar {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px 20px;
+        font-size: 0.88rem;
+        color: rgba(255, 255, 255, 0.6);
+        padding-bottom: 30px;
+      }
+      .hero .contact-bar a {
+        color: var(--gold-light);
+        text-decoration: none;
+      }
+      .hero .contact-bar a:hover {
+        color: #fff;
+      }
+      .hero .contact-bar span {
+        color: rgba(255, 255, 255, 0.25);
+      }
 
-    /* Portrait area */
-    .identity-block {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 32px;
-      max-width: 700px;
-      margin: 0 auto 28px;
-      flex-wrap: wrap;
-    }
-    .identity-badge {
-      width: 110px;
-      height: 110px;
-      border-radius: 50%;
-      background: var(--navy-mid);
-      border: 3px solid var(--gold);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: var(--serif);
-      font-size: 2.4rem;
-      color: var(--gold-light);
-      flex-shrink: 0;
-      box-shadow: 0 4px 20px rgba(0,0,0,.3);
-    }
-    .identity-text { text-align: left; }
-    @media (max-width:500px) {
-      .identity-text { text-align: center; }
-      .identity-block { flex-direction: column; gap: 16px; }
-    }
+      /* Portrait area */
+      .identity-block {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 32px;
+        max-width: 700px;
+        margin: 0 auto 28px;
+        flex-wrap: wrap;
+      }
+      .identity-badge {
+        width: 110px;
+        height: 110px;
+        border-radius: 50%;
+        background: var(--navy-mid);
+        border: 3px solid var(--gold);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--serif);
+        font-size: 2.4rem;
+        color: var(--gold-light);
+        flex-shrink: 0;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+      .identity-text {
+        text-align: left;
+      }
+      @media (max-width: 500px) {
+        .identity-text {
+          text-align: center;
+        }
+        .identity-block {
+          flex-direction: column;
+          gap: 16px;
+        }
+      }
 
-    /* About section */
-    .about {
-      max-width: 680px;
-      margin: 52px auto 0;
-      text-align: center;
-      padding: 0 24px;
-    }
-    .about .section-title { justify-content: center; display: flex; gap: 12px; align-items: center; border: none; }
-    .about .section-title::before,
-    .about .section-title::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--gold);
-    }
-    .about p { color: var(--text-muted); font-size: .97rem; line-height: 1.75; }
+      /* About section */
+      .about {
+        max-width: 680px;
+        margin: 52px auto 0;
+        text-align: center;
+        padding: 0 24px;
+      }
+      .about .section-title {
+        justify-content: center;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        border: none;
+      }
+      .about .section-title::before,
+      .about .section-title::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--gold);
+      }
+      .about p {
+        color: var(--text-muted);
+        font-size: 0.97rem;
+        line-height: 1.75;
+      }
 
-    /* Path cards */
-    .paths {
-      max-width: 860px;
-      margin: 56px auto 0;
-      padding: 0 24px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 28px;
-    }
-    @media (max-width: 640px) { .paths { grid-template-columns: 1fr; } }
+      /* Path cards */
+      .paths {
+        max-width: 860px;
+        margin: 56px auto 0;
+        padding: 0 24px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+      }
+      @media (max-width: 640px) {
+        .paths {
+          grid-template-columns: 1fr;
+        }
+      }
 
-    .path-card {
-      border: 1px solid var(--rule);
-      border-radius: 10px;
-      overflow: hidden;
-      background: #fff;
-      box-shadow: var(--shadow);
-      transition: box-shadow .25s, transform .25s;
-      text-decoration: none;
-      color: inherit;
-      display: flex;
-      flex-direction: column;
-    }
-    .path-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-4px); }
+      .path-card {
+        border: 1px solid var(--rule);
+        border-radius: 10px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: var(--shadow);
+        transition:
+          box-shadow 0.25s,
+          transform 0.25s;
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+      }
+      .path-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-4px);
+      }
 
-    .path-card-header {
-      padding: 32px 28px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .path-card.music .path-card-header { background: var(--navy); color: #fff; }
-    .path-card.tech  .path-card-header { background: #1e3a2f; color: #fff; }
+      .path-card-header {
+        padding: 32px 28px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .path-card.music .path-card-header {
+        background: var(--navy);
+        color: #fff;
+      }
+      .path-card.tech .path-card-header {
+        background: #1e3a2f;
+        color: #fff;
+      }
 
-    .path-icon {
-      font-size: 2rem;
-      line-height: 1;
-      margin-bottom: 4px;
-    }
-    .path-card h2 {
-      font-family: var(--serif);
-      font-size: 1.55rem;
-      font-weight: 700;
-      line-height: 1.2;
-      letter-spacing: .01em;
-    }
-    .path-card.music h2 { color: var(--gold-light); }
-    .path-card.tech  h2 { color: #6bcf9b; }
+      .path-icon {
+        font-size: 2rem;
+        line-height: 1;
+        margin-bottom: 4px;
+      }
+      .path-card h2 {
+        font-family: var(--serif);
+        font-size: 1.55rem;
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: 0.01em;
+      }
+      .path-card.music h2 {
+        color: var(--gold-light);
+      }
+      .path-card.tech h2 {
+        color: #6bcf9b;
+      }
 
-    .path-card .path-subtitle {
-      font-family: var(--mono);
-      font-size: .75rem;
-      letter-spacing: .14em;
-      text-transform: uppercase;
-      opacity: .7;
-      margin-top: -4px;
-    }
+      .path-card .path-subtitle {
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        opacity: 0.7;
+        margin-top: -4px;
+      }
 
-    .path-card-body {
-      padding: 22px 28px 28px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .path-card-body p { font-size: .92rem; color: var(--text-muted); line-height: 1.65; }
+      .path-card-body {
+        padding: 22px 28px 28px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .path-card-body p {
+        font-size: 0.92rem;
+        color: var(--text-muted);
+        line-height: 1.65;
+      }
 
-    .path-highlights {
-      list-style: none;
-      font-size: .88rem;
-      color: var(--text-muted);
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .path-highlights li::before { content: '→ '; color: var(--gold); font-weight: 700; }
-    .path-card.tech .path-highlights li::before { color: #2e9e68; }
+      .path-highlights {
+        list-style: none;
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .path-highlights li::before {
+        content: "→ ";
+        color: var(--gold);
+        font-weight: 700;
+      }
+      .path-card.tech .path-highlights li::before {
+        color: #2e9e68;
+      }
 
-    .path-cta {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: auto;
-      padding: 11px 22px;
-      border-radius: var(--radius);
-      font-size: .88rem;
-      font-weight: 600;
-      letter-spacing: .04em;
-      text-decoration: none;
-      text-transform: uppercase;
-      transition: opacity .2s;
-      align-self: flex-start;
-    }
-    .path-cta:hover { opacity: .85; text-decoration: none; }
-    .path-card.music .path-cta { background: var(--gold); color: var(--navy); }
-    .path-card.tech  .path-cta { background: #2e9e68; color: #fff; }
+      .path-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: auto;
+        padding: 11px 22px;
+        border-radius: var(--radius);
+        font-size: 0.88rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-decoration: none;
+        text-transform: uppercase;
+        transition: opacity 0.2s;
+        align-self: flex-start;
+      }
+      .path-cta:hover {
+        opacity: 0.85;
+        text-decoration: none;
+      }
+      .path-card.music .path-cta {
+        background: var(--gold);
+        color: var(--navy);
+      }
+      .path-card.tech .path-cta {
+        background: #2e9e68;
+        color: #fff;
+      }
 
-    /* Footer */
-    .landing-footer {
-      margin-top: 64px;
-      text-align: center;
-      font-size: .8rem;
-      color: var(--text-muted);
-      font-family: var(--mono);
-      padding: 0 24px 40px;
-      letter-spacing: .05em;
-    }
-    .landing-footer a { color: var(--navy-light); }
-  </style>
-</head>
-<body>
-
-  <!-- HERO -->
-  <header class="hero">
-    <div class="identity-block">
-      <div class="identity-badge">TJO</div>
-      <div class="identity-text">
-        <p class="eyebrow">Portfolio</p>
-        <h1>Timothy J. Owen<br><span style="font-size:.6em;color:var(--gold-light);">D.M.A.</span></h1>
+      /* Footer */
+      .landing-footer {
+        margin-top: 64px;
+        text-align: center;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-family: var(--mono);
+        padding: 0 24px 40px;
+        letter-spacing: 0.05em;
+      }
+      .landing-footer a {
+        color: var(--navy-light);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- HERO -->
+    <header class="hero">
+      <div class="identity-block">
+        <div class="identity-badge">TJO</div>
+        <div class="identity-text">
+          <p class="eyebrow">Portfolio</p>
+          <h1>
+            Timothy J. Owen<br /><span
+              style="font-size: 0.6em; color: var(--gold-light)"
+              >D.M.A.</span
+            >
+          </h1>
+        </div>
       </div>
-    </div>
-    <p class="tagline">
-      Saxophonist · Educator · U.S. Army Veteran · IT Professional<br>
-      South Puget Sound, WA &nbsp;|&nbsp; Active DoD Secret Clearance
-    </p>
-    <div class="contact-bar">
+      <p class="tagline">
+        Saxophonist · Educator · U.S. Army Veteran · IT Professional<br />
+        South Puget Sound, WA &nbsp;|&nbsp; Active DoD Secret Clearance
+      </p>
+      <div class="contact-bar">
+        <a href="mailto:timothy.j.owen@outlook.com"
+          >timothy.j.owen@outlook.com</a
+        >
+        <span>|</span>
+        <a href="tel:7575025970">(757) 502-5970</a>
+        <span>|</span>
+        <a href="https://www.linkedin.com/in/timothy-j-owen" target="_blank"
+          >LinkedIn</a
+        >
+        <span>|</span>
+        <a href="https://github.com/saxd0ct0r" target="_blank">GitHub</a>
+      </div>
+    </header>
+
+    <!-- ABOUT -->
+    <section class="about">
+      <h2
+        class="section-title"
+        style="font-family: var(--serif); font-size: 1.2rem; color: var(--navy)"
+      >
+        About
+      </h2>
+      <p>
+        I bring twenty years of U.S. Army performance and instruction experience
+        to everything I do — whether that's cultivating the next generation of
+        saxophonists or building reliable IT systems for mission-critical
+        environments. My work sits at the intersection of disciplined craft,
+        analytical problem-solving, and a commitment to developing people.
+      </p>
+    </section>
+
+    <!-- PATH CARDS -->
+    <main class="paths" role="main">
+      <a class="path-card music" href="/saxophone/index.html">
+        <div class="path-card-header">
+          <div class="path-icon">𝄞</div>
+          <h2>Music &amp; Performance</h2>
+          <p class="path-subtitle">Saxophone · Pedagogy · Academia</p>
+        </div>
+        <div class="path-card-body">
+          <p>
+            Thirty years of performance and teaching across university,
+            military, and community settings. Doctor of Musical Arts from the
+            University of Iowa.
+          </p>
+          <ul class="path-highlights">
+            <li>Lead Saxophone Instructor, U.S. Army School of Music</li>
+            <li>World premiere recording — Coles Sonata (2012)</li>
+            <li>
+              Python-based pedagogical tools: Tempo Trainer &amp; Music Practice
+              SRS
+            </li>
+            <li>BYU · University of Iowa · 56th Army Band</li>
+          </ul>
+          <span class="path-cta">View Portfolio →</span>
+        </div>
+      </a>
+
+      <a class="path-card tech" href="/it/index.html">
+        <div class="path-card-header">
+          <div class="path-icon">⌨</div>
+          <h2>Information Technology</h2>
+          <p class="path-subtitle">Networking · Cloud · Security</p>
+        </div>
+        <div class="path-card-body">
+          <p>
+            Transitioning veteran with CompTIA Network+, AWS Cloud Practitioner,
+            and Python certifications. Washington Vets-to-Tech graduate,
+            currently in cybersecurity coursework.
+          </p>
+          <ul class="path-highlights">
+            <li>CompTIA Network+ · AWS CCP · CEPP Certified</li>
+            <li>Windows Server, Linux, PowerShell, Ansible</li>
+            <li>Subnet Calculator &amp; Tempo Finder (Python)</li>
+            <li>DoD Secret Clearance · Fluent Russian</li>
+          </ul>
+          <span class="path-cta">View Resume →</span>
+        </div>
+      </a>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="landing-footer">
+      © 2026 Timothy J. Owen &nbsp;|&nbsp;
       <a href="mailto:timothy.j.owen@outlook.com">timothy.j.owen@outlook.com</a>
-      <span>|</span>
-      <a href="tel:7575025970">(757) 502-5970</a>
-      <span>|</span>
-      <a href="https://www.linkedin.com/in/timothy-j-owen" target="_blank">LinkedIn</a>
-      <span>|</span>
-      <a href="https://github.com/saxd0ct0r" target="_blank">GitHub</a>
-    </div>
-  </header>
-
-  <!-- ABOUT -->
-  <section class="about">
-    <h2 class="section-title" style="font-family:var(--serif);font-size:1.2rem;color:var(--navy);">About</h2>
-    <p>
-      I bring twenty years of U.S. Army performance and instruction experience to everything I do —
-      whether that's cultivating the next generation of saxophonists or building reliable IT systems
-      for mission-critical environments. My work sits at the intersection of disciplined craft,
-      analytical problem-solving, and a commitment to developing people.
-    </p>
-  </section>
-
-  <!-- PATH CARDS -->
-  <main class="paths" role="main">
-
-    <a class="path-card music" href="/saxophone/index.html">
-      <div class="path-card-header">
-        <div class="path-icon">𝄞</div>
-        <h2>Music &amp; Performance</h2>
-        <p class="path-subtitle">Saxophone · Pedagogy · Academia</p>
-      </div>
-      <div class="path-card-body">
-        <p>
-          Thirty years of performance and teaching across university, military, and community
-          settings. Doctor of Musical Arts from the University of Iowa.
-        </p>
-        <ul class="path-highlights">
-          <li>Lead Saxophone Instructor, U.S. Army School of Music</li>
-          <li>World premiere recording — Coles Sonata (2012)</li>
-          <li>Python-based pedagogical tools: Tempo Trainer &amp; Music Practice SRS</li>
-          <li>BYU · University of Iowa · 56th Army Band</li>
-        </ul>
-        <span class="path-cta">View Portfolio →</span>
-      </div>
-    </a>
-
-    <a class="path-card tech" href="/it/index.html">
-      <div class="path-card-header">
-        <div class="path-icon">⌨</div>
-        <h2>Information Technology</h2>
-        <p class="path-subtitle">Networking · Cloud · Security</p>
-      </div>
-      <div class="path-card-body">
-        <p>
-          Transitioning veteran with CompTIA Network+, AWS Cloud Practitioner, and Python
-          certifications. Washington Vets-to-Tech graduate, currently in cybersecurity coursework.
-        </p>
-        <ul class="path-highlights">
-          <li>CompTIA Network+ · AWS CCP · CEPP Certified</li>
-          <li>Windows Server, Linux, PowerShell, Ansible</li>
-          <li>Subnet Calculator &amp; Tempo Finder (Python)</li>
-          <li>DoD Secret Clearance · Fluent Russian</li>
-        </ul>
-        <span class="path-cta">View Resume →</span>
-      </div>
-    </a>
-
-  </main>
-
-  <!-- FOOTER -->
-  <footer class="landing-footer">
-    © 2026 Timothy J. Owen &nbsp;|&nbsp; <a href="mailto:timothy.j.owen@outlook.com">timothy.j.owen@outlook.com</a>
-  </footer>
-
-</body>
+    </footer>
+  </body>
 </html>
