@@ -1,0 +1,244 @@
+{
+  "meta": {
+    "pageTitle": "Timothy J. Owen — IT Resume",
+    "eyebrow": "Information Technology Resume",
+    "lastUpdated": "2026-03-31"
+  },
+
+  "header": {
+    "name": "Dr. Timothy J. Owen",
+    "subtitle": "U.S. Army Veteran · IT Professional · South Puget Sound, WA",
+    "contact": [
+      { "label": "(757) 502-5970",              "href": "tel:7575025970" },
+      { "label": "timothy.j.owen@outlook.com",  "href": "mailto:timothy.j.owen@outlook.com" },
+      { "label": "LinkedIn",                    "href": "https://www.linkedin.com/in/timothy-j-owen", "external": true },
+      { "label": "GitHub",                      "href": "https://github.com/saxd0ct0r", "external": true },
+      { "label": "timowen.me",                  "href": "https://timowen.me" }
+    ]
+  },
+
+  "objective": "U.S. Army veteran with 20 years of leadership and an active federal Secret-level security clearance, transitioning from distinguished military service to Information Technology. Holding **CompTIA Network+**, **AWS Cloud Practitioner**, **Foundational C#**, and **Certified Entry-Level Python Programmer** certifications, and two completed Washington Vets-to-Tech programs (Server & Cloud Administration, Aug 2025; Cybersecurity, Dec 2025), I am eager to deliver secure, compliant IT support in dynamic, mission-critical environments—ensuring seamless operations and exceptional service.",
+
+  "certifications": [
+    { "label": "CompTIA Network+",        "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f" },
+    { "label": "AWS Cloud Practitioner",  "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25" },
+    { "label": "Python Programmer (PCEP)","href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ" },
+    { "label": "Foundational C#",         "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft" }
+  ],
+
+  "skillGroups": [
+    {
+      "title": "Networking",
+      "items": ["IPv4 / IPv6 & Subnetting", "VPN Configuration", "Network Administration"]
+    },
+    {
+      "title": "Security",
+      "items": ["Cybersecurity Fundamentals", "Ethical Hacking", "Threat Intelligence", "Vulnerability Assessment", "MFA / TLS", "HIPAA Compliance"]
+    },
+    {
+      "title": "Systems & Cloud",
+      "items": ["Windows Server / PowerShell", "Linux Bash Administration", "AWS EC2", "Ansible", "Virtualization", "CSC 455 Cloud Technologies"]
+    },
+    {
+      "title": "Programming",
+      "items": ["Python (automation, scripting)", "C# (fundamentals)", "Bash Scripting", "Jupyter Notebooks"]
+    },
+    {
+      "title": "Leadership",
+      "items": ["20 yrs military management", "Training & documentation", "Project & logistics management"]
+    },
+    {
+      "title": "Additional",
+      "items": ["Fluent Russian (verbal & written)", "10-key: 5,280 net KPH @ 94.6% accuracy", "Typing: ~60 WPM", "Federal Secret Clearance"]
+    }
+  ],
+
+  "transferableSkills": [
+    {
+      "icon": "🧠",
+      "title": "Analytical Thinking",
+      "description": "Designed SRS systems and AMPA rubrics — directly applicable to IT process optimization and troubleshooting workflows."
+    },
+    {
+      "icon": "⚙️",
+      "title": "Automation",
+      "description": "Built Python tools (Subnet Calculator, VA Ratings Calculator, Tempo Finder) using algorithmic problem-solving relevant to IT scripting and infrastructure support."
+    },
+    {
+      "icon": "⚡",
+      "title": "Adaptability",
+      "description": "Sustained mission-critical operations across 20 years of military service and rapid IT upskilling — translatable to dynamic, fast-moving technical environments."
+    },
+    {
+      "icon": "📂",
+      "title": "Organization",
+      "description": "Managed HR, security clearances, library operations, and $300K+ equipment inventory — directly applicable to IT asset and data management."
+    }
+  ],
+
+  "experience": [
+    {
+      "role": "Information Services Intern",
+      "dates": "Nov 2025 – Jan 2026",
+      "org": "Washington State Department of Licensing",
+      "location": "Olympia, WA",
+      "bullets": [
+        "Processed constituent records with 100% compliance with state data privacy policies and established departmental procedures across a 3-month engagement",
+        "Executed IT service requests in a regulated government environment, maintaining procedural compliance and detailed documentation throughout",
+        "Communicated policy requirements clearly to internal stakeholders with varying technical backgrounds"
+      ],
+      "tags": ["Government IT", "Data Privacy", "Documentation", "Compliance"]
+    },
+    {
+      "role": "IT Trainee — Cybersecurity",
+      "dates": "Aug – Dec 2025",
+      "org": "Washington Vets-to-Tech / Saint Martin's University",
+      "location": "Lacey, WA",
+      "bullets": [
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science",
+        "Mastered information security, ethical hacking, and threat intelligence through hands-on coursework (CSC 325, CSC 364, CSC 426, CSC 455)",
+        "Implemented multi-factor authentication and Transport Layer Security encryption in labs; ensured compliance with HIPAA standards for clinical environments",
+        "Achieved 100% lab completion rate"
+      ],
+      "tags": ["Cybersecurity", "Ethical Hacking", "Threat Intelligence", "Vulnerability Assessment", "HIPAA", "MFA", "TLS", "Cloud Technologies"]
+    },
+    {
+      "role": "IT Trainee — Server & Cloud Administration",
+      "dates": "May – Aug 2025",
+      "org": "Washington Vets-to-Tech / Saint Martin's University",
+      "location": "Lacey, WA",
+      "bullets": [
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science",
+        "Gained hands-on experience with network configuration (IPv4/v6, subnetting, VPN) — 100% lab completion rate",
+        "Acquired Python proficiency for automating end-user support tasks and data analysis labs",
+        "Configured Windows Server via PowerShell; deployed AWS EC2 applications; configured Ansible for infrastructure automation"
+      ],
+      "tags": ["Python", "AWS EC2", "Windows Server", "PowerShell", "Linux", "Ansible", "Networking"]
+    },
+    {
+      "role": "Saxophonist / Library, Security & Operations Manager",
+      "dates": "Oct 2013 – Jun 2025",
+      "org": "56th Army Band, U.S. Army",
+      "location": "Joint Base Lewis-McChord, WA",
+      "bullets": [
+        "Sustained mission-critical operations across 400+ high-stakes performances for audiences totaling 2.5M+, with 100% readiness",
+        "Managed $300K in equipment inventory with zero discrepancy across all assignments",
+        "Administered federal security clearance compliance for 40+ personnel, ensuring ongoing security and records accuracy",
+        "Facilitated training and certification of 200 Master Resilience Trainers as a Level 2 Master Resilience Facilitator"
+      ],
+      "tags": ["Security Clearance", "Asset Management", "Compliance", "Leadership", "Training"]
+    },
+    {
+      "role": "Lead Saxophone Instructor / Curriculum Writer",
+      "dates": "Jul 2009 – Oct 2013",
+      "org": "U.S. Army School of Music",
+      "location": "JEB Little Creek-Fort Story, VA",
+      "bullets": [
+        "Instructed 100+ new trainees and 20 mid-level leaders in individualized professional development programs, achieving a 100% pass rate",
+        "Advised 40 senior leaders as subject-matter expert in administering field assessments, resulting in improved assessment quality",
+        "Assessed 400+ student performances and coached 12 small and medium-sized performance teams",
+        "Maintained training records for staff and faculty of 80 personnel",
+        "Contributed to curriculum and policy development for a career field of 5,000+ personnel, resulting in a 58% reduction in training cycle time",
+        "Earned Distinguished Leader Award at the Army Leadership Development Program (2010)"
+      ],
+      "tags": ["Training", "Documentation", "Curriculum Design", "Leadership"]
+    },
+    {
+      "role": "Saxophonist / Library & HR Manager",
+      "dates": "Feb 2006 – Jun 2009",
+      "org": "1st Armored Division Band, U.S. Army",
+      "location": "Wiesbaden, Germany",
+      "bullets": [
+        "Performed 120–150 missions including 60 international assignments; deployed in support of Operation Iraqi Freedom (2007)",
+        "Managed HR administration and library operations for 40+ personnel, enforcing documentation accuracy and compliance",
+        "Earned promotion to Sergeant (E-5) in 2008"
+      ],
+      "tags": ["International Operations", "HR Management", "Asset Management"]
+    },
+    {
+      "role": "Retail Sales Associate — Cash Handling",
+      "dates": "Prior to 2005",
+      "org": "Puppet Vendor, Marriott's Great America",
+      "location": "Santa Clara, CA",
+      "bullets": [
+        "Handled cash transactions directly with customers in a high-volume retail environment, maintaining accurate drawer balances",
+        "Identified customer interests and matched them to available products, developing cross-selling instincts"
+      ],
+      "tags": ["Cash Handling", "Customer Service", "Retail Sales"]
+    }
+  ],
+
+  "education": [
+    {
+      "degree": "Washington Vets-to-Tech Cybersecurity Certificate (18 credits, B.S. Computer Science)",
+      "date": "Dec 2025",
+      "school": "Saint Martin's University",
+      "location": "Lacey, WA",
+      "note": "CSC 325 Computer Security · CSC 364 Cybersecurity Threat Intelligence · CSC 426 Vulnerability Assessment · CSC 455 Cloud Technologies"
+    },
+    {
+      "degree": "Washington Vets-to-Tech Server & Cloud Administration Certificate (18 credits, B.S. Computer Science)",
+      "date": "Aug 2025",
+      "school": "Saint Martin's University",
+      "location": "Lacey, WA",
+      "note": "CSC 160, 330, 395, 331, 235, 456 — Networking, Linux, Windows Server, Cloud"
+    },
+    {
+      "degree": "Doctor of Musical Arts (D.M.A.), Performance",
+      "date": "Dec 2005",
+      "school": "University of Iowa",
+      "location": "Iowa City, IA",
+      "note": "Dissertation: \"Integrating the Music Learning Theory of Edwin E. Gordon with a Beginning Saxophone Curriculum\""
+    },
+    {
+      "degree": "Master of Music (M.M.), Performance",
+      "date": "Jul 1999",
+      "school": "Brigham Young University",
+      "location": "Provo, UT"
+    },
+    {
+      "degree": "Bachelor of Music (B.M.), Performance & Pedagogy",
+      "date": "Apr 1997",
+      "school": "Brigham Young University",
+      "location": "Provo, UT"
+    }
+  ],
+
+  "projects": [
+    {
+      "title": "Subnet Calculator",
+      "description": "Python tool automating IPv4 subnet calculations for network troubleshooting. Demonstrates scripting, documentation, and process optimization.",
+      "tags": ["Python", "Networking"],
+      "linkLabel": "View on GitHub →",
+      "href": "https://github.com/saxd0ct0r/Python/tree/main/subnet_calc"
+    },
+    {
+      "title": "VA Ratings Calculator",
+      "description": "Python tool automating VA disability ratings calculations, demonstrating scripting, data processing, and veteran-focused problem solving.",
+      "tags": ["Python", "Automation"],
+      "linkLabel": "View on GitHub →",
+      "href": "https://github.com/saxd0ct0r/Python/tree/main/VA-Rating-calc"
+    },
+    {
+      "title": "Tempo Finder",
+      "description": "Binary-search algorithm identifying optimal practice tempos (30–240 BPM) at O(log n) efficiency. Showcases algorithmic problem-solving and user-focused design.",
+      "tags": ["Python", "Algorithms"],
+      "linkLabel": "View Demo →",
+      "href": "https://timowen.me/saxophone/tempo-trainer-demo.html"
+    },
+    {
+      "title": "Music Practice SRS",
+      "description": "Anki-based spaced repetition system for saxophone practice and study preparation. Applied SuperMemo principles to automated scale/pattern generation.",
+      "tags": ["Python", "Automation"],
+      "linkLabel": "View Demo →",
+      "href": "https://timowen.me/saxophone/music-practice-app/practice-app.html"
+    }
+  ],
+
+  "additional": [
+    { "label": "Language",    "text": "Fluent in Russian (verbal and written)." },
+    { "label": "Clearance",   "text": "Active federal Secret-level security clearance." },
+    { "label": "Typing",      "text": "Approximately 60 WPM; 10-key proficiency at 5,280 net KPH (94.6% accuracy)." },
+    { "label": "Music Portfolio", "text": "Full academic and performance credentials available at", "link": { "label": "timowen.me/saxophone", "href": "https://timowen.me/saxophone/" } }
+  ]
+}
