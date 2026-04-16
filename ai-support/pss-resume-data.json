@@ -8,21 +8,47 @@
     "name": "Dr. Timothy J. Owen",
     "subtitle": "U.S. Army Veteran · AI Product Support · South Puget Sound, WA",
     "contact": [
-      { "label": "(757) 502-5970",              "href": "tel:7575025970" },
-      { "label": "timothy.j.owen@outlook.com",  "href": "mailto:timothy.j.owen@outlook.com" },
-      { "label": "LinkedIn",                    "href": "https://www.linkedin.com/in/timothy-j-owen", "external": true },
-      { "label": "GitHub",                      "href": "https://github.com/saxd0ct0r", "external": true },
-      { "label": "timowen.me/pss",              "href": "https://timowen.me/pss" }
+      { "label": "(757) 502-5970", "href": "tel:7575025970" },
+      {
+        "label": "timothy.j.owen@outlook.com",
+        "href": "mailto:timothy.j.owen@outlook.com"
+      },
+      {
+        "label": "LinkedIn",
+        "href": "https://www.linkedin.com/in/timothy-j-owen",
+        "external": true
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/saxd0ct0r",
+        "external": true
+      },
+      {
+        "label": "timowen.me/ai-support",
+        "href": "https://timowen.me/ai-support"
+      }
     ]
   },
 
   "objective": "Washington Vets-to-Tech graduate and retired 20-year U.S. Army veteran with hands-on experience supporting government IT users, active **CompTIA Network+** and **AWS Cloud Practitioner** certifications, and extensive practical fluency with large language models across Claude, ChatGPT, Grok, Gemini, and Perplexity. Exceptional written and verbal communicator with a career-long track record of translating complex technical and conceptual material for non-expert audiences. Brings deep user empathy, rigorous documentation discipline, and genuine curiosity about AI systems to every support interaction. Active **federal Secret-level security clearance**.",
 
   "certifications": [
-    { "label": "CompTIA Network+",        "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f" },
-    { "label": "AWS Cloud Practitioner",  "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25" },
-    { "label": "Python Programmer (PCEP)","href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ" },
-    { "label": "Foundational C#",         "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft" }
+    {
+      "label": "CompTIA Network+",
+      "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f"
+    },
+    {
+      "label": "AWS Cloud Practitioner",
+      "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25"
+    },
+    {
+      "label": "Python Programmer (PCEP)",
+      "href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ"
+    },
+    {
+      "label": "Foundational C#",
+      "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft"
+    }
   ],
 
   "skillGroups": [
@@ -127,7 +153,12 @@
         "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science; 100% lab completion rate across security hardening, threat intelligence, vulnerability assessment, and cloud technologies",
         "Developed working knowledge of authentication systems and security compliance frameworks applicable to enterprise SSO troubleshooting and regulated-sector customer support"
       ],
-      "tags": ["Cybersecurity", "Authentication", "HIPAA", "Threat Intelligence"]
+      "tags": [
+        "Cybersecurity",
+        "Authentication",
+        "HIPAA",
+        "Threat Intelligence"
+      ]
     },
     {
       "role": "IT Trainee — Server & Cloud Applications",
@@ -151,7 +182,12 @@
         "Managed onboarding and offboarding of 40+ personnel, including account access and equipment assignment, with rigorous documentation throughout",
         "Administered federal security clearance compliance for 40+ personnel with meticulous records management"
       ],
-      "tags": ["Knowledge Transfer", "Onboarding", "Security Compliance", "Documentation"]
+      "tags": [
+        "Knowledge Transfer",
+        "Onboarding",
+        "Security Compliance",
+        "Documentation"
+      ]
     },
     {
       "role": "Lead Saxophone Instructor / Curriculum Writer",
@@ -226,7 +262,14 @@
     {
       "title": "Multi-Model AI Design Council",
       "description": "Conducted structured design reviews of SIP's architecture using Claude, ChatGPT, Grok, Gemini, and Perplexity simultaneously — producing a canonical design specification and developing deep comparative understanding of each model's strengths, reasoning patterns, and limitations.",
-      "tags": ["Claude", "ChatGPT", "Grok", "Gemini", "Perplexity", "LLM Evaluation"],
+      "tags": [
+        "Claude",
+        "ChatGPT",
+        "Grok",
+        "Gemini",
+        "Perplexity",
+        "LLM Evaluation"
+      ],
       "linkLabel": null,
       "href": null
     },
@@ -240,9 +283,20 @@
   ],
 
   "additional": [
-    { "label": "Language",   "text": "Fluent in Russian (verbal and written)." },
-    { "label": "Clearance",  "text": "Active federal Secret-level security clearance." },
-    { "label": "IT Resume",  "text": "General IT resume available at", "link": { "label": "timowen.me/it", "href": "https://timowen.me/it" } },
-    { "label": "DCT Resume", "text": "Data Center Technician resume available at", "link": { "label": "timowen.me/dct", "href": "https://timowen.me/dct" } }
+    { "label": "Language", "text": "Fluent in Russian (verbal and written)." },
+    {
+      "label": "Clearance",
+      "text": "Active federal Secret-level security clearance."
+    },
+    {
+      "label": "IT Resume",
+      "text": "General IT resume available at",
+      "link": { "label": "timowen.me/it", "href": "https://timowen.me/it" }
+    },
+    {
+      "label": "DCT Resume",
+      "text": "Data Center Technician resume available at",
+      "link": { "label": "timowen.me/dct", "href": "https://timowen.me/dct" }
+    }
   ]
 }
