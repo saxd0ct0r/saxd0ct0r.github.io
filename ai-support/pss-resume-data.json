@@ -1,0 +1,248 @@
+{
+  "meta": {
+    "pageTitle": "Timothy J. Owen — AI Product Support",
+    "eyebrow": "AI Product Support Specialist"
+  },
+
+  "header": {
+    "name": "Dr. Timothy J. Owen",
+    "subtitle": "U.S. Army Veteran · AI Product Support · South Puget Sound, WA",
+    "contact": [
+      { "label": "(757) 502-5970",              "href": "tel:7575025970" },
+      { "label": "timothy.j.owen@outlook.com",  "href": "mailto:timothy.j.owen@outlook.com" },
+      { "label": "LinkedIn",                    "href": "https://www.linkedin.com/in/timothy-j-owen", "external": true },
+      { "label": "GitHub",                      "href": "https://github.com/saxd0ct0r", "external": true },
+      { "label": "timowen.me/pss",              "href": "https://timowen.me/pss" }
+    ]
+  },
+
+  "objective": "Washington Vets-to-Tech graduate and retired 20-year U.S. Army veteran with hands-on experience supporting government IT users, active **CompTIA Network+** and **AWS Cloud Practitioner** certifications, and extensive practical fluency with large language models across Claude, ChatGPT, Grok, Gemini, and Perplexity. Exceptional written and verbal communicator with a career-long track record of translating complex technical and conceptual material for non-expert audiences. Brings deep user empathy, rigorous documentation discipline, and genuine curiosity about AI systems to every support interaction. Active **federal Secret-level security clearance**.",
+
+  "certifications": [
+    { "label": "CompTIA Network+",        "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f" },
+    { "label": "AWS Cloud Practitioner",  "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25" },
+    { "label": "Python Programmer (PCEP)","href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ" },
+    { "label": "Foundational C#",         "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft" }
+  ],
+
+  "skillGroups": [
+    {
+      "title": "AI & LLM Products",
+      "items": [
+        "Claude, ChatGPT, Grok, Gemini, Perplexity",
+        "Prompt engineering (proficient, developing)",
+        "API concepts (in development)",
+        "LLM capabilities, limitations & comparative strengths",
+        "AI-assisted tooling and automation"
+      ]
+    },
+    {
+      "title": "Technical Support",
+      "items": [
+        "End-user troubleshooting",
+        "API debugging fundamentals (in development)",
+        "Service request logging & tracking",
+        "Technical documentation for non-expert audiences",
+        "Escalation documentation",
+        "Onboarding & offboarding support"
+      ]
+    },
+    {
+      "title": "Systems & Scripting",
+      "items": [
+        "Python (scripting, automation)",
+        "Bash",
+        "Windows Server / PowerShell",
+        "Linux / Bash",
+        "AWS EC2",
+        "Ansible",
+        "Git (fundamentals)",
+        "C# (fundamentals)"
+      ]
+    },
+    {
+      "title": "Networking & Security",
+      "items": [
+        "TCP/IP, DNS, DHCP",
+        "IPv4 / IPv6 & Subnetting",
+        "VPN configuration",
+        "Security hardening & compliance",
+        "HIPAA compliance",
+        "Federal Secret clearance"
+      ]
+    },
+    {
+      "title": "Communication",
+      "items": [
+        "Technical writing for non-expert audiences",
+        "Executive-level communication",
+        "Adult learning & knowledge transfer",
+        "Fluent Russian (verbal & written)"
+      ]
+    }
+  ],
+
+  "transferableSkills": [
+    {
+      "icon": "🤖",
+      "title": "LLM Fluency",
+      "description": "Daily practical use of Claude, ChatGPT, Grok, Gemini, and Perplexity across complex projects — including multi-model design councils, architectural specification, and algorithmic problem-solving. I understand how these models work in practice: where they excel, where they struggle, and how to help a user get from confusion to resolution."
+    },
+    {
+      "icon": "🎓",
+      "title": "Knowledge Transfer at Scale",
+      "description": "Facilitated certification of 200 Master Resilience Trainers; contributed to curriculum development that reduced training time by 58% across 5,000+ personnel. A career built on making complex material accessible to non-expert audiences."
+    },
+    {
+      "icon": "🔒",
+      "title": "Security & Compliance",
+      "description": "Active federal Secret-level security clearance. Completed WaV2T Cybersecurity program covering authentication systems, HIPAA compliance, and security hardening — directly applicable to enterprise and regulated-sector customer support."
+    },
+    {
+      "icon": "⚡",
+      "title": "Ownership Under Pressure",
+      "description": "20 years maintaining 100% operational readiness in mission-critical environments — including on-call and overnight rotations. Brings the initiative and accountability to manage high-urgency user issues with extreme ownership."
+    }
+  ],
+
+  "experience": [
+    {
+      "role": "Information Services Intern",
+      "dates": "Nov 2025 – Jan 2026",
+      "org": "Washington State Department of Licensing",
+      "location": "Olympia, WA",
+      "bullets": [
+        "Provided first-line technical support to government agency staff, logging and tracking service requests, communicating technical requirements clearly to non-technical users, and escalating complex cases with detailed documentation",
+        "Supported account management, software configuration, and workstation setup — direct experience in government and public sector support",
+        "Operated within strict data privacy policies and compliance requirements, developing security and compliance discipline relevant to enterprise customer support"
+      ],
+      "tags": ["Government IT", "Service Desk", "Compliance", "Documentation"]
+    },
+    {
+      "role": "IT Trainee — Cybersecurity",
+      "dates": "Aug – Dec 2025",
+      "org": "Washington Vets-to-Tech / Saint Martin's University",
+      "location": "Lacey, WA",
+      "bullets": [
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science; 100% lab completion rate across security hardening, threat intelligence, vulnerability assessment, and cloud technologies",
+        "Developed working knowledge of authentication systems and security compliance frameworks applicable to enterprise SSO troubleshooting and regulated-sector customer support"
+      ],
+      "tags": ["Cybersecurity", "Authentication", "HIPAA", "Threat Intelligence"]
+    },
+    {
+      "role": "IT Trainee — Server & Cloud Applications",
+      "dates": "May – Aug 2025",
+      "org": "Washington Vets-to-Tech / Saint Martin's University",
+      "location": "Lacey, WA",
+      "bullets": [
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science; 100% lab completion rate across Linux, Windows Server, networking, AWS, and Python scripting",
+        "Developed Python automation scripts for support workflows and completed hands-on networking labs covering TCP/IP, DNS, DHCP, and VPN configuration"
+      ],
+      "tags": ["Python", "AWS", "Linux", "Networking", "Windows Server"]
+    },
+    {
+      "role": "Saxophonist / Library, Security & Operations Manager",
+      "dates": "Oct 2013 – Jun 2025",
+      "org": "56th Army Band, U.S. Army",
+      "location": "Joint Base Lewis-McChord, WA",
+      "bullets": [
+        "Communicated complex technical and regulatory requirements to personnel at every level of a large organization — from senior leaders to entry-level staff — in high-pressure, time-sensitive environments",
+        "Facilitated training and certification of 200 Master Resilience Trainers as a Level 2 Facilitator across 10 cohorts, developing structured knowledge transfer and adult learning skills that underpin effective technical upleveling",
+        "Managed onboarding and offboarding of 40+ personnel, including account access and equipment assignment, with rigorous documentation throughout",
+        "Administered federal security clearance compliance for 40+ personnel with meticulous records management"
+      ],
+      "tags": ["Knowledge Transfer", "Onboarding", "Security Compliance", "Documentation"]
+    },
+    {
+      "role": "Lead Saxophone Instructor / Curriculum Writer",
+      "dates": "Jul 2009 – Oct 2013",
+      "org": "U.S. Army School of Music",
+      "location": "JEB Little Creek-Fort Story, VA",
+      "bullets": [
+        "Instructed 100+ students and 20 mid-level leaders to a 100% pass rate — including several at-risk students — through individualized coaching demonstrating persistent user empathy and ownership-driven problem-solving",
+        "Advised 40 senior leaders as subject-matter expert; assessed 400+ student performances; maintained records for 80 personnel",
+        "Contributed to curriculum and policy development for 5,000+ personnel, resulting in a 58% reduction in training cycle time through clear, reusable documentation",
+        "Earned Distinguished Leader Award, Army Leadership Development Program (2010)"
+      ],
+      "tags": ["Training", "Curriculum Design", "Documentation", "Mentoring"]
+    },
+    {
+      "role": "Saxophonist / Library & HR Manager",
+      "dates": "Feb 2006 – Jun 2009",
+      "org": "1st Armored Division Band, U.S. Army",
+      "location": "Wiesbaden, Germany",
+      "bullets": [
+        "Managed HR records and asset documentation for 40+ personnel across international assignments",
+        "Deployed in support of Operation Iraqi Freedom (2007); earned promotion to Sergeant in 2008"
+      ],
+      "tags": ["HR Management", "International Operations"]
+    }
+  ],
+
+  "education": [
+    {
+      "degree": "Washington Vets-to-Tech Cybersecurity Certificate (18 credits, B.S. Computer Science)",
+      "date": "Dec 2025",
+      "school": "Saint Martin's University",
+      "location": "Lacey, WA",
+      "note": "CSC 325 Computer Security · CSC 364 Cybersecurity Threat Intelligence · CSC 426 Vulnerability Assessment · CSC 455 Cloud Technologies"
+    },
+    {
+      "degree": "Washington Vets-to-Tech Server & Cloud Applications Certificate (18 credits, B.S. Computer Science)",
+      "date": "Aug 2025",
+      "school": "Saint Martin's University",
+      "location": "Lacey, WA",
+      "note": "CSC 160, 330, 395, 331, 235, 456 — Networking, Linux, Windows Server, Cloud"
+    },
+    {
+      "degree": "Doctor of Musical Arts (D.M.A.), Performance",
+      "date": "Dec 2005",
+      "school": "University of Iowa",
+      "location": "Iowa City, IA",
+      "note": "Dissertation: \"Integrating the Music Learning Theory of Edwin E. Gordon with a Beginning Saxophone Curriculum\""
+    },
+    {
+      "degree": "Master of Music (M.M.), Performance",
+      "date": "Jul 1999",
+      "school": "Brigham Young University",
+      "location": "Provo, UT"
+    },
+    {
+      "degree": "Bachelor of Music (B.M.), Performance & Pedagogy",
+      "date": "Apr 1997",
+      "school": "Brigham Young University",
+      "location": "Provo, UT"
+    }
+  ],
+
+  "projects": [
+    {
+      "title": "SIP — Systematic Instrumental Practice",
+      "description": "Dependency-aware spaced repetition scheduling application for serious instrumental musicians. Uses FSRS-5 scheduling, Flutter (Android-first), Python/FastAPI backend, and py-fsrs. Grounded in doctoral dissertation research applying Edwin Gordon's Music Learning Theory to systematic skill acquisition.",
+      "tags": ["Python", "Flutter", "FSRS-5", "AI Design", "Spaced Repetition"],
+      "linkLabel": "View on GitHub →",
+      "href": "https://github.com/saxd0ct0r"
+    },
+    {
+      "title": "Multi-Model AI Design Council",
+      "description": "Conducted structured design reviews of SIP's architecture using Claude, ChatGPT, Grok, Gemini, and Perplexity simultaneously — producing a canonical design specification and developing deep comparative understanding of each model's strengths, reasoning patterns, and limitations.",
+      "tags": ["Claude", "ChatGPT", "Grok", "Gemini", "Perplexity", "LLM Evaluation"],
+      "linkLabel": null,
+      "href": null
+    },
+    {
+      "title": "Python Automation Tools",
+      "description": "Subnet Calculator, VA Ratings Calculator, and Tempo Finder (binary-search algorithm) — demonstrating scripting, problem-solving, and algorithmic thinking transferable to support automation and tooling.",
+      "tags": ["Python", "Automation", "Algorithms"],
+      "linkLabel": "View on GitHub →",
+      "href": "https://github.com/saxd0ct0r/Python"
+    }
+  ],
+
+  "additional": [
+    { "label": "Language",   "text": "Fluent in Russian (verbal and written)." },
+    { "label": "Clearance",  "text": "Active federal Secret-level security clearance." },
+    { "label": "IT Resume",  "text": "General IT resume available at", "link": { "label": "timowen.me/it", "href": "https://timowen.me/it" } },
+    { "label": "DCT Resume", "text": "Data Center Technician resume available at", "link": { "label": "timowen.me/dct", "href": "https://timowen.me/dct" } }
+  ]
+}
