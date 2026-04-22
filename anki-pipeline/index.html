@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anki Card Pipeline — Timothy J. Owen</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --text:         #1a1a1a;
+      --muted:        #555;
+      --rule:         #ddd;
+      --accent:       #2a5caa;
+      --accent-hover: #1a3f7a;
+      --bg:           #fff;
+      --card-bg:      #f7f8fa;
+      --card-border:  #e2e5ea;
+      --tag-bg:       #eef2f9;
+      --tag-text:     #2a5caa;
+    }
+
+    body {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 17px;
+      line-height: 1.7;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ── NAV ── */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1.2rem;
+      border-bottom: 1px solid var(--rule);
+      margin-bottom: 2.5rem;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+    }
+    nav .wordmark { font-weight: 700; font-size: 1rem; color: var(--text); text-decoration: none; }
+    nav a { color: var(--muted); text-decoration: none; }
+    nav a:hover { color: var(--accent); }
+    nav .links { display: flex; gap: 1.4rem; }
+
+    /* ── HEADER ── */
+    header { margin-bottom: 2.2rem; }
+    header .eyebrow {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-size: 2rem;
+      font-weight: normal;
+      line-height: 1.25;
+      margin-bottom: 0.6rem;
+    }
+    .subtitle {
+      font-size: 1rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    /* ── SECTIONS ── */
+    section { margin-bottom: 2.4rem; }
+    h2 {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.9rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--rule);
+    }
+    p { margin-bottom: 1rem; }
+    p:last-child { margin-bottom: 0; }
+
+    /* ── DOWNLOAD CARD ── */
+    .download-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 1.4rem 1.6rem;
+      margin: 1.2rem 0;
+    }
+    .download-card h3 {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+      color: var(--text);
+    }
+    .download-card p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 0.9rem;
+    }
+    .download-card a.btn {
+      display: inline-block;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      padding: 0.35rem 0.9rem;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+    }
+    .download-card a.btn:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+    .version-line {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.7rem;
+    }
+
+    /* ── TAGS ── */
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-top: 1.1rem;
+    }
+    .tag {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 0.75rem;
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      border-radius: 3px;
+      padding: 0.2rem 0.55rem;
+    }
+
+    /* ── CONTENTS LIST ── */
+    .contents { list-style: none; padding: 0; }
+    .contents li {
+      padding: 0.55rem 0;
+      border-bottom: 1px solid var(--rule);
+      font-size: 0.95rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.7rem;
+    }
+    .contents li:last-child { border-bottom: none; }
+    .contents .num {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 0.75rem;
+      color: var(--muted);
+      min-width: 1.4rem;
+    }
+
+    /* ── INLINE LINKS ── */
+    a { color: var(--accent); }
+    a:hover { color: var(--accent-hover); }
+    code {
+      font-family: "Courier New", Courier, monospace;
+      font-size: 0.88em;
+      background: #f0f0f0;
+      padding: 0.1em 0.3em;
+      border-radius: 2px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      margin-top: 3.5rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--rule);
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 0.78rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="wordmark" href="https://timowen.me">TJO</a>
+    <div class="links">
+      <a href="https://timowen.me">Portfolio</a>
+      <a href="https://timowen.me/saxophone/index.html">Music</a>
+      <a href="https://timowen.me/it/index.html">IT</a>
+    </div>
+  </nav>
+
+  <header>
+    <div class="eyebrow">Project</div>
+    <h1>Anki Card Pipeline</h1>
+    <p class="subtitle">AI-assisted flashcard generation for serious learners</p>
+  </header>
+
+  <section>
+    <h2>Overview</h2>
+    <p>
+      I have used spaced repetition and Anki for years. The method works — the
+      bottleneck has always been card creation. Turning dense source material into
+      well-formulated flashcards is time-consuming, and when you rush it, the quality
+      suffers in ways that surface later as failed reviews and false confidence.
+    </p>
+    <p>
+      This project is a structured pipeline for converting source text into high-quality
+      Anki cards with the assistance of a large language model. The key innovation is
+      treating the AI's output as the beginning of a feedback loop, not the end of one.
+      Every correction — every card split, every distractor rejected, every phrasing
+      revised — gets encoded into versioned project instructions. The model's output
+      improves to match your specific standards over time, and those standards persist
+      beyond any individual conversation or context window.
+    </p>
+    <p>
+      The pipeline uses three complementary card types (direct recall, cloze deletion,
+      and multiple choice), applies Piotr Wozniak's principles of knowledge formulation
+      as a quality framework, and produces import-ready CSV files for any Anki deck.
+      It is LLM-agnostic — the framework works with any capable AI assistant.
+    </p>
+    <div class="tags">
+      <span class="tag">Anki</span>
+      <span class="tag">Spaced Repetition</span>
+      <span class="tag">AI-Assisted</span>
+      <span class="tag">LLM-Agnostic</span>
+      <span class="tag">Certification Prep</span>
+      <span class="tag">Study Skills</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Tutorial Deck</h2>
+    <p>
+      The tutorial deck teaches the pipeline itself — card design principles, the three
+      note types, the session workflow, and how to build a personal rulebook that
+      improves your process over time. No IT or programming background required.
+      Examples are drawn from anatomy, physiology, and statistics.
+    </p>
+    <p>
+      The deck was built using the pipeline, so it is itself a demonstration of the
+      output the system produces.
+    </p>
+
+    <div class="download-card">
+      <h3>Anki Card Pipeline Tutorial</h3>
+      <p>Ready-to-import deck · Source CSVs · Source document</p>
+      <a class="btn" href="Anki_Card_Pipeline_Tutorial.zip" download>Download (.zip)</a>
+      <div class="version-line">Version 1.0 · April 2026</div>
+    </div>
+
+    <p style="font-size:0.88rem; color:var(--muted);">
+      Requires <a href="https://apps.ankiweb.net">Anki</a> (free, available for
+      desktop, iOS, and Android). Import the <code>.apkg</code> file directly into
+      Anki. The CSVs are included for inspection and customization.
+    </p>
+  </section>
+
+  <section>
+    <h2>What the Tutorial Covers</h2>
+    <ul class="contents">
+      <li><span class="num">1</span>Why card quality matters — the failure modes of bad flashcards</li>
+      <li><span class="num">2</span>Wozniak's principles — the twelve rules that govern effective card design</li>
+      <li><span class="num">3</span>The three note types — when to use recall, cloze, and multiple choice</li>
+      <li><span class="num">4</span>The pipeline workflow — capture, session protocol, evaluation loop, finalization</li>
+      <li><span class="num">5</span>The living rulebook — recording decisions and improving your process over time</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Contact</h2>
+    <p>
+      Questions about the pipeline, feedback on the tutorial deck, or interest in
+      adapting the framework for a different domain — feel free to reach out.
+    </p>
+    <p>
+      <a href="mailto:timothy.j.owen@outlook.com">timothy.j.owen@outlook.com</a>
+      &ensp;·&ensp;
+      <a href="https://www.linkedin.com/in/timothy-j-owen">LinkedIn</a>
+      &ensp;·&ensp;
+      <a href="https://github.com/saxd0ct0r">GitHub</a>
+    </p>
+  </section>
+
+  <footer>
+    <span>© 2026 Timothy J. Owen</span>
+    <a href="mailto:timothy.j.owen@outlook.com">timothy.j.owen@outlook.com</a>
+  </footer>
+
+</body>
+</html>
