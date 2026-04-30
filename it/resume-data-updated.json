@@ -2,54 +2,85 @@
   "meta": {
     "pageTitle": "Timothy J. Owen — IT Resume",
     "eyebrow": "Information Technology Resume",
-    "lastUpdated": "2026-03-31"
+    "lastUpdated": "2026-04-30",
+    "notes": "General IT profile. Use timowen.me/it. Tailor skillGroups order and experience bullets per role before generating docx."
   },
 
   "header": {
-    "name": "Dr. Timothy J. Owen",
-    "subtitle": "U.S. Army Veteran · IT Professional · South Puget Sound, WA",
+    "name": "Timothy J. Owen, D.M.A.",
+    "subtitle": "U.S. Army Veteran (20 Years) · Active Federal Secret Clearance · South Puget Sound, WA",
     "contact": [
-      { "label": "(757) 502-5970",              "href": "tel:7575025970" },
-      { "label": "timothy.j.owen@outlook.com",  "href": "mailto:timothy.j.owen@outlook.com" },
-      { "label": "LinkedIn",                    "href": "https://www.linkedin.com/in/timothy-j-owen", "external": true },
-      { "label": "GitHub",                      "href": "https://github.com/saxd0ct0r", "external": true },
-      { "label": "timowen.me",                  "href": "https://timowen.me" }
+      { "label": "(757) 502-5970",             "href": "tel:7575025970" },
+      { "label": "timothy.j.owen@outlook.com", "href": "mailto:timothy.j.owen@outlook.com" },
+      { "label": "LinkedIn",                   "href": "https://www.linkedin.com/in/timothy-j-owen", "external": true },
+      { "label": "GitHub",                     "href": "https://github.com/saxd0ct0r", "external": true },
+      { "label": "timowen.me/it",              "href": "https://timowen.me/it" }
     ]
   },
 
-  "objective": "U.S. Army veteran with 20 years of leadership and an active federal Secret-level security clearance, transitioning from distinguished military service to Information Technology. Holding **CompTIA Network+**, **AWS Cloud Practitioner**, **Foundational C#**, and **Certified Entry-Level Python Programmer** certifications, and two completed Washington Vets-to-Tech programs (Server & Cloud Administration, Aug 2025; Cybersecurity, Dec 2025), I am eager to deliver secure, compliant IT support in dynamic, mission-critical environments—ensuring seamless operations and exceptional service.",
+  "objective": "Retired 20-year U.S. Army veteran with an active federal Secret-level security clearance, transitioning to Information Technology. Completed two consecutive 16-week Washington Vets-to-Tech intensive programs (Server & Cloud Applications, Aug 2025; Cybersecurity, Dec 2025) and a government IT internship at the Washington State Department of Licensing, earning CompTIA Network+, AWS Certified Cloud Practitioner, Foundational C#, and PCEP certifications. Brings documented discipline in compliance, technical documentation, and operations from two decades of military service.",
 
   "certifications": [
-    { "label": "CompTIA Network+",        "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f" },
-    { "label": "AWS Cloud Practitioner",  "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25" },
-    { "label": "Python Programmer (PCEP)","href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ" },
-    { "label": "Foundational C#",         "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft" }
+    { "label": "CompTIA Network+",                 "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f",                                              "expiry": "thru Aug 2028" },
+    { "label": "AWS Certified Cloud Practitioner", "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25",                                 "expiry": "thru Jul 2028" },
+    { "label": "Certified Entry-Level Python Programmer (PCEP)", "href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ",                                                     "expiry": "no expiry" },
+    { "label": "Foundational C# with Microsoft",   "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft",                       "expiry": "no expiry" }
   ],
 
   "skillGroups": [
     {
       "title": "Networking",
-      "items": ["IPv4 / IPv6 & Subnetting", "VPN Configuration", "Network Administration"]
-    },
-    {
-      "title": "Security",
-      "items": ["Cybersecurity Fundamentals", "Ethical Hacking", "Threat Intelligence", "Vulnerability Assessment", "MFA / TLS", "HIPAA Compliance"]
+      "items": [
+        "TCP/IP",
+        "IPv4 / IPv6 & Subnetting",
+        "DNS & DHCP",
+        "VPN Configuration",
+        "VLAN Fundamentals",
+        "Firewall Configuration (lab-based)",
+        "Patch Panel Troubleshooting",
+        "LAN Cable Termination (developing)",
+        "Network Troubleshooting"
+      ]
     },
     {
       "title": "Systems & Cloud",
-      "items": ["Windows Server / PowerShell", "Linux Bash Administration", "AWS EC2", "Ansible", "Virtualization", "CSC 455 Cloud Technologies"]
+      "items": [
+        "Windows Server / PowerShell",
+        "Linux / Bash Administration",
+        "AWS EC2",
+        "Ansible",
+        "Server Rack Mounting & Blade Installation",
+        "Virtualization (VirtualBox)"
+      ]
+    },
+    {
+      "title": "Security",
+      "items": [
+        "Security Hardening",
+        "Vulnerability Assessment",
+        "Threat Intelligence",
+        "MFA / TLS Implementation",
+        "HIPAA Compliance",
+        "Active Federal Secret Clearance"
+      ]
     },
     {
       "title": "Programming",
-      "items": ["Python (automation, scripting)", "C# (fundamentals)", "Bash Scripting", "Jupyter Notebooks"]
+      "items": [
+        "Python (automation, scripting)",
+        "C# (fundamentals)",
+        "Bash Scripting",
+        "Git (fundamentals)"
+      ]
     },
     {
-      "title": "Leadership",
-      "items": ["20 yrs military management", "Training & documentation", "Project & logistics management"]
-    },
-    {
-      "title": "Additional",
-      "items": ["Fluent Russian (verbal & written)", "10-key: 5,280 net KPH @ 94.6% accuracy", "Typing: ~60 WPM", "Federal Secret Clearance"]
+      "title": "Leadership & Operations",
+      "items": [
+        "20 years military management",
+        "Technical training & documentation",
+        "Compliance & records management",
+        "Asset & inventory management"
+      ]
     }
   ],
 
@@ -57,7 +88,7 @@
     {
       "icon": "🧠",
       "title": "Analytical Thinking",
-      "description": "Designed SRS systems and AMPA rubrics — directly applicable to IT process optimization and troubleshooting workflows."
+      "description": "Designed assessment rubrics and practice systems grounded in data — directly applicable to IT troubleshooting workflows and process optimization."
     },
     {
       "icon": "⚙️",
@@ -72,7 +103,7 @@
     {
       "icon": "📂",
       "title": "Organization",
-      "description": "Managed HR, security clearances, library operations, and $300K+ equipment inventory — directly applicable to IT asset and data management."
+      "description": "Managed HR, security clearances, library operations, and large equipment inventory — directly applicable to IT asset and data management."
     }
   ],
 
@@ -83,11 +114,12 @@
       "org": "Washington State Department of Licensing",
       "location": "Olympia, WA",
       "bullets": [
-        "Processed constituent records with 100% compliance with state data privacy policies and established departmental procedures across a 3-month engagement",
-        "Executed IT service requests in a regulated government environment, maintaining procedural compliance and detailed documentation throughout",
-        "Communicated policy requirements clearly to internal stakeholders with varying technical backgrounds"
+        "Diagnosed and resolved three network connectivity failures by tracing physical connections through patch panels and verifying switch port assignments, working in mixed supervised and independent capacity.",
+        "Executed IT service requests in a regulated government environment, maintaining procedural compliance and detailed documentation throughout.",
+        "Communicated technical requirements clearly to internal stakeholders with varying technical backgrounds.",
+        "Operated within a strict state data privacy compliance framework across the full engagement."
       ],
-      "tags": ["Government IT", "Data Privacy", "Documentation", "Compliance"]
+      "tags": ["Government IT", "Patch Panel", "Network Troubleshooting", "Data Privacy", "Documentation", "Compliance"]
     },
     {
       "role": "IT Trainee — Cybersecurity",
@@ -95,25 +127,25 @@
       "org": "Washington Vets-to-Tech / Saint Martin's University",
       "location": "Lacey, WA",
       "bullets": [
-        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science",
-        "Mastered information security, ethical hacking, and threat intelligence through hands-on coursework (CSC 325, CSC 364, CSC 426, CSC 455)",
-        "Implemented multi-factor authentication and Transport Layer Security encryption in labs; ensured compliance with HIPAA standards for clinical environments",
-        "Achieved 100% lab completion rate"
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science; 100% lab completion rate.",
+        "Applied security hardening, threat intelligence, and vulnerability assessment techniques across coursework in CSC 325, CSC 364, CSC 426, and CSC 455.",
+        "Implemented multi-factor authentication and TLS encryption in lab environments; applied HIPAA compliance standards for clinical data scenarios.",
+        "Participated in three professional development sessions on server hardware, including blade removal, disassembly, and reinstallation, under instructor direction."
       ],
-      "tags": ["Cybersecurity", "Ethical Hacking", "Threat Intelligence", "Vulnerability Assessment", "HIPAA", "MFA", "TLS", "Cloud Technologies"]
+      "tags": ["Cybersecurity", "Threat Intelligence", "Vulnerability Assessment", "HIPAA", "MFA", "TLS", "Server Hardware"]
     },
     {
-      "role": "IT Trainee — Server & Cloud Administration",
+      "role": "IT Trainee — Server & Cloud Applications",
       "dates": "May – Aug 2025",
       "org": "Washington Vets-to-Tech / Saint Martin's University",
       "location": "Lacey, WA",
       "bullets": [
-        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science",
-        "Gained hands-on experience with network configuration (IPv4/v6, subnetting, VPN) — 100% lab completion rate",
-        "Acquired Python proficiency for automating end-user support tasks and data analysis labs",
-        "Configured Windows Server via PowerShell; deployed AWS EC2 applications; configured Ansible for infrastructure automation"
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science; 100% lab completion rate.",
+        "Configured network environments across IPv4/IPv6, subnetting, and VPN in hands-on labs.",
+        "Deployed AWS EC2 applications; automated infrastructure tasks with Ansible; administered Linux and Windows Server via Bash and PowerShell.",
+        "Developed Python scripting skills through automation and data analysis exercises."
       ],
-      "tags": ["Python", "AWS EC2", "Windows Server", "PowerShell", "Linux", "Ansible", "Networking"]
+      "tags": ["Python", "AWS EC2", "Windows Server", "PowerShell", "Linux", "Ansible", "Networking", "VPN"]
     },
     {
       "role": "Saxophonist / Library, Security & Operations Manager",
@@ -121,10 +153,10 @@
       "org": "56th Army Band, U.S. Army",
       "location": "Joint Base Lewis-McChord, WA",
       "bullets": [
-        "Sustained mission-critical operations across 400+ high-stakes performances for audiences totaling 2.5M+, with 100% readiness",
-        "Managed $300K in equipment inventory with zero discrepancy across all assignments",
-        "Administered federal security clearance compliance for 40+ personnel, ensuring ongoing security and records accuracy",
-        "Facilitated training and certification of 200 Master Resilience Trainers as a Level 2 Master Resilience Facilitator"
+        "Sustained mission-critical operations across 400+ high-stakes engagements for audiences totaling 2.5M+, with 100% readiness.",
+        "Managed large equipment inventory across all assignments with zero discrepancy.",
+        "Administered federal security clearance compliance records for 40+ personnel, maintaining accuracy and currency throughout.",
+        "Certified 200 personnel as Master Resilience Trainers across 10 cohorts as a Level 2 Facilitator."
       ],
       "tags": ["Security Clearance", "Asset Management", "Compliance", "Leadership", "Training"]
     },
@@ -134,14 +166,13 @@
       "org": "U.S. Army School of Music",
       "location": "JEB Little Creek-Fort Story, VA",
       "bullets": [
-        "Instructed 100+ new trainees and 20 mid-level leaders in individualized professional development programs, achieving a 100% pass rate",
-        "Advised 40 senior leaders as subject-matter expert in administering field assessments, resulting in improved assessment quality",
-        "Assessed 400+ student performances and coached 12 small and medium-sized performance teams",
-        "Maintained training records for staff and faculty of 80 personnel",
-        "Contributed to curriculum and policy development for a career field of 5,000+ personnel, resulting in a 58% reduction in training cycle time",
-        "Earned Distinguished Leader Award at the Army Leadership Development Program (2010)"
+        "Instructed 100+ new trainees and 20 mid-level leaders; achieved 100% student pass rate.",
+        "Advised 40 senior leaders as subject-matter expert in field assessment administration.",
+        "Contributed to curriculum and policy redesign for a career field of 5,000+ personnel, resulting in a 58% reduction in training cycle time.",
+        "Maintained training and administrative records for a staff and faculty of 80 personnel.",
+        "Earned Distinguished Leader Award, Army Leadership Development Program (2010)."
       ],
-      "tags": ["Training", "Documentation", "Curriculum Design", "Leadership"]
+      "tags": ["Training", "Documentation", "Curriculum Design", "Leadership", "Assessment"]
     },
     {
       "role": "Saxophonist / Library & HR Manager",
@@ -149,37 +180,26 @@
       "org": "1st Armored Division Band, U.S. Army",
       "location": "Wiesbaden, Germany",
       "bullets": [
-        "Performed 120–150 missions including 60 international assignments; deployed in support of Operation Iraqi Freedom (2007)",
-        "Managed HR administration and library operations for 40+ personnel, enforcing documentation accuracy and compliance",
-        "Earned promotion to Sergeant (E-5) in 2008"
+        "Participated in 120–150 performances and engagements across 60 international assignments; deployed in support of Operation Iraqi Freedom (2007).",
+        "Managed HR administration and library operations for 40+ personnel, enforcing documentation accuracy and compliance.",
+        "Earned promotion to Sergeant (E-5) in 2008."
       ],
       "tags": ["International Operations", "HR Management", "Asset Management"]
-    },
-    {
-      "role": "Retail Sales Associate — Cash Handling",
-      "dates": "Prior to 2005",
-      "org": "Puppet Vendor, Marriott's Great America",
-      "location": "Santa Clara, CA",
-      "bullets": [
-        "Handled cash transactions directly with customers in a high-volume retail environment, maintaining accurate drawer balances",
-        "Identified customer interests and matched them to available products, developing cross-selling instincts"
-      ],
-      "tags": ["Cash Handling", "Customer Service", "Retail Sales"]
     }
   ],
 
   "education": [
     {
-      "degree": "Washington Vets-to-Tech Cybersecurity Certificate (18 credits, B.S. Computer Science)",
+      "degree": "Cybersecurity Certificate (18 credits, B.S. Computer Science)",
       "date": "Dec 2025",
-      "school": "Saint Martin's University",
+      "school": "Washington Vets-to-Tech / Saint Martin's University",
       "location": "Lacey, WA",
       "note": "CSC 325 Computer Security · CSC 364 Cybersecurity Threat Intelligence · CSC 426 Vulnerability Assessment · CSC 455 Cloud Technologies"
     },
     {
-      "degree": "Washington Vets-to-Tech Server & Cloud Administration Certificate (18 credits, B.S. Computer Science)",
+      "degree": "Server & Cloud Applications Certificate (18 credits, B.S. Computer Science)",
       "date": "Aug 2025",
-      "school": "Saint Martin's University",
+      "school": "Washington Vets-to-Tech / Saint Martin's University",
       "location": "Lacey, WA",
       "note": "CSC 160, 330, 395, 331, 235, 456 — Networking, Linux, Windows Server, Cloud"
     },
@@ -207,7 +227,7 @@
   "projects": [
     {
       "title": "Subnet Calculator",
-      "description": "Python tool automating IPv4 subnet calculations for network troubleshooting. Demonstrates scripting, documentation, and process optimization.",
+      "description": "Python tool automating IPv4 subnet calculations for network troubleshooting and study. Demonstrates scripting, documentation, and process optimization.",
       "tags": ["Python", "Networking"],
       "linkLabel": "View on GitHub →",
       "href": "https://github.com/saxd0ct0r/Python/tree/main/subnet_calc"
@@ -228,7 +248,7 @@
     },
     {
       "title": "Music Practice SRS",
-      "description": "Anki-based spaced repetition system for saxophone practice and study preparation. Applied SuperMemo principles to automated scale/pattern generation.",
+      "description": "Anki-based spaced repetition system for saxophone practice. Applied SuperMemo scheduling principles to automated scale and pattern generation.",
       "tags": ["Python", "Automation"],
       "linkLabel": "View Demo →",
       "href": "https://timowen.me/saxophone/music-practice-app/practice-app.html"
@@ -236,9 +256,9 @@
   ],
 
   "additional": [
-    { "label": "Language",    "text": "Fluent in Russian (verbal and written)." },
-    { "label": "Clearance",   "text": "Active federal Secret-level security clearance." },
-    { "label": "Typing",      "text": "Approximately 60 WPM; 10-key proficiency at 5,280 net KPH (94.6% accuracy)." },
-    { "label": "Music Portfolio", "text": "Full academic and performance credentials available at", "link": { "label": "timowen.me/saxophone", "href": "https://timowen.me/saxophone/" } }
+    { "label": "Language",  "text": "Fluent in Russian (verbal and written)." },
+    { "label": "Clearance", "text": "Active federal Secret-level security clearance." },
+    { "label": "Typing",    "text": "Approximately 60 WPM; 10-key at 5,280 net KPH (94.6% accuracy). Include only for banking or data-entry roles." },
+    { "label": "Portfolio", "text": "Full IT profile and projects:", "link": { "label": "timowen.me/it", "href": "https://timowen.me/it" } }
   ]
 }
