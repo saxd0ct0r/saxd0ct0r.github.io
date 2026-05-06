@@ -2,7 +2,7 @@
   "meta": {
     "pageTitle": "Timothy J. Owen — IT Resume",
     "eyebrow": "Information Technology Resume",
-    "lastUpdated": "2026-05-06",
+    "lastUpdated": "2026-04-30",
     "notes": "General IT profile. Use timowen.me/it. Tailor skillGroups order and experience bullets per role before generating docx."
   },
 
@@ -21,32 +21,10 @@
   "objective": "Retired 20-year U.S. Army veteran with an active federal Secret-level security clearance, transitioning to Information Technology. Completed two consecutive 16-week Washington Vets-to-Tech intensive programs (Server & Cloud Applications, Aug 2025; Cybersecurity, Dec 2025) and a government IT internship at the Washington State Department of Licensing, earning CompTIA Network+, AWS Certified Cloud Practitioner, Foundational C#, and PCEP certifications. Brings documented discipline in compliance, technical documentation, and operations from two decades of military service.",
 
   "certifications": [
-    {
-      "label": "CompTIA Network+",
-      "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f",
-      "expiry": "thru Aug 2028"
-    },
-    {
-      "label": "AWS Certified Cloud Practitioner",
-      "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25",
-      "expiry": "thru Jul 2028"
-    },
-    {
-      "label": "Certified Entry-Level Python Programmer (PCEP)",
-      "href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ",
-      "expiry": "no expiry"
-    },
-    {
-      "label": "Foundational C# with Microsoft",
-      "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft",
-      "expiry": "no expiry"
-    },
-    {
-      "label": "CompTIA Security+ (in progress)",
-      "href": null,
-      "expiry": "exam targeted Jun 2026",
-      "inProgress": true
-    }
+    { "label": "CompTIA Network+",                 "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f",                                              "expiry": "thru Aug 2028" },
+    { "label": "AWS Certified Cloud Practitioner", "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25",                                 "expiry": "thru Jul 2028" },
+    { "label": "Certified Entry-Level Python Programmer (PCEP)", "href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ",                                                     "expiry": "no expiry" },
+    { "label": "Foundational C# with Microsoft",   "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft",                       "expiry": "no expiry" }
   ],
 
   "skillGroups": [
@@ -67,11 +45,8 @@
     {
       "title": "Systems & Cloud",
       "items": [
-        "Windows 10/11",
         "Windows Server / PowerShell",
-        "Active Directory & Group Policy",
         "Linux / Bash Administration",
-        "Workstation Setup & Imaging",
         "AWS EC2",
         "Ansible",
         "Server Rack Mounting & Blade Installation",
@@ -251,14 +226,6 @@
 
   "projects": [
     {
-      "title": "SIP — Systematic Instrumental Practice",
-      "description": "Android-first Flutter application for serious instrumental musicians. Uses FSRS-5 spaced repetition scheduling, Python/FastAPI backend, and py-fsrs. Grounded in doctoral dissertation applying Edwin Gordon's Music Learning Theory. Multi-model AI design council produced canonical design specification v1.0. In active development.",
-      "tags": ["Flutter", "Python", "FastAPI", "FSRS-5", "Android"],
-      "linkLabel": null,
-      "href": null,
-      "inProgress": true
-    },
-    {
       "title": "Subnet Calculator",
       "description": "Python tool automating IPv4 subnet calculations for network troubleshooting and study. Demonstrates scripting, documentation, and process optimization.",
       "tags": ["Python", "Networking"],
@@ -281,8 +248,8 @@
     },
     {
       "title": "Music Practice SRS",
-      "description": "Anki-based spaced repetition system for saxophone practice using custom Mustache templates and JavaScript event handling. SQLite database access for Anki note type extraction.",
-      "tags": ["Python", "JavaScript", "Anki", "SQLite"],
+      "description": "Anki-based spaced repetition system for saxophone practice. Applied SuperMemo scheduling principles to automated scale and pattern generation.",
+      "tags": ["Python", "Automation"],
       "linkLabel": "View Demo →",
       "href": "https://timowen.me/saxophone/music-practice-app/practice-app.html"
     }
@@ -291,7 +258,7 @@
   "additional": [
     { "label": "Language",  "text": "Fluent in Russian (verbal and written)." },
     { "label": "Clearance", "text": "Active federal Secret-level security clearance." },
-    { "label": "Typing",    "text": "Approximately 60 WPM; 10-key at 5,280 net KPH (94.6% accuracy). Include only for banking or data-entry roles.", "internalNote": true },
+    { "label": "Typing",    "text": "Approximately 60 WPM; 10-key at 5,280 net KPH (94.6% accuracy). Include only for banking or data-entry roles." },
     { "label": "Portfolio", "text": "Full IT profile and projects:", "link": { "label": "timowen.me/it", "href": "https://timowen.me/it" } }
   ]
 }
