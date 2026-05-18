@@ -1,460 +1,606 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Timothy J. Owen, D.M.A. — Saxophone Performance Portfolio</title>
-  <meta name="description" content="Timothy J. Owen, D.M.A. — Saxophone performance portfolio. World premiere recordings, performance videos, and pedagogical tools.">
-  <meta name="author" content="Timothy J. Owen, D.M.A.">
-  <link rel="preconnect" href="https://www.youtube.com">
-  <link rel="preconnect" href="https://www.facebook.com">
-  <link rel="stylesheet" href="../shared.css">
-  <link rel="icon" type="image/x-icon" href="../favicon.ico">
-  <link rel="icon" type="image/png" sizes="48x48" href="../favicon-48.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timothy J. Owen, D.M.A. — Saxophone Performance Portfolio</title>
+    <meta
+      name="description"
+      content="Timothy J. Owen, D.M.A. — Saxophone performance portfolio. World premiere recordings, performance videos, and pedagogical tools."
+    />
+    <meta name="author" content="Timothy J. Owen, D.M.A." />
+    <link rel="preconnect" href="https://www.youtube.com" />
+    <link rel="preconnect" href="https://www.facebook.com" />
+    <link rel="stylesheet" href="../shared.css" />
+    <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+    <link rel="icon" type="image/png" sizes="48x48" href="../favicon-48.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16.png" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="../apple-touch-icon.png"
+    />
 
-  <style>
-    /* ── Overview block ─────────────────────────────────────────────────── */
-    /* Mirrors .objective-block from /it/index.html for visual consistency  */
+    <style>
+      /* ── Overview block ─────────────────────────────────────────────────── */
+      /* Mirrors .objective-block from /it/index.html for visual consistency  */
 
-    .overview-block {
-      background: var(--cream);
-      border-left: 5px solid var(--gold);
-      border-radius: 0 var(--radius) var(--radius) 0;
-      padding: 18px 22px;
-      margin-top: 32px;
-      font-size: 0.96rem;
-      line-height: 1.7;
-      color: var(--text-muted);
-    }
-    .overview-block strong { color: var(--navy); }
-    .overview-block em { font-style: italic; }
+      .overview-block {
+        background: var(--cream);
+        border-left: 5px solid var(--gold);
+        border-radius: 0 var(--radius) var(--radius) 0;
+        padding: 18px 22px;
+        margin-top: 32px;
+        font-size: 0.96rem;
+        line-height: 1.7;
+        color: var(--text-muted);
+      }
+      .overview-block strong {
+        color: var(--navy);
+      }
+      .overview-block em {
+        font-style: italic;
+      }
 
-    /* ── Premiere info ──────────────────────────────────────────────────── */
+      /* ── Premiere info ──────────────────────────────────────────────────── */
 
-    .premiere-byline {
-      margin-bottom: 16px;
-    }
-    .premiere-byline .entry-role {
-      font-size: 1rem;
-    }
-    .premiere-byline .entry-org {
-      margin-bottom: 6px;
-    }
-    .premiere-byline p {
-      font-size: 0.88rem;
-    }
+      .premiere-byline {
+        margin-bottom: 16px;
+      }
+      .premiere-byline .entry-role {
+        font-size: 1rem;
+      }
+      .premiere-byline .entry-org {
+        margin-bottom: 6px;
+      }
+      .premiere-byline p {
+        font-size: 0.88rem;
+      }
 
-    /* ── Audio grid & cards ─────────────────────────────────────────────── */
-    /* Styled as .skill-card siblings — cream fill, gold left rule          */
+      /* ── Audio grid & cards ─────────────────────────────────────────────── */
+      /* Styled as .skill-card siblings — cream fill, gold left rule          */
 
-    .audio-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 14px;
-      margin-top: 16px;
-    }
-    .audio-card {
-      background: var(--cream);
-      border: 1px solid var(--rule);
-      border-left: 4px solid var(--gold);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-    }
-    .audio-card h4 {
-      font-family: var(--serif);
-      font-size: 0.95rem;
-      color: var(--navy);
-      margin-bottom: 8px;
-      font-weight: 600;
-    }
-    .audio-card audio { width: 100%; }
+      .audio-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 14px;
+        margin-top: 16px;
+      }
+      .audio-card {
+        background: var(--cream);
+        border: 1px solid var(--rule);
+        border-left: 4px solid var(--gold);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+      }
+      .audio-card h4 {
+        font-family: var(--serif);
+        font-size: 0.95rem;
+        color: var(--navy);
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      .audio-card audio {
+        width: 100%;
+      }
 
-    /* ── Responsive video wrapper — 16 : 9 ─────────────────────────────── */
+      /* ── Responsive video wrapper — 16 : 9 ─────────────────────────────── */
 
-    .video-wrapper {
-      position: relative;
-      width: 100%;
-      padding-top: 56.25%;
-      margin: 12px 0 6px;
-      background: var(--cream);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-    .video-wrapper iframe {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      border: none;
-    }
+      .video-wrapper {
+        position: relative;
+        width: 100%;
+        padding-top: 56.25%;
+        margin: 12px 0 6px;
+        background: var(--cream);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+      .video-wrapper iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
 
-    /* ── Video block ────────────────────────────────────────────────────── */
+      /* ── Video block ────────────────────────────────────────────────────── */
 
-    .video-block { margin-bottom: 2.25rem; }
-    .video-block:last-child { margin-bottom: 0; }
-    .video-block .video-title {
-      font-weight: 600;
-      color: var(--navy);
-      font-size: 1rem;
-      margin-bottom: 2px;
-    }
-    .video-block .video-desc {
-      font-size: 0.875rem;
-      color: var(--text-muted);
-      margin-bottom: 0;
-    }
+      .video-block {
+        margin-bottom: 2.25rem;
+      }
+      .video-block:last-child {
+        margin-bottom: 0;
+      }
+      .video-block .video-title {
+        font-weight: 600;
+        color: var(--navy);
+        font-size: 1rem;
+        margin-bottom: 2px;
+      }
+      .video-block .video-desc {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin-bottom: 0;
+      }
 
-    /* ── Inline resource link (under Performance Videos section) ────────── */
+      /* ── Inline resource link (under Performance Videos section) ────────── */
 
-    .resource-link {
-      display: flex;
-      align-items: baseline;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-top: 10px;
-      font-size: 0.875rem;
-    }
-    .resource-link a { font-weight: 600; }
-    .resource-link .res-desc { color: var(--text-muted); }
+      .resource-link {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: 10px;
+        font-size: 0.875rem;
+      }
+      .resource-link a {
+        font-weight: 600;
+      }
+      .resource-link .res-desc {
+        color: var(--text-muted);
+      }
 
-    /* ── Resource list (Additional Resources) ───────────────────────────── */
+      /* ── Resource list (Additional Resources) ───────────────────────────── */
 
-    .resource-list {
-      list-style: none;
-      margin-top: 6px;
-    }
-    .resource-list li {
-      padding: 0.6rem 0;
-      border-bottom: 1px solid var(--rule);
-      display: flex;
-      align-items: baseline;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-    .resource-list li:last-child { border-bottom: none; }
-    .resource-list .res-label {
-      font-weight: 600;
-      font-size: 0.9375rem;
-      white-space: nowrap;
-    }
-    .resource-list .res-desc {
-      font-size: 0.875rem;
-      color: var(--text-muted);
-    }
+      .resource-list {
+        list-style: none;
+        margin-top: 6px;
+      }
+      .resource-list li {
+        padding: 0.6rem 0;
+        border-bottom: 1px solid var(--rule);
+        display: flex;
+        align-items: baseline;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .resource-list li:last-child {
+        border-bottom: none;
+      }
+      .resource-list .res-label {
+        font-weight: 600;
+        font-size: 0.9375rem;
+        white-space: nowrap;
+      }
+      .resource-list .res-desc {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+      }
 
-    /* ── Responsive overrides ───────────────────────────────────────────── */
+      /* ── Responsive overrides ───────────────────────────────────────────── */
 
-    @media (max-width: 600px) {
-      .audio-grid { grid-template-columns: 1fr; }
-      .resource-list li { flex-direction: column; gap: 0.2rem; }
-      .resource-list .res-label { white-space: normal; }
-    }
-  </style>
-</head>
+      @media (max-width: 600px) {
+        .audio-grid {
+          grid-template-columns: 1fr;
+        }
+        .resource-list li {
+          flex-direction: column;
+          gap: 0.2rem;
+        }
+        .resource-list .res-label {
+          white-space: normal;
+        }
+      }
+    </style>
+  </head>
 
-<body>
+  <body>
+    <!-- ── Site Header ──────────────────────────────────────────────────── -->
 
-  <!-- ── Site Header ──────────────────────────────────────────────────── -->
+    <header class="site-header">
+      <p class="eyebrow">Music Performance Portfolio</p>
+      <h1>Timothy J. Owen, D.M.A.</h1>
+      <p class="subtitle">
+        Saxophonist &nbsp;&middot;&nbsp; Music Educator &nbsp;&middot;&nbsp;
+        U.S. Army Veteran
+      </p>
+      <div class="contact-bar">
+        <a href="tel:7575025970">(757) 502-5970</a>
+        <span>|</span>
+        <a href="mailto:timothy.j.owen@outlook.com"
+          >timothy.j.owen@outlook.com</a
+        >
+        <span>|</span>
+        <a href="https://timowen.me/saxophone">timowen.me/saxophone</a>
+      </div>
+    </header>
 
-  <header class="site-header">
-    <p class="eyebrow">Music Performance Portfolio</p>
-    <h1>Timothy J. Owen, D.M.A.</h1>
-    <p class="subtitle">Saxophonist &nbsp;&middot;&nbsp; Music Educator &nbsp;&middot;&nbsp; U.S. Army Veteran</p>
-    <div class="contact-bar">
-      <a href="tel:7575025970">(757) 502-5970</a>
-      <span>|</span>
-      <a href="mailto:timothy.j.owen@outlook.com">timothy.j.owen@outlook.com</a>
-      <span>|</span>
-      <a href="https://timowen.me/saxophone">timowen.me/saxophone</a>
-    </div>
-  </header>
+    <!-- ── Nav strip ────────────────────────────────────────────────────── -->
 
-  <!-- ── Nav strip ────────────────────────────────────────────────────── -->
+    <nav class="nav-strip">
+      <a href="https://timowen.me">&#8592; Home</a>
+      <a href="https://timowen.me/it/index.html">IT Resume</a>
+      <a href="https://timowen.me/saxophone/index.html" class="active"
+        >Music Portfolio</a
+      >
+    </nav>
 
-  <nav class="nav-strip">
-    <a href="https://timowen.me">&#8592; Home</a>
-    <a href="https://timowen.me/it/index.html">IT Resume</a>
-    <a href="https://timowen.me/saxophone/index.html" class="active">Music Portfolio</a>
-  </nav>
+    <!-- ── Page content ─────────────────────────────────────────────────── -->
 
-  <!-- ── Page content ─────────────────────────────────────────────────── -->
+    <div class="page-wrap">
+      <!-- Overview -->
+      <div class="overview-block">
+        <strong>About this portfolio.</strong> Three decades of professional
+        performance and post-secondary teaching, anchored by a Doctor of Musical
+        Arts from the University of Iowa and twenty years of concert performance
+        with U.S. Army bands across the Pacific Northwest, Europe, Korea, and
+        the Middle East. Doctoral research:
+        <em
+          >"Integrating the Music Learning Theory of Edwin E. Gordon with a
+          Beginning Saxophone Curriculum"</em
+        >
+        (2005). Post-secondary teaching spans five institutions; 100% student
+        pass rate across four years at the U.S. Army School of Music. Primary
+        instrument: saxophones. Secondary: clarinet, flute.
+      </div>
 
-  <div class="page-wrap">
+      <!-- ── World Premiere Recording ──────────────────────────────────── -->
 
-    <!-- Overview -->
-    <div class="overview-block">
-      <strong>About this portfolio.</strong> Three decades of professional performance and post-secondary teaching,
-      anchored by a Doctor of Musical Arts from the University of Iowa and twenty years of concert performance
-      with U.S. Army bands across the Pacific Northwest, Europe, Korea, and the Middle East.
-      Doctoral research: <em>"Integrating the Music Learning Theory of Edwin E. Gordon with a Beginning Saxophone Curriculum"</em> (2005).
-      Post-secondary teaching spans five institutions; 100% student pass rate across four years at the U.S. Army School of Music.
-      Primary instrument: alto saxophone. Secondary: clarinet, flute, oboe.
-    </div>
+      <section class="section">
+        <h2 class="section-title">World Premiere Recording</h2>
 
-    <!-- ── World Premiere Recording ──────────────────────────────────── -->
-
-    <section class="section">
-      <h2 class="section-title">World Premiere Recording</h2>
-
-      <div class="premiere-byline">
-        <div class="entry-header">
-          <span class="entry-role">
-            Adelaide Coles &mdash; <em>Sonata for Alto Saxophone and Piano</em> (2011)
-          </span>
+        <div class="premiere-byline">
+          <div class="entry-header">
+            <span class="entry-role">
+              Adelaide Coles &mdash;
+              <em>Sonata for Alto Saxophone and Piano</em> (2011)
+            </span>
+          </div>
+          <p class="entry-org">
+            World premiere &middot; Chandler Hall, Old Dominion University
+            &middot; November 2012
+          </p>
+          <p>
+            This recording documents the first public performance of the
+            commissioned work.
+          </p>
         </div>
-        <p class="entry-org">
-          World premiere &middot; Chandler Hall, Old Dominion University &middot; November 2012
-        </p>
+
+        <div class="audio-grid">
+          <div class="audio-card">
+            <h4>I. Allegro</h4>
+            <audio controls aria-label="Coles Sonata, Movement I: Allegro">
+              <source
+                src="/saxophone/media/coles-sonata-movement1.mp3"
+                type="audio/mpeg"
+              />
+              <a href="/saxophone/media/coles-sonata-movement1.mp3"
+                >Download MP3</a
+              >
+            </audio>
+          </div>
+          <div class="audio-card">
+            <h4>II. Lento</h4>
+            <audio controls aria-label="Coles Sonata, Movement II: Lento">
+              <source
+                src="/saxophone/media/coles-sonata-movement2.mp3"
+                type="audio/mpeg"
+              />
+              <a href="/saxophone/media/coles-sonata-movement2.mp3"
+                >Download MP3</a
+              >
+            </audio>
+          </div>
+          <div class="audio-card">
+            <h4>III. With Rhythmic Drive!</h4>
+            <audio
+              controls
+              aria-label="Coles Sonata, Movement III: With Rhythmic Drive!"
+            >
+              <source
+                src="/saxophone/media/coles-sonata-movement3.mp3"
+                type="audio/mpeg"
+              />
+              <a href="/saxophone/media/coles-sonata-movement3.mp3"
+                >Download MP3</a
+              >
+            </audio>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Performance Videos ────────────────────────────────────────── -->
+
+      <section class="section">
+        <h2 class="section-title">Performance Videos</h2>
         <p>
-          This recording documents the first public performance of the commissioned work.
+          A 30-minute curated playlist demonstrating proficiency across
+          classical and jazz repertoire, drawn from solo recitals, ensemble
+          performances, and Army Band concert recordings.
         </p>
-      </div>
 
-      <div class="audio-grid">
-        <div class="audio-card">
-          <h4>I. Allegro</h4>
-          <audio controls aria-label="Coles Sonata, Movement I: Allegro">
-            <source src="/saxophone/media/coles-sonata-movement1.mp3" type="audio/mpeg">
-            <a href="/saxophone/media/coles-sonata-movement1.mp3">Download MP3</a>
-          </audio>
-        </div>
-        <div class="audio-card">
-          <h4>II. Lento</h4>
-          <audio controls aria-label="Coles Sonata, Movement II: Lento">
-            <source src="/saxophone/media/coles-sonata-movement2.mp3" type="audio/mpeg">
-            <a href="/saxophone/media/coles-sonata-movement2.mp3">Download MP3</a>
-          </audio>
-        </div>
-        <div class="audio-card">
-          <h4>III. With Rhythmic Drive!</h4>
-          <audio controls aria-label="Coles Sonata, Movement III: With Rhythmic Drive!">
-            <source src="/saxophone/media/coles-sonata-movement3.mp3" type="audio/mpeg">
-            <a href="/saxophone/media/coles-sonata-movement3.mp3">Download MP3</a>
-          </audio>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── Performance Videos ────────────────────────────────────────── -->
-
-    <section class="section">
-      <h2 class="section-title">Performance Videos</h2>
-      <p>
-        A 30-minute curated playlist demonstrating proficiency across classical and jazz repertoire,
-        drawn from solo recitals, ensemble performances, and Army Band concert recordings.
-      </p>
-
-      <div class="video-wrapper">
-        <iframe
-          src="https://www.youtube.com/embed/videoseries?list=PLgx2MX_sbFZNrtIpZeOqfa0QIYLMGs_68"
-          title="Timothy J. Owen — Performance Playlist"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerpolicy="strict-origin-when-cross-origin"
-          loading="lazy"
-          allowfullscreen>
-        </iframe>
-      </div>
-
-      <div class="resource-link">
-        <a href="https://youtube.com/playlist?list=PLgx2MX_sbFZP9xbdg0_GCoLfcwDST5pdA&si=2-AWmpRolPG1ESw0"
-           target="_blank" rel="noopener noreferrer">
-          D.M.A. Final Recital &mdash; University of Iowa (2004)
-        </a>
-        <span class="res-desc">Complete recital recording &middot; YouTube playlist</span>
-      </div>
-    </section>
-
-    <!-- ── Sacred & Ceremonial Performances ─────────────────────────── -->
-
-    <section class="section">
-      <h2 class="section-title">Sacred &amp; Ceremonial Performances</h2>
-      <p>
-        Selected performances from ceremonial and sacred contexts, including an original
-        saxophone quartet arrangement distributed by U.S. Army chaplains for Easter devotional use (2023).
-      </p>
-
-      <div class="video-block">
-        <p class="video-title"><em>O Divine Redeemer</em> &mdash; Saxophone Quartet</p>
-        <p class="video-desc">
-          Original arrangement for saxophone quartet, recorded at Joint Base Lewis-McChord.
-          Distributed by Army chaplains for Easter devotional use, 2023.
-        </p>
         <div class="video-wrapper">
           <iframe
-            src="https://www.youtube.com/embed/OMremUzqo7c?si=y1vK3qkHyw7Xs0Mm"
-            title="O Divine Redeemer — Saxophone Quartet"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            src="https://www.youtube.com/embed/videoseries?list=PLgx2MX_sbFZNrtIpZeOqfa0QIYLMGs_68"
+            title="Timothy J. Owen — Performance Playlist"
+            allow="
+              accelerometer;
+              autoplay;
+              clipboard-write;
+              encrypted-media;
+              gyroscope;
+              picture-in-picture;
+              web-share;
+            "
             referrerpolicy="strict-origin-when-cross-origin"
             loading="lazy"
-            allowfullscreen>
+            allowfullscreen
+          >
           </iframe>
         </div>
-      </div>
 
-      <div class="video-block">
-        <p class="video-title"><em>Silent Night</em> (arr. Lex de Azevedo)</p>
-        <p class="video-desc">America&rsquo;s First Corps Band virtual performance.</p>
-        <div class="video-wrapper">
-          <iframe
-            src="https://www.facebook.com/plugins/video.php?height=314&href=https%3A%2F%2Fwww.facebook.com%2FAmericasFirstCorpsBand%2Fvideos%2F5213721588655444%2F&show_text=false&width=560&t=0"
-            title="Silent Night — America's First Corps Band"
-            scrolling="no"
-            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-            loading="lazy"
-            allowfullscreen>
-          </iframe>
+        <div class="resource-link">
+          <a
+            href="https://youtube.com/playlist?list=PLgx2MX_sbFZP9xbdg0_GCoLfcwDST5pdA&si=2-AWmpRolPG1ESw0"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            D.M.A. Final Recital &mdash; University of Iowa (2004)
+          </a>
+          <span class="res-desc"
+            >Complete recital recording &middot; YouTube playlist</span
+          >
         </div>
-      </div>
+      </section>
 
-      <div class="video-block">
-        <p class="video-title"><em>I Saw Three Ships</em> (arr. Kurt Bestor)</p>
-        <p class="video-desc">America&rsquo;s First Corps Band.</p>
-        <div class="video-wrapper">
-          <iframe
-            src="https://www.youtube.com/embed/8wQgpw_D9l4?si=ooAcjuaf4HQuk9V8"
-            title="I Saw Three Ships — America's First Corps Band"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerpolicy="strict-origin-when-cross-origin"
-            loading="lazy"
-            allowfullscreen>
-          </iframe>
+      <!-- ── Sacred & Ceremonial Performances ─────────────────────────── -->
+
+      <section class="section">
+        <h2 class="section-title">Sacred &amp; Ceremonial Performances</h2>
+        <p>
+          Selected performances from ceremonial and sacred contexts, including
+          an original saxophone quartet arrangement distributed by U.S. Army
+          chaplains for Easter devotional use (2023).
+        </p>
+
+        <div class="video-block">
+          <p class="video-title">
+            <em>O Divine Redeemer</em> &mdash; Saxophone Quartet
+          </p>
+          <p class="video-desc">
+            Original arrangement for saxophone quartet, recorded at Joint Base
+            Lewis-McChord. Distributed by Army chaplains for Easter devotional
+            use, 2023.
+          </p>
+          <div class="video-wrapper">
+            <iframe
+              src="https://www.youtube.com/embed/OMremUzqo7c?si=y1vK3qkHyw7Xs0Mm"
+              title="O Divine Redeemer — Saxophone Quartet"
+              allow="
+                accelerometer;
+                autoplay;
+                clipboard-write;
+                encrypted-media;
+                gyroscope;
+                picture-in-picture;
+                web-share;
+              "
+              referrerpolicy="strict-origin-when-cross-origin"
+              loading="lazy"
+              allowfullscreen
+            >
+            </iframe>
+          </div>
         </div>
-      </div>
-    </section>
 
-    <!-- ── Pedagogical Tools ─────────────────────────────────────────── -->
-    <!-- Reuses .project-grid / .project-card from shared.css             -->
+        <div class="video-block">
+          <p class="video-title"><em>Silent Night</em> (arr. Lex de Azevedo)</p>
+          <p class="video-desc">
+            America&rsquo;s First Corps Band virtual performance.
+          </p>
+          <div class="video-wrapper">
+            <iframe
+              src="https://www.facebook.com/plugins/video.php?height=314&href=https%3A%2F%2Fwww.facebook.com%2FAmericasFirstCorpsBand%2Fvideos%2F5213721588655444%2F&show_text=false&width=560&t=0"
+              title="Silent Night — America's First Corps Band"
+              scrolling="no"
+              allow="
+                autoplay;
+                clipboard-write;
+                encrypted-media;
+                picture-in-picture;
+                web-share;
+              "
+              loading="lazy"
+              allowfullscreen
+            >
+            </iframe>
+          </div>
+        </div>
 
-    <section class="section">
-      <h2 class="section-title">Pedagogical Tools</h2>
+        <div class="video-block">
+          <p class="video-title">
+            <em>I Saw Three Ships</em> (arr. Kurt Bestor)
+          </p>
+          <p class="video-desc">America&rsquo;s First Corps Band.</p>
+          <div class="video-wrapper">
+            <iframe
+              src="https://www.youtube.com/embed/8wQgpw_D9l4?si=ooAcjuaf4HQuk9V8"
+              title="I Saw Three Ships — America's First Corps Band"
+              allow="
+                accelerometer;
+                autoplay;
+                clipboard-write;
+                encrypted-media;
+                gyroscope;
+                picture-in-picture;
+                web-share;
+              "
+              referrerpolicy="strict-origin-when-cross-origin"
+              loading="lazy"
+              allowfullscreen
+            >
+            </iframe>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Pedagogical Tools ─────────────────────────────────────────── -->
+      <!-- Reuses .project-grid / .project-card from shared.css             -->
+
+      <section class="section">
+        <h2 class="section-title">Pedagogical Tools</h2>
+        <p>
+          These tools emerged from the questions at the center of my doctoral
+          work. Each applies principles from Edwin Gordon&rsquo;s Music Learning
+          Theory or performance psychology to instrumental practice problems
+          that rote methods tend to leave unsolved.
+        </p>
+
+        <div class="project-grid">
+          <div class="project-card">
+            <h4>SIP &mdash; Systematic Instrumental Practice</h4>
+            <p>
+              Android-first mobile application applying FSRS-5 spaced-repetition
+              scheduling to instrumental practice. Treats technical performance
+              elements as discrete reviewable items scheduled at optimal
+              intervals for durable retention. Grounded in Music Learning Theory
+              (Gordon) &mdash; the subject of my D.M.A. dissertation.
+              Multi-model AI design council produced canonical specification
+              v1.0.
+            </p>
+            <div>
+              <span class="tag">Flutter</span>
+              <span class="tag">Python</span>
+              <span class="tag">FastAPI</span>
+              <span class="tag">FSRS-5</span>
+              <span class="tag">Android</span>
+            </div>
+            <p
+              style="
+                font-size: 0.82rem;
+                color: var(--text-muted);
+                margin-top: 8px;
+                font-family: var(--mono);
+              "
+            >
+              In active development
+            </p>
+          </div>
+
+          <div class="project-card">
+            <h4>Tempo Finder</h4>
+            <p>
+              Binary-search algorithm for systematic tempo progression in
+              practice. Locates the precise boundary between control and
+              breakdown, removing guesswork from incremental speed work.
+            </p>
+            <div>
+              <span class="tag">Python</span>
+              <span class="tag">Algorithms</span>
+            </div>
+            <a
+              href="/saxophone/tempo-trainer-demo.html"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open demo &rarr;
+            </a>
+          </div>
+
+          <div class="project-card">
+            <h4>Music Practice SRS</h4>
+            <p>
+              Spaced-repetition flashcard system for saxophone technique built
+              on the Anki platform. Custom Mustache templates with JavaScript
+              event handling; SQLite access for Anki note type extraction.
+            </p>
+            <div>
+              <span class="tag">Python</span>
+              <span class="tag">JavaScript</span>
+              <span class="tag">Anki</span>
+              <span class="tag">SQLite</span>
+            </div>
+            <a
+              href="/saxophone/music-practice-app/practice-app.html"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open demo &rarr;
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Additional Resources ──────────────────────────────────────── -->
+
+      <section class="section">
+        <h2 class="section-title">Additional Resources</h2>
+
+        <ul class="resource-list">
+          <li>
+            <a
+              class="res-label"
+              href="https://www.proquest.com/docview/304988209?pq-origsite=primo&sourcetype=Dissertations%20&%20Theses"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Doctoral Dissertation &mdash; ProQuest
+            </a>
+            <span class="res-desc">
+              &ldquo;Integrating the Music Learning Theory of Edwin E. Gordon
+              with a Beginning Saxophone Curriculum.&rdquo; University of Iowa,
+              2005.
+            </span>
+          </li>
+          <li>
+            <a
+              class="res-label"
+              href="https://youtube.com/playlist?list=PLgx2MX_sbFZP9xbdg0_GCoLfcwDST5pdA&si=2-AWmpRolPG1ESw0"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              D.M.A. Final Recital (2004)
+            </a>
+            <span class="res-desc"
+              >University of Iowa. Full recital recording, YouTube
+              playlist.</span
+            >
+          </li>
+          <li>
+            <a
+              class="res-label"
+              href="https://davidmaslanka.com/maslanka-weekly-best-of-the-web-no-115-new-uploads-of-sonata-for-alto-saxophone-and-piano/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              David Maslanka composer site
+            </a>
+            <span class="res-desc">
+              Notable mention of the Maslanka Sonata, Movement II performance.
+            </span>
+          </li>
+          <li>
+            <a
+              class="res-label"
+              href="https://saxalliance.org/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              North American Saxophone Alliance (NASA)
+            </a>
+            <span class="res-desc">Professional membership.</span>
+          </li>
+        </ul>
+      </section>
+    </div>
+    <!-- /.page-wrap -->
+
+    <!-- ── Footer ───────────────────────────────────────────────────────── -->
+
+    <footer class="site-footer">
       <p>
-        These tools emerged from the questions at the center of my doctoral work.
-        Each applies principles from Edwin Gordon&rsquo;s Music Learning Theory or performance psychology
-        to instrumental practice problems that rote methods tend to leave unsolved.
+        &copy; 2026 Timothy J. Owen, D.M.A. &nbsp;&middot;&nbsp;
+        <a href="mailto:timothy.j.owen@outlook.com"
+          >timothy.j.owen@outlook.com</a
+        >
+        &nbsp;&middot;&nbsp;
+        <a href="https://timowen.me">timowen.me</a>
       </p>
-
-      <div class="project-grid">
-
-        <div class="project-card">
-          <h4>SIP &mdash; Systematic Instrumental Practice</h4>
-          <p>
-            Android-first mobile application applying FSRS-5 spaced-repetition scheduling to
-            instrumental practice. Treats technical performance elements as discrete reviewable items
-            scheduled at optimal intervals for durable retention. Grounded in Music Learning Theory
-            (Gordon) &mdash; the subject of my D.M.A. dissertation. Multi-model AI design council
-            produced canonical specification v1.0.
-          </p>
-          <div>
-            <span class="tag">Flutter</span>
-            <span class="tag">Python</span>
-            <span class="tag">FastAPI</span>
-            <span class="tag">FSRS-5</span>
-            <span class="tag">Android</span>
-          </div>
-          <p style="font-size:.82rem;color:var(--text-muted);margin-top:8px;font-family:var(--mono);">
-            In active development
-          </p>
-        </div>
-
-        <div class="project-card">
-          <h4>Tempo Finder</h4>
-          <p>
-            Binary-search algorithm for systematic tempo progression in practice.
-            Locates the precise boundary between control and breakdown,
-            removing guesswork from incremental speed work.
-          </p>
-          <div>
-            <span class="tag">Python</span>
-            <span class="tag">Algorithms</span>
-          </div>
-          <a href="/saxophone/tempo-trainer-demo.html" target="_blank" rel="noopener noreferrer">
-            Open demo &rarr;
-          </a>
-        </div>
-
-        <div class="project-card">
-          <h4>Music Practice SRS</h4>
-          <p>
-            Spaced-repetition flashcard system for saxophone technique built on the Anki platform.
-            Custom Mustache templates with JavaScript event handling; SQLite access for
-            Anki note type extraction.
-          </p>
-          <div>
-            <span class="tag">Python</span>
-            <span class="tag">JavaScript</span>
-            <span class="tag">Anki</span>
-            <span class="tag">SQLite</span>
-          </div>
-          <a href="/saxophone/music-practice-app/practice-app.html" target="_blank" rel="noopener noreferrer">
-            Open demo &rarr;
-          </a>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- ── Additional Resources ──────────────────────────────────────── -->
-
-    <section class="section">
-      <h2 class="section-title">Additional Resources</h2>
-
-      <ul class="resource-list">
-        <li>
-          <a class="res-label"
-             href="https://www.proquest.com/docview/304988209?pq-origsite=primo&sourcetype=Dissertations%20&%20Theses"
-             target="_blank" rel="noopener noreferrer">
-            Doctoral Dissertation &mdash; ProQuest
-          </a>
-          <span class="res-desc">
-            &ldquo;Integrating the Music Learning Theory of Edwin E. Gordon with a Beginning
-            Saxophone Curriculum.&rdquo; University of Iowa, 2005.
-          </span>
-        </li>
-        <li>
-          <a class="res-label"
-             href="https://youtube.com/playlist?list=PLgx2MX_sbFZP9xbdg0_GCoLfcwDST5pdA&si=2-AWmpRolPG1ESw0"
-             target="_blank" rel="noopener noreferrer">
-            D.M.A. Final Recital (2004)
-          </a>
-          <span class="res-desc">University of Iowa. Full recital recording, YouTube playlist.</span>
-        </li>
-        <li>
-          <a class="res-label"
-             href="https://davidmaslanka.com/maslanka-weekly-best-of-the-web-no-115-new-uploads-of-sonata-for-alto-saxophone-and-piano/"
-             target="_blank" rel="noopener noreferrer">
-            David Maslanka composer site
-          </a>
-          <span class="res-desc">
-            Notable mention of the Maslanka Sonata, Movement II performance.
-          </span>
-        </li>
-        <li>
-          <a class="res-label"
-             href="https://saxalliance.org/"
-             target="_blank" rel="noopener noreferrer">
-            North American Saxophone Alliance (NASA)
-          </a>
-          <span class="res-desc">Professional membership.</span>
-        </li>
-      </ul>
-    </section>
-
-  </div><!-- /.page-wrap -->
-
-  <!-- ── Footer ───────────────────────────────────────────────────────── -->
-
-  <footer class="site-footer">
-    <p>
-      &copy; 2026 Timothy J. Owen, D.M.A. &nbsp;&middot;&nbsp;
-      <a href="mailto:timothy.j.owen@outlook.com">timothy.j.owen@outlook.com</a> &nbsp;&middot;&nbsp;
-      <a href="https://timowen.me">timowen.me</a>
-    </p>
-    <p style="margin-top:6px;">
-      <a href="https://timowen.me">&larr; Back to Portfolio Home</a>
-    </p>
-  </footer>
-
-</body>
+      <p style="margin-top: 6px">
+        <a href="https://timowen.me">&larr; Back to Portfolio Home</a>
+      </p>
+    </footer>
+  </body>
 </html>
