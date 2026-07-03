@@ -2,8 +2,8 @@
   "meta": {
     "pageTitle": "Timothy J. Owen — IT Resume",
     "eyebrow": "Information Technology Resume",
-    "lastUpdated": "2026-07-03",
-    "notes": "General IT profile. Use timowen.me/it. Tailor skillGroups order and experience bullets per role before generating docx. 2026-07-03: added VirtualBox (verified) and Vagrant (project-based) to Systems & Cloud skills, added Vagrant+Ansible capstone project, added supporting bullets to both WaV2T experience entries. 2026-07-03 (pass 2): removed stale Security+ target date, updated 56th Band and Germany role titles to current civilian-audience translations, dropped JEB prefix from ASOM location, translated MRT bullet to civilian-audience language. 2026-07-03 (pass 3): Security+ exam confirmed for July 30, 2026, McChord testing center, 12:30pm."
+    "lastUpdated": "2026-05-06",
+    "notes": "General IT profile. Use timowen.me/it. Tailor skillGroups order and experience bullets per role before generating docx."
   },
 
   "header": {
@@ -44,7 +44,7 @@
     {
       "label": "CompTIA Security+ (in progress)",
       "href": null,
-      "expiry": "exam scheduled Jul 30, 2026",
+      "expiry": "exam targeted Jun 2026",
       "inProgress": true
     }
   ],
@@ -75,8 +75,7 @@
         "AWS EC2",
         "Ansible",
         "Server Rack Mounting & Blade Installation",
-        "Virtualization (VirtualBox)",
-        "Vagrant (project-based, single-VM provisioning)"
+        "Virtualization (VirtualBox)"
       ]
     },
     {
@@ -156,10 +155,9 @@
         "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science; 100% lab completion rate.",
         "Applied security hardening, threat intelligence, and vulnerability assessment techniques across coursework in CSC 325, CSC 364, CSC 426, and CSC 455.",
         "Implemented multi-factor authentication and TLS encryption in lab environments; applied HIPAA compliance standards for clinical data scenarios.",
-        "Hosted a Kali Linux virtual machine in VirtualBox for cybersecurity exploration exercises.",
         "Participated in three professional development sessions on server hardware, including blade removal, disassembly, and reinstallation, under instructor direction."
       ],
-      "tags": ["Cybersecurity", "Threat Intelligence", "Vulnerability Assessment", "HIPAA", "MFA", "TLS", "VirtualBox", "Server Hardware"]
+      "tags": ["Cybersecurity", "Threat Intelligence", "Vulnerability Assessment", "HIPAA", "MFA", "TLS", "Server Hardware"]
     },
     {
       "role": "IT Trainee — Server & Cloud Applications",
@@ -170,14 +168,12 @@
         "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science; 100% lab completion rate.",
         "Configured network environments across IPv4/IPv6, subnetting, and VPN in hands-on labs.",
         "Deployed AWS EC2 applications; automated infrastructure tasks with Ansible; administered Linux and Windows Server via Bash and PowerShell.",
-        "Built a multi-VM VirtualBox network with Active Directory to simulate a Windows Server/sysadmin environment.",
-        "Completed a solo capstone project provisioning a VM with Vagrant, using an Ansible playbook customized from an instructor-provided template.",
         "Developed Python scripting skills through automation and data analysis exercises."
       ],
-      "tags": ["Python", "AWS EC2", "Windows Server", "PowerShell", "Linux", "Ansible", "Vagrant", "VirtualBox", "Networking", "VPN"]
+      "tags": ["Python", "AWS EC2", "Windows Server", "PowerShell", "Linux", "Ansible", "Networking", "VPN"]
     },
     {
-      "role": "Production Manager / Library, Security & Operations Supervisor",
+      "role": "Saxophonist / Library, Security & Operations Manager",
       "dates": "Oct 2013 – Jun 2025",
       "org": "56th Army Band, U.S. Army",
       "location": "Joint Base Lewis-McChord, WA",
@@ -185,7 +181,7 @@
         "Sustained mission-critical operations across 400+ high-stakes engagements for audiences totaling 2.5M+, with 100% readiness.",
         "Managed large equipment inventory across all assignments with zero discrepancy.",
         "Administered federal security clearance compliance records for 40+ personnel, maintaining accuracy and currency throughout.",
-        "Certified 200 personnel in resilience and performance training across 10 cohorts as a Level 2 Facilitator."
+        "Certified 200 personnel as Master Resilience Trainers across 10 cohorts as a Level 2 Facilitator."
       ],
       "tags": ["Security Clearance", "Asset Management", "Compliance", "Leadership", "Training"]
     },
@@ -193,7 +189,7 @@
       "role": "Lead Saxophone Instructor / Curriculum Writer",
       "dates": "Jul 2009 – Oct 2013",
       "org": "U.S. Army School of Music",
-      "location": "Little Creek-Fort Story, VA",
+      "location": "JEB Little Creek-Fort Story, VA",
       "bullets": [
         "Instructed 100+ new trainees and 20 mid-level leaders; achieved 100% student pass rate.",
         "Advised 40 senior leaders as subject-matter expert in field assessment administration.",
@@ -204,7 +200,7 @@
       "tags": ["Training", "Documentation", "Curriculum Design", "Leadership", "Assessment"]
     },
     {
-      "role": "Library & HR Records Supervisor / Saxophonist",
+      "role": "Saxophonist / Library & HR Manager",
       "dates": "Feb 2006 – Jun 2009",
       "org": "1st Armored Division Band, U.S. Army",
       "location": "Wiesbaden, Germany",
@@ -261,13 +257,6 @@
       "linkLabel": null,
       "href": null,
       "inProgress": true
-    },
-    {
-      "title": "Vagrant + Ansible VM Provisioning (WaV2T Capstone)",
-      "description": "Solo capstone project for the Server & Cloud Applications program: provisioned a single VM via Vagrant, using an Ansible playbook customized from an instructor-provided template. Demonstrates infrastructure-as-code fundamentals and builds on hands-on Ansible automation from coursework.",
-      "tags": ["Vagrant", "Ansible", "VirtualBox", "Infrastructure as Code"],
-      "linkLabel": null,
-      "href": null
     },
     {
       "title": "Subnet Calculator",
