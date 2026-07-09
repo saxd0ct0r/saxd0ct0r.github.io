@@ -1,169 +1,248 @@
 {
-  "track": "Technical Program Management",
-  "profileUrl": "https://timowen.me/tpm",
-  "lastUpdated": "2026-07-04",
-  "disclosureTier": "full",
+  "meta": {
+    "pageTitle": "Timothy J. Owen — Technical Program Management Resume",
+    "eyebrow": "Technical Program Management Resume",
+    "lastUpdated": "2026-07-09",
+    "notes": "TPM profile. Use timowen.me/tpm. This is a transition profile — Tim has no formal program/product manager title. Lead with verified operations/compliance/curriculum leadership, not prior TPM tenure. No PM-specific tooling (Jira, Asana, etc.) should be claimed beyond USER_PROFILE.md's honest qualifiers. Tailor skillGroups order and experience bullets per role before generating docx. Do not import income projections, job-title rankings, or 'Mission Systems Portfolio' framing from the 2026-07-04 multi-LLM career-strategy brainstorm — that source is speculative, not verified against USER_PROFILE.md."
+  },
 
-  "contact": {
+  "header": {
     "name": "Timothy J. Owen, D.M.A.",
-    "location": "DuPont, WA",
-    "phone": "757-502-5970",
-    "email": "timothy.j.owen@outlook.com",
-    "portfolio": "timowen.me/tpm",
-    "github": "github.com/saxd0ct0r",
-    "linkedin": "linkedin.com/in/timothy-j-owen"
+    "subtitle": "U.S. Army Veteran (20 Years) · Active Federal Secret Clearance · Technical Program Management",
+    "contact": [
+      { "label": "(757) 502-5970",             "href": "tel:7575025970" },
+      { "label": "timothy.j.owen@outlook.com", "href": "mailto:timothy.j.owen@outlook.com" },
+      { "label": "LinkedIn",                   "href": "https://www.linkedin.com/in/timothy-j-owen", "external": true },
+      { "label": "GitHub",                     "href": "https://github.com/saxd0ct0r", "external": true },
+      { "label": "timowen.me/tpm",             "href": "https://timowen.me/tpm" }
+    ]
   },
 
-  "headerSubtitle": "D.M.A.  |  U.S. Army Veteran (20 Years)  |  Active Federal Secret Clearance",
-
-  "summary": "Retired 20-year U.S. Army veteran and Washington Vets-to-Tech graduate moving into technical program management. For twenty years, a full parallel career in operations, personnel security records, and curriculum leadership meant coordinating people, schedules, and compliance requirements at scale, the same discipline a technical program manager applies to cross-functional delivery. Two Vets-to-Tech certificate programs, an AWS Cloud Practitioner certification, and an active Secret-level clearance bring that leadership record into direct contact with the technical work it will manage.",
-
-  "honestPositioningNote": "Tim has not held a formal program or product manager title. What transfers directly, and is fully verified, is large-scale operations coordination, personnel records and compliance administration, curriculum design across multiple instructor teams, and sustained readiness metrics. Applications built from this profile should frame the transfer as leadership and coordination experience applied to technical programs, not as prior TPM tenure. No PM-specific tooling (Jira, Asana, etc.) should be claimed beyond what's in USER_PROFILE.md's honest qualifiers.",
-
-  "coreCompetencies": {
-    "program_operations": "Cross-team coordination at scale (40-person organization), resource and equipment inventory management, sustained readiness and quality standards across 400-plus recurring deliverables",
-    "compliance_and_records": "Personnel security clearance records administration (40-plus records), HR and library records management across international assignments, strict data-privacy/compliance environment experience (DOL internship)",
-    "curriculum_and_program_design": "Curriculum design and delivery to audiences with widely differing levels of preparation, team contribution to a 58% training-cycle-time reduction, individual remediation planning and blind dual-assessor evaluation design",
-    "technical_foundation": "AWS EC2 deployment, Windows Server/PowerShell, Active Directory & Group Policy, Linux/Bash, Python scripting (~1 year), Ansible automation, security hardening and vulnerability assessment fundamentals"
-  },
+  "objective": "Retired 20-year U.S. Army veteran with an active federal Secret-level security clearance, moving into technical program management. A full parallel career in operations, personnel security records, and curriculum leadership meant coordinating people, schedules, and compliance requirements at scale, the same discipline a technical program manager applies to cross-functional delivery. Completed two consecutive 16-week Washington Vets-to-Tech intensive programs (Server & Cloud Applications, Aug 2025; Cybersecurity, Dec 2025) and a government IT internship, earning CompTIA Network+, AWS Certified Cloud Practitioner, Foundational C#, and PCEP certifications.",
 
   "certifications": [
     {
-      "name": "CompTIA Network+",
-      "url": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f",
-      "status": "active",
-      "expiry": "Aug 2028"
+      "label": "CompTIA Network+",
+      "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f",
+      "expiry": "thru Aug 2028"
     },
     {
-      "name": "AWS Certified Cloud Practitioner",
-      "url": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25",
-      "status": "active",
-      "expiry": "Jul 2028"
+      "label": "AWS Certified Cloud Practitioner",
+      "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25",
+      "expiry": "thru Jul 2028"
     },
     {
-      "name": "PCEP (Python)",
-      "url": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ",
-      "status": "active",
+      "label": "Certified Entry-Level Python Programmer (PCEP)",
+      "href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ",
       "expiry": "no expiry"
     },
     {
-      "name": "Foundational C# with Microsoft",
-      "url": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft",
-      "status": "active",
+      "label": "Foundational C# with Microsoft",
+      "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft",
       "expiry": "no expiry"
     },
     {
-      "name": "CompTIA Security+",
-      "status": "in progress",
-      "note": "Exam scheduled July 30, 2026, McChord testing center, 12:30pm. Satisfies DoD 8570/8140 IAT Level II upon passing."
+      "label": "CompTIA Security+ (in progress)",
+      "href": null,
+      "expiry": "exam scheduled Jul 30, 2026",
+      "inProgress": true
+    }
+  ],
+
+  "skillGroups": [
+    {
+      "title": "Program Operations",
+      "items": [
+        "Cross-team coordination at scale (40-person organization)",
+        "Resource & equipment inventory management",
+        "Sustained readiness across 400+ recurring deliverables",
+        "Stakeholder briefing under time pressure"
+      ]
     },
     {
-      "name": "Active Federal Secret-Level Security Clearance",
-      "status": "active"
+      "title": "Compliance & Records",
+      "items": [
+        "Personnel security clearance records administration",
+        "HR & library records management, international assignments",
+        "Regulated, data-privacy compliance environments"
+      ]
+    },
+    {
+      "title": "Curriculum & Program Design",
+      "items": [
+        "Curriculum design & delivery",
+        "Training-cycle-time reduction (team contribution)",
+        "Individual remediation planning",
+        "Dual-assessor evaluation design"
+      ]
+    },
+    {
+      "title": "Technical Foundation",
+      "items": [
+        "AWS EC2",
+        "Windows Server / PowerShell",
+        "Active Directory & Group Policy",
+        "Linux / Bash Administration",
+        "Python (automation, scripting)",
+        "Ansible"
+      ]
+    },
+    {
+      "title": "Security",
+      "items": [
+        "Security Hardening",
+        "Vulnerability Assessment",
+        "Active Federal Secret Clearance"
+      ]
+    }
+  ],
+
+  "transferableSkills": [
+    {
+      "icon": "📋",
+      "title": "Program Coordination",
+      "description": "Coordinated a 40-person organization across 400+ recurring engagements while sustaining 100% readiness, directly applicable to running a technical program with multiple workstreams."
+    },
+    {
+      "icon": "📂",
+      "title": "Compliance & Records",
+      "description": "Administered personnel security clearance and HR records across international assignments, directly applicable to program governance and audit-ready documentation."
+    },
+    {
+      "icon": "🧭",
+      "title": "Curriculum Design",
+      "description": "Contributed to a 58% training-cycle-time reduction as part of a curriculum team, evidence of process-improvement work at scale."
+    },
+    {
+      "icon": "🧠",
+      "title": "Cross-Functional Synthesis",
+      "description": "Ran a multi-model AI design council to reach a canonical design specification for a personal project, evidence of coordinating multiple inputs toward one technical decision."
     }
   ],
 
   "experience": [
     {
-      "title": "Information Services Intern",
+      "role": "Information Services Intern",
+      "dates": "Nov 2025 – Jan 2026",
       "org": "Washington State Department of Licensing",
       "location": "Olympia, WA",
-      "dates": "Nov 2025 \u2013 Jan 2026",
       "bullets": [
-        "Operated within a strict data-privacy and compliance environment, logging and tracking service requests in ServiceNow per agency ISD policy.",
+        "Operated within a strict state data-privacy compliance framework, logging and tracking service requests per agency ISD policy.",
         "Supported account management, software configuration, and workstation setup/imaging for agency staff."
-      ]
+      ],
+      "tags": ["Government IT", "Compliance", "Documentation"]
     },
     {
-      "title": "IT Trainee \u2014 Cybersecurity",
+      "role": "IT Trainee — Cybersecurity",
+      "dates": "Aug – Dec 2025",
       "org": "Washington Vets-to-Tech / Saint Martin's University",
-      "location": "Lacey, WA (Stone Education Center, JBLM)",
-      "dates": "Aug \u2013 Dec 2025",
+      "location": "Lacey, WA",
       "bullets": [
-        "Completed a 16-week intensive program earning 18 college credits toward a B.S. in Computer Science, with a 100% lab completion rate across security hardening, threat intelligence, vulnerability assessment, and cloud technologies."
-      ]
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science; 100% lab completion rate."
+      ],
+      "tags": ["Cybersecurity", "Program Completion"]
     },
     {
-      "title": "IT Trainee \u2014 Server & Cloud Applications",
+      "role": "IT Trainee — Server & Cloud Applications",
+      "dates": "May – Aug 2025",
       "org": "Washington Vets-to-Tech / Saint Martin's University",
-      "location": "Lacey, WA (Cebula 105)",
-      "dates": "May \u2013 Aug 2025",
+      "location": "Lacey, WA",
       "bullets": [
-        "Completed a 16-week intensive program earning 18 college credits toward a B.S. in Computer Science, with a 100% lab completion rate across Linux, Windows Server, networking, AWS, and Python scripting.",
-        "Led a solo capstone project provisioning a VM via Vagrant with an Ansible playbook customized from an instructor-provided template."
-      ]
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science; 100% lab completion rate.",
+        "Led a solo capstone project provisioning a VM via Vagrant with an instructor-template Ansible playbook."
+      ],
+      "tags": ["AWS EC2", "Ansible", "Vagrant"]
     },
     {
-      "title": "Production Manager / Library, Security & Operations Supervisor",
+      "role": "Production Manager / Library, Security & Operations Supervisor",
+      "dates": "Oct 2013 – Jun 2025",
       "org": "56th Army Band, U.S. Army",
       "location": "Joint Base Lewis-McChord, WA",
-      "dates": "Oct 2013 \u2013 Jun 2025",
       "bullets": [
-        "Coordinated a 40-person organization across 400-plus public events and an audience reach of 2.5 million-plus, sustaining 100% readiness and managing a large equipment inventory.",
-        "Administered personnel security clearance records for 40-plus team members.",
+        "Coordinated a 40-person organization across 400+ public events for audiences totaling 2.5M+, sustaining 100% readiness and managing a large equipment inventory.",
+        "Administered personnel security clearance records for 40+ team members.",
         "Delivered resilience and performance training to 200 personnel across 10 cohorts as a certified Level 2 facilitator."
-      ]
+      ],
+      "tags": ["Program Coordination", "Compliance", "Leadership"]
     },
     {
-      "title": "Lead Instructor / Curriculum Writer",
+      "role": "Lead Instructor / Curriculum Writer",
+      "dates": "Jul 2009 – Oct 2013",
       "org": "U.S. Army School of Music",
       "location": "Little Creek-Fort Story, VA",
-      "dates": "Jul 2009 \u2013 Oct 2013",
       "bullets": [
         "Contributed as part of a curriculum team to a 58% reduction in training cycle time, maintaining 80 personnel records and coaching 12 teams.",
         "Advised 20 mid-level and 40 senior leaders and assessed 400 student performances across audiences with widely differing levels of preparation.",
-        "Designed individual remediation plans and a blind dual-assessor evaluation process for at-risk students; achieved a 100% pass rate against the program's full testing standard. Distinguished Leader Award, Army Leadership Development Program, 2010."
-      ]
+        "Designed individual remediation plans and a blind dual-assessor evaluation process for at-risk students; achieved a 100% pass rate against the program's full testing standard. Distinguished Leader Award, Army Leadership Development Program (2010)."
+      ],
+      "tags": ["Curriculum Design", "Process Improvement", "Leadership"]
     },
     {
-      "title": "Library & HR Records Supervisor / Saxophonist",
+      "role": "Library & HR Records Supervisor / Saxophonist",
+      "dates": "Feb 2006 – Jun 2009",
       "org": "1st Armored Division Band, U.S. Army",
       "location": "Wiesbaden, Germany",
-      "dates": "Feb 2006 \u2013 Jun 2009",
       "bullets": [
-        "Managed HR records and asset documentation for 40-plus personnel across international assignments; deployed in support of Operation Iraqi Freedom (2007)."
-      ]
+        "Managed HR administration and library operations for 40+ personnel; deployed in support of Operation Iraqi Freedom (2007)."
+      ],
+      "tags": ["International Operations", "HR Management"]
     }
   ],
 
   "education": [
     {
       "degree": "Cybersecurity Certificate (18 credits, B.S. Computer Science)",
-      "institution": "Washington Vets-to-Tech / Saint Martin's University, Lacey, WA",
-      "year": "Dec 2025"
+      "date": "Dec 2025",
+      "school": "Washington Vets-to-Tech / Saint Martin's University",
+      "location": "Lacey, WA"
     },
     {
       "degree": "Server & Cloud Applications Certificate (18 credits, B.S. Computer Science)",
-      "institution": "Washington Vets-to-Tech / Saint Martin's University, Lacey, WA",
-      "year": "Aug 2025"
+      "date": "Aug 2025",
+      "school": "Washington Vets-to-Tech / Saint Martin's University",
+      "location": "Lacey, WA"
     },
     {
       "degree": "Doctor of Musical Arts (D.M.A.), Performance",
-      "institution": "University of Iowa, Iowa City, IA",
-      "year": "2005"
+      "date": "Dec 2005",
+      "school": "University of Iowa",
+      "location": "Iowa City, IA"
     },
     {
-      "degree": "M.M. (1999) & B.M. (1997), Performance & Pedagogy",
-      "institution": "Brigham Young University, Provo, UT",
-      "year": ""
+      "degree": "Master of Music (M.M.), Performance",
+      "date": "Jul 1999",
+      "school": "Brigham Young University",
+      "location": "Provo, UT"
+    },
+    {
+      "degree": "Bachelor of Music (B.M.), Performance & Pedagogy",
+      "date": "Apr 1997",
+      "school": "Brigham Young University",
+      "location": "Provo, UT"
     }
   ],
 
   "projects": [
     {
-      "name": "SIP \u2014 Systematic Instrumental Practice",
-      "description": "In-progress Android-first Flutter application for instrumental musicians using FSRS-5 scheduling, a Python/FastAPI backend, and py-fsrs. Grounded in doctoral research applying Edwin Gordon's Music Learning Theory.",
-      "relevance": "Ran a multi-model AI design council (Claude, ChatGPT, Grok, Gemini, Perplexity) to reach a canonical design specification, evidence of coordinating multiple inputs toward one technical decision, a core TPM function, not a claim of shipped commercial software."
+      "title": "SIP — Systematic Instrumental Practice",
+      "description": "Android-first Flutter application for serious instrumental musicians. Uses FSRS-5 spaced repetition scheduling, Python/FastAPI backend, and py-fsrs. Grounded in doctoral dissertation applying Edwin Gordon's Music Learning Theory. Multi-model AI design council produced canonical design specification v1.0. In active development.",
+      "tags": ["Flutter", "Python", "FastAPI", "FSRS-5", "Android"],
+      "linkLabel": null,
+      "href": null,
+      "inProgress": true
     },
     {
-      "name": "Vagrant + Ansible VM Provisioning (WaV2T Capstone)",
-      "description": "Solo capstone project provisioning a single VM via Vagrant, using an Ansible playbook customized from an instructor-provided template.",
-      "relevance": "Concrete, named project anchor for infrastructure-as-code exposure."
+      "title": "Vagrant + Ansible VM Provisioning (WaV2T Capstone)",
+      "description": "Solo capstone project: provisioned a single VM via Vagrant, using an Ansible playbook customized from an instructor-provided template.",
+      "tags": ["Vagrant", "Ansible", "VirtualBox", "Infrastructure as Code"],
+      "linkLabel": null,
+      "href": null
     }
   ],
 
   "additional": [
-    "Fluent in Russian (verbal and written)",
-    "Maintains website, CMS, and social media (WordPress, Canva, Bluehost, Google Forms) and runs live sound board operations for a community theatre organization, ongoing"
+    { "label": "Language",  "text": "Fluent in Russian (verbal and written)." },
+    { "label": "Clearance", "text": "Active federal Secret-level security clearance." },
+    { "label": "Portfolio", "text": "Full technical program management profile and projects:", "link": { "label": "timowen.me/tpm", "href": "https://timowen.me/tpm" } }
   ]
 }

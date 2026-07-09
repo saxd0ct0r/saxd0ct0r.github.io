@@ -1,163 +1,272 @@
 {
-  "track": "Solutions Engineering / Sales Engineering (Cloud & Cybersecurity)",
-  "profileUrl": "https://timowen.me/se",
-  "lastUpdated": "2026-07-04",
-  "disclosureTier": "full",
+  "meta": {
+    "pageTitle": "Timothy J. Owen — Solutions Engineering Resume",
+    "eyebrow": "Solutions Engineering Resume",
+    "lastUpdated": "2026-07-09",
+    "notes": "SE (Solutions/Sales Engineering) profile. Use timowen.me/se. This is a transition profile — Tim has no verified quota-carrying sales or SE title. Lead with technical communication/translation, not prior SE tenure. Tailor skillGroups order and experience bullets per role before generating docx. Do not import income projections, job-title rankings, or 'Mission Systems Portfolio' framing from the 2026-07-04 multi-LLM career-strategy brainstorm — that source is speculative, not verified against USER_PROFILE.md."
+  },
 
-  "contact": {
+  "header": {
     "name": "Timothy J. Owen, D.M.A.",
-    "location": "DuPont, WA",
-    "phone": "757-502-5970",
-    "email": "timothy.j.owen@outlook.com",
-    "portfolio": "timowen.me/se",
-    "github": "github.com/saxd0ct0r",
-    "linkedin": "linkedin.com/in/timothy-j-owen"
+    "subtitle": "U.S. Army Veteran (20 Years) · Active Federal Secret Clearance · Cloud & Cybersecurity Solutions Engineering",
+    "contact": [
+      { "label": "(757) 502-5970",             "href": "tel:7575025970" },
+      { "label": "timothy.j.owen@outlook.com", "href": "mailto:timothy.j.owen@outlook.com" },
+      { "label": "LinkedIn",                   "href": "https://www.linkedin.com/in/timothy-j-owen", "external": true },
+      { "label": "GitHub",                     "href": "https://github.com/saxd0ct0r", "external": true },
+      { "label": "timowen.me/se",              "href": "https://timowen.me/se" }
+    ]
   },
 
-  "headerSubtitle": "D.M.A.  |  U.S. Army Veteran (20 Years)  |  Active Federal Secret Clearance",
-
-  "summary": "Retired 20-year U.S. Army veteran and Washington Vets-to-Tech graduate moving into cloud and cybersecurity solutions engineering. Twenty years spent training new personnel, briefing senior leadership, and coordinating large-scale operations built the same skill a solutions engineer uses every day, translating complex technical material for the person in front of you. Recent, concentrated technical study, two Vets-to-Tech certificate programs, an AWS Cloud Practitioner certification, CompTIA Network+, and an active Secret-level security clearance, gives that communication foundation a technical base to stand on.",
-
-  "honestPositioningNote": "This is a transition, not a lateral move. Tim has not held a quota-carrying sales or SE title. What transfers directly is technical communication under pressure: presenting to audiences with widely differing levels of preparation, one-on-one technical troubleshooting, and curriculum/documentation for non-expert audiences. Any application built from this profile should lead with that transfer, not imply prior SE tenure.",
-
-  "technicalSkills": {
-    "cloud_and_security": "AWS EC2 deployment, AWS Certified Cloud Practitioner, security hardening, vulnerability assessment, threat intelligence, MFA/TLS implementation, Azure (limited exposure via WaV2T)",
-    "systems_and_networking": "Windows Server/PowerShell, Linux/Bash, Active Directory & Group Policy, TCP/IP, DNS, DHCP, IPv4/IPv6, subnetting, VPN, network troubleshooting",
-    "automation": "Python scripting (~1 year hands-on), Ansible infrastructure automation, Vagrant (project-based, single-VM provisioning), C# (fundamentals)",
-    "virtualization": "VirtualBox (multi-VM AD network simulation, hosted Kali Linux, Linux administration coursework)",
-    "communication_and_translation": "Technical documentation for non-expert audiences, curriculum design and delivery, live technical instruction to groups ranging from new trainees to senior leaders, structured Q&A/briefing under time pressure"
-  },
+  "objective": "Retired 20-year U.S. Army veteran with an active federal Secret-level security clearance, moving into cloud and cybersecurity solutions engineering. Twenty years spent training new personnel, briefing senior leadership, and coordinating large-scale operations built the same skill a solutions engineer uses every day: translating complex technical material for the person in front of you. Completed two consecutive 16-week Washington Vets-to-Tech intensive programs (Server & Cloud Applications, Aug 2025; Cybersecurity, Dec 2025) and a government IT internship, earning CompTIA Network+, AWS Certified Cloud Practitioner, Foundational C#, and PCEP certifications.",
 
   "certifications": [
     {
-      "name": "CompTIA Network+",
-      "url": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f",
-      "status": "active",
-      "expiry": "Aug 2028"
+      "label": "CompTIA Network+",
+      "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f",
+      "expiry": "thru Aug 2028"
     },
     {
-      "name": "AWS Certified Cloud Practitioner",
-      "url": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25",
-      "status": "active",
-      "expiry": "Jul 2028"
+      "label": "AWS Certified Cloud Practitioner",
+      "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25",
+      "expiry": "thru Jul 2028"
     },
     {
-      "name": "PCEP (Python)",
-      "url": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ",
-      "status": "active",
+      "label": "Certified Entry-Level Python Programmer (PCEP)",
+      "href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ",
       "expiry": "no expiry"
     },
     {
-      "name": "Foundational C# with Microsoft",
-      "url": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft",
-      "status": "active",
+      "label": "Foundational C# with Microsoft",
+      "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft",
       "expiry": "no expiry"
     },
     {
-      "name": "CompTIA Security+",
-      "status": "in progress",
-      "note": "Exam scheduled July 30, 2026, McChord testing center, 12:30pm. Satisfies DoD 8570/8140 IAT Level II upon passing."
+      "label": "CompTIA Security+ (in progress)",
+      "href": null,
+      "expiry": "exam scheduled Jul 30, 2026",
+      "inProgress": true
+    }
+  ],
+
+  "skillGroups": [
+    {
+      "title": "Technical Communication",
+      "items": [
+        "Live technical instruction to mixed-preparation audiences",
+        "Curriculum design & delivery",
+        "Technical documentation for non-expert audiences",
+        "Briefing senior leadership under time pressure",
+        "One-on-one technical troubleshooting"
+      ]
     },
     {
-      "name": "Active Federal Secret-Level Security Clearance",
-      "status": "active"
+      "title": "Cloud & Security",
+      "items": [
+        "AWS EC2",
+        "AWS Certified Cloud Practitioner",
+        "Security Hardening",
+        "Vulnerability Assessment",
+        "Threat Intelligence",
+        "MFA / TLS Implementation",
+        "Azure (limited exposure via WaV2T)"
+      ]
+    },
+    {
+      "title": "Systems & Networking",
+      "items": [
+        "Windows Server / PowerShell",
+        "Active Directory & Group Policy",
+        "Linux / Bash Administration",
+        "TCP/IP, DNS, DHCP",
+        "IPv4 / IPv6 & Subnetting",
+        "VPN Configuration",
+        "Network Troubleshooting"
+      ]
+    },
+    {
+      "title": "Automation & Programming",
+      "items": [
+        "Python (automation, scripting)",
+        "Ansible",
+        "Vagrant (project-based, single-VM provisioning)",
+        "C# (fundamentals)",
+        "Bash Scripting"
+      ]
+    },
+    {
+      "title": "Leadership & Operations",
+      "items": [
+        "20 years military management",
+        "Compliance & records management",
+        "Asset & inventory management",
+        "Active Federal Secret Clearance"
+      ]
+    }
+  ],
+
+  "transferableSkills": [
+    {
+      "icon": "🗣️",
+      "title": "Technical Translation",
+      "description": "Instructed trainees, mid-level leaders, and senior leadership alike, adjusting explanations for widely differing levels of preparation, the same skill a solutions engineer applies to a customer's team."
+    },
+    {
+      "icon": "⚙️",
+      "title": "Automation",
+      "description": "Built Python tools (Subnet Calculator, VA Ratings Calculator, Tempo Finder) using algorithmic problem-solving relevant to technical demos and proof-of-concept work."
+    },
+    {
+      "icon": "⚡",
+      "title": "Adaptability",
+      "description": "Sustained mission-critical operations across 20 years of military service and rapid IT upskilling, translatable to dynamic, fast-moving customer environments."
+    },
+    {
+      "icon": "🧠",
+      "title": "Product Thinking",
+      "description": "Designed a spaced-repetition practice system grounded in cognitive science research, evidence of translating a domain problem into a technical solution."
     }
   ],
 
   "experience": [
     {
-      "title": "Information Services Intern",
+      "role": "Information Services Intern",
+      "dates": "Nov 2025 – Jan 2026",
       "org": "Washington State Department of Licensing",
       "location": "Olympia, WA",
-      "dates": "Nov 2025 \u2013 Jan 2026",
       "bullets": [
-        "Communicated technical requirements and solutions to non-technical agency staff, translating IT concepts for end users across account, software, and workstation issues.",
-        "Logged and tracked service requests in ServiceNow within a strict data privacy and compliance environment.",
-        "Diagnosed and resolved three network connectivity failures by tracing physical connections through patch panels and verifying switch port assignments, mixed supervised and independent work."
-      ]
+        "Communicated technical requirements and solutions clearly to non-technical agency staff across account, software, and workstation issues.",
+        "Diagnosed and resolved three network connectivity failures by tracing physical connections through patch panels and verifying switch port assignments, in mixed supervised and independent capacity.",
+        "Operated within a strict state data privacy compliance framework across the full engagement."
+      ],
+      "tags": ["Government IT", "Technical Communication", "Network Troubleshooting", "Compliance"]
     },
     {
-      "title": "IT Trainee \u2014 Cybersecurity",
+      "role": "IT Trainee — Cybersecurity",
+      "dates": "Aug – Dec 2025",
       "org": "Washington Vets-to-Tech / Saint Martin's University",
-      "location": "Lacey, WA (Stone Education Center, JBLM)",
-      "dates": "Aug \u2013 Dec 2025",
+      "location": "Lacey, WA",
       "bullets": [
-        "Completed a 16-week intensive program earning 18 college credits toward a B.S. in Computer Science, with a 100% lab completion rate across security hardening, threat intelligence, vulnerability assessment, and cloud technologies.",
-        "Hosted a Kali Linux virtual machine in VirtualBox for hands-on cybersecurity exploration exercises."
-      ]
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science; 100% lab completion rate across security hardening, threat intelligence, and vulnerability assessment.",
+        "Hosted a Kali Linux virtual machine in VirtualBox for cybersecurity exploration exercises."
+      ],
+      "tags": ["Cybersecurity", "Threat Intelligence", "Vulnerability Assessment", "VirtualBox"]
     },
     {
-      "title": "IT Trainee \u2014 Server & Cloud Applications",
+      "role": "IT Trainee — Server & Cloud Applications",
+      "dates": "May – Aug 2025",
       "org": "Washington Vets-to-Tech / Saint Martin's University",
-      "location": "Lacey, WA (Cebula 105)",
-      "dates": "May \u2013 Aug 2025",
+      "location": "Lacey, WA",
       "bullets": [
-        "Completed a 16-week intensive program earning 18 college credits toward a B.S. in Computer Science, with a 100% lab completion rate across Linux, Windows Server, networking, AWS, and Python scripting.",
-        "Built a multi-VM VirtualBox network with Active Directory to simulate a Windows Server/sysadmin environment; solo capstone project provisioned a single VM using Vagrant with an Ansible playbook customized from an instructor-provided template."
-      ]
+        "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science; 100% lab completion rate across Linux, Windows Server, networking, AWS, and Python scripting.",
+        "Built a multi-VM VirtualBox network with Active Directory; solo capstone provisioned a single VM using Vagrant with an instructor-template Ansible playbook."
+      ],
+      "tags": ["AWS EC2", "Windows Server", "Ansible", "Vagrant", "Networking"]
     },
     {
-      "title": "Production Manager / Library, Security & Operations Supervisor",
+      "role": "Production Manager / Library, Security & Operations Supervisor",
+      "dates": "Oct 2013 – Jun 2025",
       "org": "56th Army Band, U.S. Army",
       "location": "Joint Base Lewis-McChord, WA",
-      "dates": "Oct 2013 \u2013 Jun 2025",
       "bullets": [
-        "Sustained 100% readiness across 400-plus public events and an audience reach of 2.5 million-plus, coordinating logistics and a large equipment inventory.",
+        "Sustained 100% readiness across 400+ public events for audiences totaling 2.5M+, coordinating a large equipment inventory.",
         "Delivered resilience and performance training to 200 personnel across 10 cohorts as a certified Level 2 facilitator.",
-        "Administered personnel security clearance records for 40-plus team members."
-      ]
+        "Administered personnel security clearance records for 40+ team members."
+      ],
+      "tags": ["Leadership", "Training", "Security Clearance", "Operations"]
     },
     {
-      "title": "Lead Instructor / Curriculum Writer",
+      "role": "Lead Instructor / Curriculum Writer",
+      "dates": "Jul 2009 – Oct 2013",
       "org": "U.S. Army School of Music",
       "location": "Little Creek-Fort Story, VA",
-      "dates": "Jul 2009 \u2013 Oct 2013",
       "bullets": [
-        "Instructed 100-plus new trainees and advised 20 mid-level and 40 senior leaders, assessing 400 student performances across audiences with widely differing levels of preparation.",
+        "Instructed 100+ new trainees and advised 20 mid-level and 40 senior leaders, assessing 400 student performances across audiences with widely differing levels of preparation.",
         "Contributed as part of a curriculum team to a 58% reduction in training cycle time.",
-        "Achieved a 100% student pass rate against the program's full testing standard; awarded the Distinguished Leader Award, Army Leadership Development Program, 2010."
-      ]
+        "Achieved a 100% student pass rate against the program's full testing standard; awarded the Distinguished Leader Award, Army Leadership Development Program (2010)."
+      ],
+      "tags": ["Training", "Curriculum Design", "Leadership", "Assessment"]
+    },
+    {
+      "role": "Library & HR Records Supervisor / Saxophonist",
+      "dates": "Feb 2006 – Jun 2009",
+      "org": "1st Armored Division Band, U.S. Army",
+      "location": "Wiesbaden, Germany",
+      "bullets": [
+        "Managed HR administration and library operations for 40+ personnel; deployed in support of Operation Iraqi Freedom (2007)."
+      ],
+      "tags": ["International Operations", "HR Management"]
     }
   ],
 
   "education": [
     {
       "degree": "Cybersecurity Certificate (18 credits, B.S. Computer Science)",
-      "institution": "Washington Vets-to-Tech / Saint Martin's University, Lacey, WA",
-      "year": "Dec 2025"
+      "date": "Dec 2025",
+      "school": "Washington Vets-to-Tech / Saint Martin's University",
+      "location": "Lacey, WA"
     },
     {
       "degree": "Server & Cloud Applications Certificate (18 credits, B.S. Computer Science)",
-      "institution": "Washington Vets-to-Tech / Saint Martin's University, Lacey, WA",
-      "year": "Aug 2025"
+      "date": "Aug 2025",
+      "school": "Washington Vets-to-Tech / Saint Martin's University",
+      "location": "Lacey, WA"
     },
     {
       "degree": "Doctor of Musical Arts (D.M.A.), Performance",
-      "institution": "University of Iowa, Iowa City, IA",
-      "year": "2005"
+      "date": "Dec 2005",
+      "school": "University of Iowa",
+      "location": "Iowa City, IA"
     },
     {
-      "degree": "M.M. (1999) & B.M. (1997), Performance & Pedagogy",
-      "institution": "Brigham Young University, Provo, UT",
-      "year": ""
+      "degree": "Master of Music (M.M.), Performance",
+      "date": "Jul 1999",
+      "school": "Brigham Young University",
+      "location": "Provo, UT"
+    },
+    {
+      "degree": "Bachelor of Music (B.M.), Performance & Pedagogy",
+      "date": "Apr 1997",
+      "school": "Brigham Young University",
+      "location": "Provo, UT"
     }
   ],
 
   "projects": [
     {
-      "name": "SIP \u2014 Systematic Instrumental Practice",
-      "description": "In-progress Android-first Flutter application for instrumental musicians using FSRS-5 scheduling, a Python/FastAPI backend, and py-fsrs. Grounded in doctoral research applying Edwin Gordon's Music Learning Theory. A multi-model AI design council (Claude, ChatGPT, Grok, Gemini, Perplexity) produced the canonical design specification.",
-      "relevance": "Demonstrates product thinking, system design, and the ability to translate a domain problem into a technical solution, evidence of the same translation skill an SE applies to a customer's problem, not a claim of shipped commercial software."
+      "title": "SIP — Systematic Instrumental Practice",
+      "description": "Android-first Flutter application for serious instrumental musicians. Uses FSRS-5 spaced repetition scheduling, Python/FastAPI backend, and py-fsrs. Grounded in doctoral dissertation applying Edwin Gordon's Music Learning Theory. Multi-model AI design council produced canonical design specification v1.0. In active development.",
+      "tags": ["Flutter", "Python", "FastAPI", "FSRS-5", "Android"],
+      "linkLabel": null,
+      "href": null,
+      "inProgress": true
     },
     {
-      "name": "Vagrant + Ansible VM Provisioning (WaV2T Capstone)",
-      "description": "Solo capstone project provisioning a single VM via Vagrant, using an Ansible playbook customized from an instructor-provided template.",
-      "relevance": "Concrete, named project anchor for infrastructure-as-code exposure."
+      "title": "Vagrant + Ansible VM Provisioning (WaV2T Capstone)",
+      "description": "Solo capstone project: provisioned a single VM via Vagrant, using an Ansible playbook customized from an instructor-provided template.",
+      "tags": ["Vagrant", "Ansible", "VirtualBox", "Infrastructure as Code"],
+      "linkLabel": null,
+      "href": null
+    },
+    {
+      "title": "Subnet Calculator",
+      "description": "Python tool automating IPv4 subnet calculations for network troubleshooting and study.",
+      "tags": ["Python", "Networking"],
+      "linkLabel": "View on GitHub →",
+      "href": "https://github.com/saxd0ct0r/Python/tree/main/subnet_calc"
+    },
+    {
+      "title": "Tempo Finder",
+      "description": "Binary-search algorithm identifying optimal practice tempos (30–240 BPM) at O(log n) efficiency.",
+      "tags": ["Python", "Algorithms"],
+      "linkLabel": "View Demo →",
+      "href": "https://timowen.me/saxophone/tempo-trainer-demo.html"
     }
   ],
 
   "additional": [
-    "Fluent in Russian (verbal and written)",
-    "Maintains website, CMS, and social media (WordPress, Canva, Bluehost, Google Forms) and runs live sound board operations for a community theatre organization, ongoing"
+    { "label": "Language",  "text": "Fluent in Russian (verbal and written)." },
+    { "label": "Clearance", "text": "Active federal Secret-level security clearance." },
+    { "label": "Portfolio", "text": "Full solutions engineering profile and projects:", "link": { "label": "timowen.me/se", "href": "https://timowen.me/se" } }
   ]
 }
