@@ -35,19 +35,28 @@
   "certifications": [
     {
       "label": "CompTIA Network+",
-      "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f"
+      "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f",
+      "expiry": "thru Aug 2028"
     },
     {
-      "label": "AWS Cloud Practitioner",
-      "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25"
+      "label": "AWS Certified Cloud Practitioner",
+      "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25",
+      "expiry": "thru Jul 2028"
     },
     {
-      "label": "Python Programmer (PCEP)",
-      "href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ"
+      "label": "Certified Entry-Level Python Programmer (PCEP)",
+      "href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ",
+      "expiry": "no expiry"
     },
     {
-      "label": "Foundational C#",
-      "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft"
+      "label": "Foundational C# with Microsoft",
+      "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft",
+      "expiry": "no expiry"
+    },
+    {
+      "label": "CompTIA Security+",
+      "href": "https://www.credly.com/badges/b38deb70-e957-4d58-8ae6-19d983bbc3f7",
+      "expiry": "thru Jul 30, 2029"
     }
   ],
 

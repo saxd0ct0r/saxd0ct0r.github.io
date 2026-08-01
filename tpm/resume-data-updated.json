@@ -10,11 +10,22 @@
     "name": "Timothy J. Owen, D.M.A.",
     "subtitle": "U.S. Army Veteran (20 Years) · Active Federal Secret Clearance · Technical Program Management",
     "contact": [
-      { "label": "(757) 502-5970",             "href": "tel:7575025970" },
-      { "label": "timothy.j.owen@outlook.com", "href": "mailto:timothy.j.owen@outlook.com" },
-      { "label": "LinkedIn",                   "href": "https://www.linkedin.com/in/timothy-j-owen", "external": true },
-      { "label": "GitHub",                     "href": "https://github.com/saxd0ct0r", "external": true },
-      { "label": "timowen.me/tpm",             "href": "https://timowen.me/tpm" }
+      { "label": "(757) 502-5970", "href": "tel:7575025970" },
+      {
+        "label": "timothy.j.owen@outlook.com",
+        "href": "mailto:timothy.j.owen@outlook.com"
+      },
+      {
+        "label": "LinkedIn",
+        "href": "https://www.linkedin.com/in/timothy-j-owen",
+        "external": true
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/saxd0ct0r",
+        "external": true
+      },
+      { "label": "timowen.me/tpm", "href": "https://timowen.me/tpm" }
     ]
   },
 
@@ -42,10 +53,9 @@
       "expiry": "no expiry"
     },
     {
-      "label": "CompTIA Security+ (in progress)",
-      "href": null,
-      "expiry": "exam scheduled Jul 30, 2026",
-      "inProgress": true
+      "label": "CompTIA Security+",
+      "href": "https://www.credly.com/badges/b38deb70-e957-4d58-8ae6-19d983bbc3f7",
+      "expiry": "thru Jul 30, 2029"
     }
   ],
 
@@ -241,8 +251,15 @@
   ],
 
   "additional": [
-    { "label": "Language",  "text": "Fluent in Russian (verbal and written)." },
-    { "label": "Clearance", "text": "Active federal Secret-level security clearance." },
-    { "label": "Portfolio", "text": "Full technical program management profile and projects:", "link": { "label": "timowen.me/tpm", "href": "https://timowen.me/tpm" } }
+    { "label": "Language", "text": "Fluent in Russian (verbal and written)." },
+    {
+      "label": "Clearance",
+      "text": "Active federal Secret-level security clearance."
+    },
+    {
+      "label": "Portfolio",
+      "text": "Full technical program management profile and projects:",
+      "link": { "label": "timowen.me/tpm", "href": "https://timowen.me/tpm" }
+    }
   ]
 }

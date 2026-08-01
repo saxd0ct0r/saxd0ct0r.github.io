@@ -8,47 +8,103 @@
     "name": "Dr. Timothy J. Owen",
     "subtitle": "U.S. Army Veteran · IT Professional · South Puget Sound, WA",
     "contact": [
-      { "label": "(757) 502-5970",              "href": "tel:7575025970" },
-      { "label": "timothy.j.owen@outlook.com",  "href": "mailto:timothy.j.owen@outlook.com" },
-      { "label": "LinkedIn",                    "href": "https://www.linkedin.com/in/timothy-j-owen", "external": true },
-      { "label": "GitHub",                      "href": "https://github.com/saxd0ct0r", "external": true },
-      { "label": "timowen.me",                  "href": "https://timowen.me" }
+      { "label": "(757) 502-5970", "href": "tel:7575025970" },
+      {
+        "label": "timothy.j.owen@outlook.com",
+        "href": "mailto:timothy.j.owen@outlook.com"
+      },
+      {
+        "label": "LinkedIn",
+        "href": "https://www.linkedin.com/in/timothy-j-owen",
+        "external": true
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/saxd0ct0r",
+        "external": true
+      },
+      { "label": "timowen.me", "href": "https://timowen.me" }
     ]
   },
 
   "objective": "U.S. Army veteran with 20 years of leadership and an active **DoD Secret clearance**, transitioning from distinguished military service to Information Technology. Holding **CompTIA Network+**, **AWS Cloud Practitioner**, and **Certified Entry-Level Python Programmer** certifications, and a completed Washington Vets-to-Tech program (Dec 2025), I'm eager to deliver secure, compliant IT support in dynamic, mission-critical environments — ensuring seamless operations and exceptional customer service.",
 
   "certifications": [
-    { "label": "CompTIA Network+",        "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f" },
-    { "label": "AWS Cloud Practitioner",  "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25" },
-    { "label": "Python Programmer (PCEP)","href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ" },
-    { "label": "ServiceNow", "pending": false }
+    {
+      "label": "CompTIA Network+",
+      "href": "https://www.credly.com/badges/0e739714-97db-4e00-8416-1ee782293b7f",
+      "expiry": "thru Aug 2028"
+    },
+    {
+      "label": "AWS Certified Cloud Practitioner",
+      "href": "https://www.credly.com/earner/earned/badge/b0c3523d-f4af-46f7-910d-4ccc82915f25",
+      "expiry": "thru Jul 2028"
+    },
+    {
+      "label": "Certified Entry-Level Python Programmer (PCEP)",
+      "href": "https://verify.openedg.org/?id=WpfY.QKor.dfaZ",
+      "expiry": "no expiry"
+    },
+    {
+      "label": "Foundational C# with Microsoft",
+      "href": "https://www.freecodecamp.org/certification/sax_d0ct0r/foundational-c-sharp-with-microsoft",
+      "expiry": "no expiry"
+    },
+    {
+      "label": "CompTIA Security+",
+      "href": "https://www.credly.com/badges/b38deb70-e957-4d58-8ae6-19d983bbc3f7",
+      "expiry": "thru Jul 30, 2029"
+    }
   ],
 
   "skillGroups": [
     {
       "title": "Networking",
-      "items": ["IPv4 / IPv6 & Subnetting", "VPN Configuration", "Network Administration"]
+      "items": [
+        "IPv4 / IPv6 & Subnetting",
+        "VPN Configuration",
+        "Network Administration"
+      ]
     },
     {
       "title": "Security",
-      "items": ["Cybersecurity (MFA, TLS)", "Ethical Hacking", "DoD Secret Clearance"]
+      "items": [
+        "Cybersecurity (MFA, TLS)",
+        "Ethical Hacking",
+        "DoD Secret Clearance"
+      ]
     },
     {
       "title": "Systems & Cloud",
-      "items": ["Windows Server / PowerShell", "Linux Bash Administration", "AWS EC2 / Ansible"]
+      "items": [
+        "Windows Server / PowerShell",
+        "Linux Bash Administration",
+        "AWS EC2 / Ansible"
+      ]
     },
     {
       "title": "Programming",
-      "items": ["Python (automation, scripting)", "C# (fundamentals)", "Hardware troubleshooting"]
+      "items": [
+        "Python (automation, scripting)",
+        "C# (fundamentals)",
+        "Hardware troubleshooting"
+      ]
     },
     {
       "title": "Leadership",
-      "items": ["20 yrs military management", "Training & documentation", "Project & logistics mgmt"]
+      "items": [
+        "20 yrs military management",
+        "Training & documentation",
+        "Project & logistics mgmt"
+      ]
     },
     {
       "title": "Additional",
-      "items": ["Fluent Russian", "Customer service excellence", "Compliance & HIPAA labs"]
+      "items": [
+        "Fluent Russian",
+        "Customer service excellence",
+        "Compliance & HIPAA labs"
+      ]
     }
   ],
 
@@ -98,7 +154,14 @@
         "Acquired Python proficiency for automating end-user support tasks and data analysis labs",
         "Configured Windows Server via PowerShell; deployed AWS EC2 applications, optimizing performance for clinical IT"
       ],
-      "tags": ["Python", "AWS EC2", "Windows Server", "PowerShell", "Linux", "Ansible"]
+      "tags": [
+        "Python",
+        "AWS EC2",
+        "Windows Server",
+        "PowerShell",
+        "Linux",
+        "Ansible"
+      ]
     },
     {
       "role": "Saxophonist / Library Mgr / Security Mgr / Ops Mgr",
@@ -111,7 +174,12 @@
         "Oversaw DoD Secret clearances for 40+ personnel, ensuring ongoing security compliance",
         "Facilitated Master Resilience Training (Level II) for 600+ students across 10 cohorts"
       ],
-      "tags": ["Security Clearance", "Asset Management", "Compliance", "Leadership"]
+      "tags": [
+        "Security Clearance",
+        "Asset Management",
+        "Compliance",
+        "Leadership"
+      ]
     },
     {
       "role": "Saxophone Instructor / Curriculum Writer",
@@ -211,9 +279,19 @@
   ],
 
   "additional": [
-    { "label": "Language",   "text": "Fluent in Russian (verbal and written)." },
-    { "label": "Clearance",  "text": "Active DoD Secret Clearance." },
-    { "label": "ServiceNow", "text": "\"Welcome to ServiceNow\" micro-certification to master IT ticketing workflows and enhance readiness for IT support roles." },
-    { "label": "Music Portfolio", "text": "Full academic and performance credentials available at", "link": { "label": "timowen.me/saxophone", "href": "https://timowen.me/saxophone/" } }
+    { "label": "Language", "text": "Fluent in Russian (verbal and written)." },
+    { "label": "Clearance", "text": "Active DoD Secret Clearance." },
+    {
+      "label": "ServiceNow",
+      "text": "\"Welcome to ServiceNow\" micro-certification to master IT ticketing workflows and enhance readiness for IT support roles."
+    },
+    {
+      "label": "Music Portfolio",
+      "text": "Full academic and performance credentials available at",
+      "link": {
+        "label": "timowen.me/saxophone",
+        "href": "https://timowen.me/saxophone/"
+      }
+    }
   ]
 }

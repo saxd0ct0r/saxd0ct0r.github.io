@@ -10,11 +10,22 @@
     "name": "Timothy J. Owen, D.M.A.",
     "subtitle": "U.S. Army Veteran (20 Years) · Active Federal Secret Clearance · Cloud & Cybersecurity Solutions Engineering",
     "contact": [
-      { "label": "(757) 502-5970",             "href": "tel:7575025970" },
-      { "label": "timothy.j.owen@outlook.com", "href": "mailto:timothy.j.owen@outlook.com" },
-      { "label": "LinkedIn",                   "href": "https://www.linkedin.com/in/timothy-j-owen", "external": true },
-      { "label": "GitHub",                     "href": "https://github.com/saxd0ct0r", "external": true },
-      { "label": "timowen.me/se",              "href": "https://timowen.me/se" }
+      { "label": "(757) 502-5970", "href": "tel:7575025970" },
+      {
+        "label": "timothy.j.owen@outlook.com",
+        "href": "mailto:timothy.j.owen@outlook.com"
+      },
+      {
+        "label": "LinkedIn",
+        "href": "https://www.linkedin.com/in/timothy-j-owen",
+        "external": true
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/saxd0ct0r",
+        "external": true
+      },
+      { "label": "timowen.me/se", "href": "https://timowen.me/se" }
     ]
   },
 
@@ -42,10 +53,9 @@
       "expiry": "no expiry"
     },
     {
-      "label": "CompTIA Security+ (in progress)",
-      "href": null,
-      "expiry": "exam scheduled Jul 30, 2026",
-      "inProgress": true
+      "label": "CompTIA Security+",
+      "href": "https://www.credly.com/badges/b38deb70-e957-4d58-8ae6-19d983bbc3f7",
+      "expiry": "thru Jul 30, 2029"
     }
   ],
 
@@ -139,7 +149,12 @@
         "Diagnosed and resolved three network connectivity failures by tracing physical connections through patch panels and verifying switch port assignments, in mixed supervised and independent capacity.",
         "Operated within a strict state data privacy compliance framework across the full engagement."
       ],
-      "tags": ["Government IT", "Technical Communication", "Network Troubleshooting", "Compliance"]
+      "tags": [
+        "Government IT",
+        "Technical Communication",
+        "Network Troubleshooting",
+        "Compliance"
+      ]
     },
     {
       "role": "IT Trainee — Cybersecurity",
@@ -150,7 +165,12 @@
         "Completed 16-week intensive program earning 18 college credits toward a B.S. in Computer Science; 100% lab completion rate across security hardening, threat intelligence, and vulnerability assessment.",
         "Hosted a Kali Linux virtual machine in VirtualBox for cybersecurity exploration exercises."
       ],
-      "tags": ["Cybersecurity", "Threat Intelligence", "Vulnerability Assessment", "VirtualBox"]
+      "tags": [
+        "Cybersecurity",
+        "Threat Intelligence",
+        "Vulnerability Assessment",
+        "VirtualBox"
+      ]
     },
     {
       "role": "IT Trainee — Server & Cloud Applications",
@@ -265,8 +285,15 @@
   ],
 
   "additional": [
-    { "label": "Language",  "text": "Fluent in Russian (verbal and written)." },
-    { "label": "Clearance", "text": "Active federal Secret-level security clearance." },
-    { "label": "Portfolio", "text": "Full solutions engineering profile and projects:", "link": { "label": "timowen.me/se", "href": "https://timowen.me/se" } }
+    { "label": "Language", "text": "Fluent in Russian (verbal and written)." },
+    {
+      "label": "Clearance",
+      "text": "Active federal Secret-level security clearance."
+    },
+    {
+      "label": "Portfolio",
+      "text": "Full solutions engineering profile and projects:",
+      "link": { "label": "timowen.me/se", "href": "https://timowen.me/se" }
+    }
   ]
 }
