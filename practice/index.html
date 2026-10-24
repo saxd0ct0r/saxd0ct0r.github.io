@@ -1,0 +1,3708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>SIP Practice</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#0f6b63">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: one column that works as a narrow panel beside sheet music (split screen), a phone, or a laptop.
+   The practice screen is built to be read at arm's length: tempo and the two answer buttons dominate. */
+:root {
+  --bg: #eff1ee;        /* paper-grey with a green bias */
+  --surface: #ffffff;
+  --surface-2: #e6eae6;
+  --fg: #19201d;
+  --muted: #5a6761;
+  --line: #d4dad5;
+  --accent: #0d6a62;    /* the one brand colour: deep teal */
+  --accent-fg: #ffffff;
+  --accent-soft: #d8ece8;
+  --pass: #1b7a45;
+  --pass-soft: #d9efe1;
+  --fail: #b5301c;
+  --fail-soft: #f6dcd6;
+  --warn: #9a5b00;
+  --warn-soft: #f6e6c6;
+  --font-ui: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(20,30,25,.08), 0 6px 18px rgba(20,30,25,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101513; --surface: #182120; --surface-2: #212c29; --fg: #e8eeea; --muted: #97a59e; --line: #2b3834;
+    --accent: #52c2b3; --accent-fg: #06201c; --accent-soft: #17332f;
+    --pass: #5fd08a; --pass-soft: #163423; --fail: #ff8a74; --fail-soft: #3b1d17; --warn: #f0b04a; --warn-soft: #36290f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101513; --surface: #182120; --surface-2: #212c29; --fg: #e8eeea; --muted: #97a59e; --line: #2b3834;
+  --accent: #52c2b3; --accent-fg: #06201c; --accent-soft: #17332f;
+  --pass: #5fd08a; --pass-soft: #163423; --fail: #ff8a74; --fail-soft: #3b1d17; --warn: #f0b04a; --warn-soft: #36290f;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 17px; line-height: 1.4; -webkit-tap-highlight-color: transparent; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 50; background: var(--bg); }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: .86rem; }
+
+#shell { min-height: 100%; display: flex; flex-direction: column; }
+.wrap { width: 100%; max-width: 680px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; gap: 12px; padding-block: 10px; }
+.brand { font-weight: 700; letter-spacing: .02em; display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.brand b { font-size: 1.15rem; }
+.brand span { color: var(--muted); font-size: .8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spacer { flex: 1; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--surface-2); font-family: var(--font-num); font-size: .95rem; font-weight: 500; white-space: nowrap; }
+.chip.amber { background: var(--warn-soft); color: var(--warn); }
+.chip.red { background: var(--fail-soft); color: var(--fail); }
+.chip.save-bad { background: var(--fail-soft); color: var(--fail); font-family: var(--font-ui); }
+main { flex: 1; padding-block: 16px 120px; display: flex; flex-direction: column; gap: 14px; }
+
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+nav.tabs .wrap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding-block: 6px; }
+nav.tabs button { padding: 10px 4px 8px; border-radius: 12px; color: var(--muted); font-size: .8rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 56px; }
+nav.tabs button svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+nav.tabs button[aria-current="true"] { color: var(--accent); background: var(--accent-soft); }
+nav.tabs .badge { position: absolute; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; }
+.card.flat { box-shadow: none; }
+h1, h2, h3 { margin: 0; line-height: 1.15; text-wrap: balance; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.2rem; }
+h3 { font-size: 1rem; }
+.eyebrow { font-size: .75rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 600; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 12px 18px; border-radius: 12px; background: var(--surface-2); font-weight: 600; text-align: center; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); }
+.btn.ghost { background: transparent; border: 1px solid var(--line); }
+.btn.danger { background: var(--fail-soft); color: var(--fail); }
+.btn.small { min-height: 40px; padding: 8px 14px; font-size: .92rem; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row > .grow { flex: 1; min-width: 0; }
+
+/* practice */
+.where { display: flex; flex-direction: column; gap: 4px; }
+.where .piece { font-size: .85rem; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; }
+.where .node { font-size: 1.55rem; font-weight: 700; line-height: 1.1; }
+.where .range { font-family: var(--font-num); color: var(--muted); font-size: 1rem; }
+.tempo { display: grid; grid-template-columns: 1fr; gap: 6px; text-align: center; padding-block: 6px; }
+.tempo .label { font-size: .8rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 600; }
+.tempo .marked { font-family: var(--font-num); font-size: 1.35rem; font-weight: 500; }
+.tempo .adjust { font-family: var(--font-num); font-size: clamp(3.6rem, 17vw, 6.4rem); font-weight: 600; line-height: 1; letter-spacing: -.02em; color: var(--accent); }
+.tempo .adjust.neg { color: var(--fg); }
+.tempo .result { font-family: var(--font-num); font-size: 1.15rem; color: var(--muted); }
+.startat { display: flex; align-items: baseline; justify-content: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); }
+.startat b { font-family: var(--font-num); font-size: 1.6rem; }
+.note { padding: 10px 14px; border-radius: 12px; background: var(--warn-soft); color: var(--fg); border-left: 4px solid var(--warn); }
+.answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.answers button { min-height: 108px; border-radius: 18px; font-size: 1.8rem; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.answers button small { font-size: .8rem; font-weight: 500; opacity: .8; }
+.answers .pass { background: var(--pass); color: #fff; }
+.answers .fail { background: var(--fail); color: #fff; }
+:root[data-theme="dark"] .answers .pass, :root[data-theme="dark"] .answers .fail { color: #0b0f0d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .answers .pass, :root:not([data-theme="light"]) .answers .fail { color: #0b0f0d; } }
+.ladder { display: flex; flex-wrap: wrap; gap: 6px; }
+.trial-chip { font-family: var(--font-num); font-size: .82rem; padding: 4px 9px; border-radius: 8px; background: var(--surface-2); }
+.trial-chip.p { background: var(--pass-soft); color: var(--pass); }
+.trial-chip.f { background: var(--fail-soft); color: var(--fail); }
+.banner { padding: 12px 14px; border-radius: 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: var(--warn-soft); color: var(--fg); }
+.banner.red { background: var(--fail-soft); }
+.banner .grow { flex: 1; min-width: 180px; font-weight: 600; }
+.grades { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grades button { min-height: 84px; border-radius: 14px; background: var(--surface-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-weight: 700; font-size: 1.15rem; border: 2px solid transparent; }
+.grades button small { font-weight: 500; font-size: .76rem; color: var(--muted); }
+.grades button.suggested { border-color: var(--accent); background: var(--accent-soft); }
+.grades button .sug { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 700; }
+input[type="text"], input[type="number"], textarea { width: 100%; min-height: 48px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); }
+label.field { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: .9rem; }
+label.field small { font-weight: 400; color: var(--muted); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chips button { min-height: 48px; min-width: 64px; padding: 8px 16px; border-radius: 999px; background: var(--surface-2); font-family: var(--font-num); font-weight: 600; }
+.chips button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+
+/* lists */
+.list { display: flex; flex-direction: column; }
+.item { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.item:first-child { border-top: 0; }
+.item .body { flex: 1; min-width: 0; }
+.item .t { font-weight: 600; overflow-wrap: anywhere; }
+.item .s { font-size: .86rem; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tag { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.tag.new { background: var(--accent-soft); color: var(--accent); }
+.tag.due { background: var(--warn-soft); color: var(--warn); }
+.tag.retry { background: var(--fail-soft); color: var(--fail); }
+.tag.ok { background: var(--pass-soft); color: var(--pass); }
+.tree .item { padding-left: calc(var(--depth, 0) * 18px); }
+
+/* sheet */
+.scrim { position: fixed; inset: 0; background: rgba(8,12,10,.5); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { width: 100%; max-width: 560px; background: var(--surface); border-radius: 22px 22px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; box-shadow: 0 -8px 30px rgba(0,0,0,.25); }
+.bigval { font-family: var(--font-num); font-size: 4rem; font-weight: 600; text-align: center; line-height: 1; }
+.stepper { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.stepper button { min-height: 56px; border-radius: 12px; background: var(--surface-2); font-family: var(--font-num); font-size: 1.15rem; font-weight: 600; }
+input[type="range"] { width: 100%; height: 40px; accent-color: var(--accent); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(64px + env(safe-area-inset-top, 0px)); z-index: 60; max-width: min(92vw, 520px); background: var(--fg); color: var(--bg); padding: 12px 16px; border-radius: 12px; font-weight: 600; box-shadow: var(--shadow); }
+.empty { text-align: center; padding: 24px 8px; color: var(--muted); }
+.kbd { font-family: var(--font-num); font-size: .8rem; padding: 1px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); }
+pre.out { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-family: var(--font-num); font-size: .78rem; }
+@media (min-width: 900px) { body { font-size: 18px; } .wrap { max-width: 760px; } }
+@media (prefers-reduced-motion: no-preference) { .sheet { animation: rise .18s ease-out; } @keyframes rise { from { transform: translateY(24px); } } }
+</style>
+
+<div id="shell">
+  <header class="top"><div class="wrap" id="topbar"></div></header>
+  <div class="wrap" style="flex:1;display:flex;flex-direction:column"><main id="main"></main></div>
+  <nav class="tabs" aria-label="Sections"><div class="wrap" id="tabs"></div></nav>
+</div>
+<div id="overlay"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+const __mods = {}; const __cache = {};
+function __req(n) { if (__cache[n]) return __cache[n].exports; const m = { exports: {} }; __cache[n] = m; __mods[n](m, m.exports, __req); return m.exports; }
+__mods["./sip-core"] = function (module, exports, require) {
+// sip-core.js
+//
+// Core data model for SIP's repertoire tree: nodes, decompose, and
+// the tempo-step math. This is the first real slice of the
+// eventual codebase — the prototype artifact's <script> block
+// mirrors this file for now; once the project has a build step,
+// the artifact should import this module directly instead of
+// duplicating it.
+
+let nextId = 1;
+
+function resetIdCounter(start = 1) {
+  nextId = start;
+}
+
+function makeNode({ label, start, end, parentId, kind = "segment" }) {
+  if (end < start) {
+    throw new Error(`Invalid range: end (${end}) is before start (${start}).`);
+  }
+  return {
+    id: nextId++,
+    parentId,
+    label,
+    start,
+    end,
+    kind,            // "segment" | "hotspot"
+    hotspot: null,   // ordinal within [start, end], or null
+    hotspotNote: "",
+    step: 0,         // integer, relative to piece goal tempo. 0 = goal.
+    readyForPerformance: false,
+    fsrs: null,      // null until first review; see reviewNode()
+    reviewLog: [],   // append-only log of review-log entries from reviewNode()
+    decomposeRank: null, // 0 = Hotspot, 1 = Child A, 2 = Child B; set by decompose(). null for the root.
+    search: null,    // active hotspot-search state (see beginHotspotSearch), or null
+    bookmark: null,  // an ordinal location the player saved when a session was cut short
+    interrupted: false, // true if a session ended by timeout mid-search, without grading
+    children: []
+  };
+}
+
+// tempo = goal * 2^(step/16). 16 steps = one octave of tempo.
+// This matches the practice scheme directly: step +4 ≈ +19%,
+// step -12 ≈ -41% (exactly half the tempo at +4, since -12 to +4
+// spans 16 steps).
+function stepToPercent(step) {
+  return (Math.pow(2, step / 16) - 1) * 100;
+}
+
+function stepToTempo(step, goalTempo) {
+  return goalTempo * Math.pow(2, step / 16);
+}
+
+// Decompose: given a node with a hotspot set, create up to three
+// children — Child A (before), Hotspot (the unit itself), Child B
+// (after) — skipping any flank that would be empty. Pure
+// arithmetic on ordinals; no manually-typed ranges.
+//
+// Guards:
+//  - a hotspot-kind node is atomic and cannot be decomposed further
+//  - a node that already has children cannot be decomposed again
+//    (decomposing would silently discard the existing subtree —
+//    if re-decomposing on a new hotspot is ever wanted, it should
+//    be an explicit action, not an accidental overwrite)
+//  - the hotspot must actually fall within the node's own range
+function decompose(node) {
+  if (node.kind === "hotspot") {
+    throw new Error("Hotspot nodes are atomic and cannot be decomposed.");
+  }
+  if (node.children.length > 0) {
+    throw new Error("Node has already been decomposed; decomposing again would orphan its children.");
+  }
+  if (node.hotspot === null) {
+    throw new Error("Cannot decompose a node with no hotspot set.");
+  }
+  if (node.hotspot < node.start || node.hotspot > node.end) {
+    throw new Error("Hotspot must fall within the node's range.");
+  }
+
+  const children = [];
+
+  if (node.hotspot > node.start) {
+    const childA = makeNode({
+      label: `${node.label} — Child A`,
+      start: node.start,
+      end: node.hotspot - 1,
+      parentId: node.id
+    });
+    childA.decomposeRank = 1;
+    children.push(childA);
+  }
+
+  const hotspotChild = makeNode({
+    label: `${node.label} — Hotspot`,
+    start: node.hotspot,
+    end: node.hotspot,
+    parentId: node.id,
+    kind: "hotspot"
+  });
+  hotspotChild.decomposeRank = 0;
+  children.push(hotspotChild);
+
+  if (node.hotspot < node.end) {
+    const childB = makeNode({
+      label: `${node.label} — Child B`,
+      start: node.hotspot + 1,
+      end: node.end,
+      parentId: node.id
+    });
+    childB.decomposeRank = 2;
+    children.push(childB);
+  }
+
+  node.children = children;
+  return children;
+}
+
+module.exports = { makeNode, decompose, stepToPercent, stepToTempo, resetIdCounter };
+
+// =================================================================
+// Recursive decomposition (simulation / stress-testing utility)
+//
+// Not something a real user drives — hotspots are chosen by ear.
+// This exists to answer a design question empirically: given a
+// stopping rule ("stop once a child would be smaller than
+// minChildLength") and a hotspot-placement rule (near the midpoint,
+// jittered by up to placementJitter units), what does the resulting
+// tree actually look like, and in what order does the stated
+// engagement policy (Hotspot, then Child A, then Child B) visit it?
+// =================================================================
+
+function flattenTree(node, acc = []) {
+  acc.push(node);
+  node.children.forEach(c => flattenTree(c, acc));
+  return acc;
+}
+
+// Simple seedable PRNG (mulberry32) so a simulation run can be
+// reproduced exactly when a seed is passed, while still supporting
+// plain Math.random when reproducibility doesn't matter.
+function mulberry32(seed) {
+  let a = seed;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Recursively decomposes a node in place. At each step, the hotspot
+// is placed at the arithmetic midpoint, jittered by a random integer
+// in [-placementJitter, +placementJitter]. If either resulting flank
+// would be shorter than minChildLength, the node is left as a leaf
+// instead (no decomposition). Recurses into Child A and Child B;
+// the Hotspot child is always atomic and never recursed into.
+function recursiveDecompose(node, { minChildLength = 3, placementJitter = 1, rng = Math.random } = {}) {
+  const length = node.end - node.start + 1;
+  const midpoint = node.start + Math.floor((length - 1) / 2);
+  const offset = Math.floor(rng() * (2 * placementJitter + 1)) - placementJitter;
+  const hotspot = midpoint + offset;
+
+  const leftLen = hotspot - node.start;
+  const rightLen = node.end - hotspot;
+
+  if (leftLen < minChildLength || rightLen < minChildLength) {
+    return; // leave as a leaf — not enough room to decompose within the size floor
+  }
+
+  node.hotspot = hotspot;
+  const children = decompose(node);
+  children
+    .filter(c => c.kind !== "hotspot")
+    .forEach(c => recursiveDecompose(c, { minChildLength, placementJitter, rng }));
+}
+
+module.exports.flattenTree = flattenTree;
+
+// Why a node deserves special attention, in the player's own words ("what's
+// wrong here?" — the prototype's field for it). A node's own note wins. A
+// hotspot node with none falls back to the note on the node it was split
+// out of, which is where the Anki importer and `decompose <n> <note>` put
+// it — so a reason recorded either place shows up where the hotspot is
+// actually practised. No new field: hotspotNote already exists on every node.
+function effectiveNote(root, node) {
+  if (node.hotspotNote) return node.hotspotNote;
+  if (node.kind === "hotspot" && node.parentId !== null) {
+    const parent = flattenTree(root).find(n => n.id === node.parentId);
+    if (parent && parent.hotspotNote) return parent.hotspotNote;
+  }
+  return "";
+}
+module.exports.effectiveNote = effectiveNote;
+module.exports.mulberry32 = mulberry32;
+module.exports.recursiveDecompose = recursiveDecompose;
+
+// =================================================================
+// Daily queue simulation
+//
+// Models processing (auditioning + possibly decomposing) nodes
+// under a per-day unit budget. The queue starts with only the root.
+//
+// A node's total cost is fixed the moment processing on it begins
+// (hotspot placement is rolled once, at that moment) — but the cost
+// itself no longer has to be paid in one sitting. Each day spends
+// whatever budget remains on the node currently in progress; if the
+// budget runs out before the node's cost is fully paid, that node
+// is PAUSED with its remaining cost recorded, and the next day
+// resumes it first, continuing to spend against that same remaining
+// cost, before touching anything else. Only once a node's full cost
+// has been paid (possibly over several days) does it finalize —
+// decomposing into children (enqueued Hotspot, then Child A, then
+// Child B) or becoming a leaf.
+//
+// Everything after the resumed node stays in plain FIFO order: the
+// queue's existing front-to-back order already means whatever was
+// already waiting ("due") is processed before anything spawned by
+// today's own decompositions ("new"), with no separate data
+// structure needed for that distinction.
+//
+// Because any node's cost can now be spread across as many days as
+// needed, nothing is ever permanently unprocessable — a very
+// expensive node (the root, especially) just takes several days
+// instead of stalling. This is the pause/resume mechanic standing
+// in for what would really be several distinct practice passes
+// before a hotspot's threshold tempo is actually pinned down; the
+// per-node cost formula itself is unchanged.
+function decomposeCost(total, x) {
+  return x + (total - x) * 2;
+}
+
+function beginProcessing(node, { minChildLength, placementJitter, rng }) {
+  const total = node.end - node.start + 1;
+  const midpoint = node.start + Math.floor((total - 1) / 2);
+  const offset = Math.floor(rng() * (2 * placementJitter + 1)) - placementJitter;
+  const candidateHotspot = midpoint + offset;
+  const leftLen = candidateHotspot - node.start;
+  const rightLen = node.end - candidateHotspot;
+  const willDecompose = leftLen >= minChildLength && rightLen >= minChildLength;
+  const totalCost = willDecompose ? decomposeCost(total, leftLen) : total;
+
+  return {
+    node,
+    total,
+    willDecompose,
+    hotspot: willDecompose ? candidateHotspot : null,
+    totalCost,
+    remainingCost: totalCost
+  };
+}
+
+function finalizeProcessing(state, queue) {
+  const { node, willDecompose, hotspot } = state;
+  if (willDecompose) {
+    node.hotspot = hotspot;
+    const children = decompose(node);
+    const hotspotChild = children.find(c => c.kind === "hotspot");
+    const childA = children.find(c => c.decomposeRank === 1);
+    const childB = children.find(c => c.decomposeRank === 2);
+    if (hotspotChild) queue.push(hotspotChild);
+    if (childA) queue.push(childA);
+    if (childB) queue.push(childB);
+  } else {
+    node.readyForPerformance = true;
+  }
+}
+
+function simulateDailyQueue(root, options = {}) {
+  const {
+    dailyBudget,
+    minChildLength = 3,
+    placementJitter = 1,
+    rng = Math.random,
+    maxDays = 1000
+  } = options;
+
+  if (typeof dailyBudget !== "number" || dailyBudget <= 0) {
+    throw new Error("simulateDailyQueue requires a positive dailyBudget.");
+  }
+
+  const queue = [root];
+  const log = [];
+  let inProgress = null;
+  let day = 0;
+
+  while ((queue.length > 0 || inProgress) && day < maxDays) {
+    day++;
+    let remaining = dailyBudget;
+    const processedToday = [];
+
+    // Resume yesterday's paused node first, if any.
+    if (inProgress) {
+      const spend = Math.min(remaining, inProgress.remainingCost);
+      remaining -= spend;
+      inProgress.remainingCost -= spend;
+      const finished = inProgress.remainingCost === 0;
+      processedToday.push({
+        label: inProgress.node.label, start: inProgress.node.start, end: inProgress.node.end,
+        total: inProgress.total, spentToday: spend, remainingCost: inProgress.remainingCost,
+        resumed: true, finished
+      });
+      if (finished) {
+        queue.shift(); // the in-progress node has sat at queue[0] the whole time
+        finalizeProcessing(inProgress, queue);
+        inProgress = null;
+      }
+    }
+
+    // Then work through the FIFO queue as normal (due items already
+    // queued, followed by anything spawned earlier today).
+    while (!inProgress && remaining > 0 && queue.length > 0) {
+      const node = queue[0];
+      const state = beginProcessing(node, { minChildLength, placementJitter, rng });
+      const spend = Math.min(remaining, state.remainingCost);
+      remaining -= spend;
+      state.remainingCost -= spend;
+      const finished = state.remainingCost === 0;
+
+      processedToday.push({
+        label: node.label, start: node.start, end: node.end, total: state.total,
+        spentToday: spend, remainingCost: state.remainingCost,
+        resumed: false, finished, decomposed: finished ? state.willDecompose : null
+      });
+
+      if (finished) {
+        queue.shift();
+        finalizeProcessing(state, queue);
+      } else {
+        inProgress = state; // paused — resumes at the top of tomorrow
+      }
+    }
+
+    log.push({
+      day,
+      processed: processedToday,
+      unitsUsed: dailyBudget - remaining,
+      unitsRemaining: remaining,
+      queueLengthAtEnd: queue.length,
+      pausedNode: inProgress ? inProgress.node.label : null
+    });
+  }
+
+  return { log, days: day, queueEmptied: queue.length === 0 && !inProgress };
+}
+
+module.exports.decomposeCost = decomposeCost;
+module.exports.simulateDailyQueue = simulateDailyQueue;
+
+// =================================================================
+// Hotspot tempo-threshold search
+//
+// A separate concern from the abstract unit-cost simulation above:
+// this models the actual trial-by-trial process of finding the
+// tempo step at which a node stops holding together, via classic
+// binary search over steps, with resumable state for the pause/
+// resume flow (see conversation notes — one active search at a
+// time, resumed before anything else in the daily cycle).
+//
+// Search range: -28 to +4 (wider than the -12..+4 practical
+// PRACTICE range, since a hotspot may need more than a halving to
+// find its actual limit). passStep is the highest step confirmed
+// playable; failStep is the lowest step confirmed to break down.
+// They start at the extremes and close inward; converged once
+// they're adjacent, with passStep as the answer.
+//
+// Trial semantics (as decided, subject to revision once real data
+// exists):
+//  - PASS: passStep rises to the tried step. hotspotCandidate is
+//    UNCHANGED — the next trial starts from the same location.
+//  - FAIL: failStep drops to the tried step, AND hotspotCandidate
+//    updates to wherever the breakdown actually occurred this trial
+//    (which may differ from where it was expected).
+//  - Pausing mid-trial (before it's graded) discards that attempt;
+//    resuming re-runs the identical trial (same step, same start
+//    location) rather than preserving partial progress within it.
+//    This is the simplest option and the one to start with; revisit
+//    once it's clear whether that's too wasteful in practice.
+//  - A hotspot location that turns out wrong isn't specially
+//    guarded against here — it surfaces naturally when the
+//    resulting child node is later processed.
+
+const SEARCH_MIN_STEP = -28;
+const SEARCH_MAX_STEP = 4;
+
+function beginHotspotSearch(node, options = {}) {
+  const {
+    minStep = SEARCH_MIN_STEP,
+    maxStep = SEARCH_MAX_STEP,
+    initialCandidate
+  } = options;
+
+  return {
+    nodeId: node.id,
+    minStep,
+    maxStep,
+    passStep: minStep,       // assume the floor always plays — nothing confirmed harder yet
+    failStep: maxStep + 1,   // sentinel: nothing confirmed to fail yet
+    hotspotCandidate: initialCandidate !== undefined
+      ? initialCandidate
+      : (node.hotspot !== null ? node.hotspot : node.start),
+    currentStep: null,
+    currentStartLocation: null, // the location actually used for the current trial (may differ from hotspotCandidate; see nextTrial)
+    trialInProgress: false,
+    history: []              // {step, hotspotCandidate, result, failureLocation?}
+  };
+}
+
+function isSearchConverged(state) {
+  return state.failStep - state.passStep <= 1;
+}
+
+// Starts (or re-starts, if paused mid-trial) the next trial. Returns
+// the step to attempt and the location to start playing from. The
+// very first trial of a search always probes the top of the range
+// (maxStep) rather than the midpoint — most nodes aren't actually
+// hotspots, and a single pass at maxStep converges the search
+// immediately (passStep becomes maxStep, already adjacent to the
+// untouched failStep sentinel). A fail there just costs one extra
+// trial before normal bisection proceeds from there downward.
+//
+// startLocationOverride lets a caller choose where THIS ONE trial
+// starts playing from without touching hotspotCandidate itself —
+// used for resuming from a bookmark, which is just "where I
+// happened to be," not a revision of the search's own theory about
+// where the problem is. hotspotCandidate only ever moves via an
+// actual recorded failure (see recordTrialResult). The resolved
+// start location is stashed on the state as currentStartLocation so
+// a caller can display what was actually used for this trial, since
+// it may differ from hotspotCandidate when an override was given.
+function nextTrial(state, startLocationOverride = undefined) {
+  if (isSearchConverged(state)) {
+    throw new Error("Search has already converged; no further trial is needed.");
+  }
+  state.currentStep = state.history.length === 0
+    ? state.maxStep
+    : Math.floor((state.passStep + state.failStep) / 2);
+  state.trialInProgress = true;
+  state.currentStartLocation = startLocationOverride !== undefined ? startLocationOverride : state.hotspotCandidate;
+  return { step: state.currentStep, startLocation: state.currentStartLocation };
+}
+
+// Records the outcome of the in-progress trial. A failed trial must
+// report where the breakdown occurred, since that becomes the
+// updated hotspot candidate.
+function recordTrialResult(state, passed, failureLocation = null) {
+  if (!state.trialInProgress) {
+    throw new Error("No trial is currently in progress.");
+  }
+  if (!passed && failureLocation === null) {
+    throw new Error("A failed trial must report a failureLocation.");
+  }
+
+  const entry = { step: state.currentStep, hotspotCandidate: state.hotspotCandidate, result: passed ? "pass" : "fail" };
+
+  if (passed) {
+    state.passStep = state.currentStep;
+  } else {
+    state.failStep = state.currentStep;
+    state.hotspotCandidate = failureLocation;
+    entry.failureLocation = failureLocation;
+  }
+
+  state.trialInProgress = false;
+  state.history.push(entry);
+  return entry;
+}
+
+// Discards an ungraded, in-progress trial. Nothing else changes —
+// the next nextTrial() call reproduces the same step and start
+// location, since passStep/failStep (the only inputs to the
+// midpoint) are untouched.
+function pauseSearch(state) {
+  state.trialInProgress = false;
+}
+
+// Corrects WHERE the most recent failed trial broke down — for the
+// moment you typed "fail 88" and then found the real stumble was at 90, or
+// the session ran out and the one final attempt was already recorded.
+// Only the location changes: the step, the pass/fail result and the
+// search's bounds are untouched, so nothing is re-graded. If the next trial
+// has already been started from the old candidate, it now starts from the
+// corrected one.
+function amendLastFailure(state, newLocation) {
+  const last = state.history[state.history.length - 1];
+  if (!last) throw new Error("Nothing to correct: no trial has been recorded yet.");
+  if (last.result !== "fail") throw new Error("Nothing to correct: the last recorded trial was a pass.");
+  if (!Number.isInteger(newLocation)) throw new Error("The corrected location must be a whole number.");
+  const previous = state.hotspotCandidate;
+  last.failureLocation = newLocation;
+  state.hotspotCandidate = newLocation;
+  if (state.trialInProgress && state.currentStartLocation === previous) state.currentStartLocation = newLocation;
+  return { step: last.step, from: previous, to: newLocation };
+}
+
+module.exports.SEARCH_MIN_STEP = SEARCH_MIN_STEP;
+module.exports.SEARCH_MAX_STEP = SEARCH_MAX_STEP;
+module.exports.beginHotspotSearch = beginHotspotSearch;
+module.exports.isSearchConverged = isSearchConverged;
+module.exports.nextTrial = nextTrial;
+module.exports.recordTrialResult = recordTrialResult;
+module.exports.pauseSearch = pauseSearch;
+module.exports.amendLastFailure = amendLastFailure;
+
+// Concludes a session on a node with an active search: grades it via
+// reviewNode, commits step/hotspot from the search state, and — if
+// the search converged AND it actually found a genuine hotspot (at
+// least one failed trial, not just an immediate pass at maxStep) —
+// decomposes the node right then, folding what used to be a separate
+// manual step into grading itself. A search that converges having
+// never failed (the node was fine near goal tempo all along) leaves
+// the node as a leaf; there's nothing to split around. This is keyed
+// on "did the search find a real hotspot," not on whether this is
+// the node's first exposure — a search paused mid-discovery and
+// resumed on a later exposure still triggers decomposition once it
+// finally converges, which a strict first-exposure check would miss.
+function concludeSession(node, grade, reviewDate = studyDayOf(new Date()), options = {}) {
+  if (node.search === null) {
+    throw new Error("concludeSession requires an active search on this node.");
+  }
+  if (node.search.trialInProgress) pauseSearch(node.search);
+
+  const entry = reviewNode(node, grade, reviewDate, options);
+
+  // A node that is already split keeps its children and the hotspot they were
+  // split around: re-running its search (a whole-piece review) only moves its
+  // tempo step. Whatever the new search found is worked out in the children.
+  const alreadySplit = node.children.length > 0;
+  node.step = node.search.passStep;
+  if (!alreadySplit) node.hotspot = node.search.hotspotCandidate;
+
+  const converged = isSearchConverged(node.search);
+  const foundHotspot = node.search.history.some(h => h.result === "fail");
+
+  let decomposedChildren = null;
+  if (converged && foundHotspot && node.kind !== "hotspot" && !alreadySplit) {
+    decomposedChildren = decompose(node);
+  }
+
+  if (converged) node.search = null;
+
+  return { reviewEntry: entry, converged, foundHotspot, decomposedChildren };
+}
+
+module.exports.concludeSession = concludeSession;
+
+// =================================================================
+// Involuntary session interruption (time ran out) — distinct from
+// concludeSession. No grade is assigned and no FSRS scheduling
+// happens: the interruption wasn't a decision, so nothing about the
+// node's committed step or review history changes. The in-progress
+// (ungraded) trial, if any, is discarded the same way pauseSearch
+// always discards one — resuming reproduces it identically. The
+// node is flagged `interrupted` so it can be given priority pickup
+// the next time the player sits down, ahead of ordinary due/new
+// nodes, and an optional bookmark records exactly where the player
+// physically stopped, which may differ from the search's own
+// hotspotCandidate (they might have been partway into a trial, past
+// or short of the location the search cares about).
+// =================================================================
+
+function interruptSession(node, bookmarkLocation = undefined) {
+  if (node.search === null) {
+    throw new Error("interruptSession requires an active search on this node.");
+  }
+  if (node.search.trialInProgress) pauseSearch(node.search);
+  node.interrupted = true;
+  if (bookmarkLocation !== undefined) node.bookmark = bookmarkLocation;
+  return { search: node.search, bookmark: node.bookmark };
+}
+
+// Resumes an interrupted node. useBookmark=true plays this one trial
+// from the saved bookmark instead of the search's own candidate — a
+// practice convenience ("that's where I physically stopped"), not a
+// revision of the search's theory about where the problem is.
+// hotspotCandidate is deliberately left untouched either way; it
+// only ever moves via an actual recorded failure. useBookmark=false
+// (the default) resumes from the last potential hotspot as usual.
+// Either way, the interrupted flag clears — it only means "needs
+// priority pickup," not an ongoing state.
+function resumeInterrupted(node, useBookmark = false) {
+  if (!node.interrupted) {
+    throw new Error("Node is not marked interrupted.");
+  }
+  if (useBookmark && node.bookmark === null) {
+    throw new Error("No bookmark is set for this node.");
+  }
+  // Start the trial FIRST: nextTrial throws if the search has already
+  // converged, and a failed resume must not have already cleared the
+  // flag — that would silently drop the node's priority pickup
+  // without having resumed anything.
+  const trial = useBookmark ? nextTrial(node.search, node.bookmark) : nextTrial(node.search);
+  node.interrupted = false;
+  return trial;
+}
+
+function getInterruptedNodes(root) {
+  return flattenTree(root).filter(n => n.interrupted);
+}
+
+module.exports.interruptSession = interruptSession;
+module.exports.resumeInterrupted = resumeInterrupted;
+module.exports.getInterruptedNodes = getInterruptedNodes;
+
+// =================================================================
+// Default grade derivation
+//
+// Bridges the hotspot search to FSRS grading. Grading happens once
+// per exposure (one session's worth of engagement with a node —
+// whether or not the underlying search converged that session), not
+// once per trial. The rule, as decided:
+//
+//  - Performance-ready is always Easy, regardless of step movement.
+//  - First exposure (no prior step to compare against): there's no
+//    data to derive a grade from — "when I wanted to see it again"
+//    is the reviewer's own intent, not something step history can
+//    supply. This returns firstExposureDefault (Good, unless the
+//    caller passes something else) rather than silently guessing.
+//  - Otherwise, compare currentStep to previousStep (delta = current - previous):
+//      reached the top of the range (+4, reserve capacity) -> Easy
+//      delta >= +1                                          -> Good
+//      delta 0 or -1                                        -> Hard
+//      delta <= -2                                          -> Again
+//    One step back is within the noise of a single session; two or more is a
+//    real slip, and the node is set aside and measured again shortly.
+//  - An explicit override (manual choice, or a modifier like an
+//    upcoming performance) always wins, ranking above even the
+//    performance-ready rule.
+//
+// currentStep is meant to be the search state's passStep at the
+// point the session ends — that value only ever moves up during a
+// search, so it's meaningful to grade against even mid-search, not
+// just at full convergence.
+function deriveGrade({
+  isPerformanceReady = false,
+  isFirstExposure = false,
+  previousStep = null,
+  currentStep = null,
+  firstExposureDefault = GRADE.GOOD,
+  override = null,
+  ceilingStep = SEARCH_MAX_STEP
+} = {}) {
+  if (override !== null) return override;
+  if (isPerformanceReady) return GRADE.EASY;
+  if (isFirstExposure) return firstExposureDefault;
+
+  if (previousStep === null || currentStep === null) {
+    throw new Error("deriveGrade needs both previousStep and currentStep when isFirstExposure is false.");
+  }
+
+  if (currentStep >= ceilingStep) return GRADE.EASY;
+  const delta = currentStep - previousStep;
+  if (delta >= 1) return GRADE.GOOD;
+  if (delta >= -1) return GRADE.HARD;
+  return GRADE.AGAIN;
+}
+
+module.exports.deriveGrade = deriveGrade;
+
+// Computes the suggested grade for a node's active search — the
+// integration of deriveGrade with actual search state, so the UI
+// has one tested place to call rather than reassembling the inputs
+// itself. A search that converged having found NO hotspot (a clean
+// pass straight through, which can only happen via an unbroken
+// first trial at maxStep) is treated the same as performance-ready
+// for this purpose: it demonstrates the same thing — nothing more
+// to work on right now — even if the node was never explicitly
+// marked ready. That holds regardless of which exposure this is,
+// not just the first, since decompose() would already have fired on
+// any earlier search that DID find a hotspot, so a leaf can only
+// still be searchable on a later exposure if its prior search(es)
+// were also clean.
+function suggestGrade(node, options = {}) {
+  if (node.search === null) {
+    throw new Error("suggestGrade requires an active search on this node.");
+  }
+  const { firstExposureDefault = GRADE.GOOD, override = null } = options;
+  const foundHotspot = node.search.history.some(h => h.result === "fail");
+  return deriveGrade({
+    isPerformanceReady: node.readyForPerformance || !foundHotspot,
+    isFirstExposure: node.fsrs === null,
+    previousStep: node.step,
+    currentStep: node.search.passStep,
+    ceilingStep: node.search.maxStep,
+    firstExposureDefault,
+    override
+  });
+}
+
+module.exports.suggestGrade = suggestGrade;
+
+// =================================================================
+// FSRS-based scheduling
+//
+// Implements FSRS's core update equations. Grades follow the
+// standard 4-point scale: 1 = Again, 2 = Hard, 3 = Good, 4 = Easy.
+//
+// CAVEAT: the default weights below are the published FSRS-5
+// defaults, from memory, and have NOT been cross-checked against a
+// reference implementation. The formulas' structural behavior
+// (successful review grows stability, Again resets it, difficulty
+// stays in [1,10], retrievability decays with elapsed time) is what
+// the tests below verify, and that structure is correct regardless
+// of small errors in the constants. Before trusting these numbers
+// for real scheduling, either diff them against a maintained
+// implementation (ts-fsrs, py-fsrs) or run FSRS's own optimizer
+// against real review history once enough exists.
+// =================================================================
+
+const GRADE = { AGAIN: 1, HARD: 2, GOOD: 3, EASY: 4 };
+
+const FSRS_DEFAULT_PARAMS = [
+  0.4072, 1.1829, 3.1262, 15.4722, 7.2102, 0.5316, 1.0651, 0.0234,
+  1.616, 0.1544, 1.0824, 1.9813, 0.0953, 0.2975, 2.2042, 0.2407,
+  2.9466, 0.5034, 0.6567
+];
+
+const DECAY = -0.5;
+const FACTOR = 19 / 81; // chosen so retrievability(elapsed = S, S) === 0.9 exactly
+
+function retrievability(elapsedDays, stability) {
+  if (stability <= 0) return 0;
+  return Math.pow(1 + (FACTOR * elapsedDays) / stability, DECAY);
+}
+
+function clampDifficulty(d) {
+  return Math.min(10, Math.max(1, d));
+}
+
+function initialStability(grade, w = FSRS_DEFAULT_PARAMS) {
+  return w[grade - 1];
+}
+
+function initialDifficulty(grade, w = FSRS_DEFAULT_PARAMS) {
+  return clampDifficulty(w[4] - Math.exp(w[5] * (grade - 1)) + 1);
+}
+
+function nextDifficulty(difficulty, grade, w = FSRS_DEFAULT_PARAMS) {
+  const meanReversionTarget = initialDifficulty(GRADE.EASY, w);
+  const updated = difficulty - w[6] * (grade - 3);
+  const reverted = w[7] * meanReversionTarget + (1 - w[7]) * updated;
+  return clampDifficulty(reverted);
+}
+
+function nextStabilityOnRecall(stability, difficulty, r, grade, w = FSRS_DEFAULT_PARAMS) {
+  const hardPenalty = grade === GRADE.HARD ? w[15] : 1;
+  const easyBonus = grade === GRADE.EASY ? w[16] : 1;
+  const growth =
+    Math.exp(w[8]) *
+    (11 - difficulty) *
+    Math.pow(stability, -w[9]) *
+    (Math.exp((1 - r) * w[10]) - 1) *
+    hardPenalty *
+    easyBonus;
+  return stability * (growth + 1);
+}
+
+function nextStabilityOnForget(stability, difficulty, r, w = FSRS_DEFAULT_PARAMS) {
+  return (
+    w[11] *
+    Math.pow(difficulty, -w[12]) *
+    (Math.pow(stability + 1, w[13]) - 1) *
+    Math.exp(w[14] * (1 - r))
+  );
+}
+
+function nextIntervalDays(stability, requestRetention = 0.9) {
+  const days = (stability / FACTOR) * (Math.pow(requestRetention, 1 / DECAY) - 1);
+  return Math.max(1, Math.round(days));
+}
+
+// --- Two kinds of Date flow through scheduling; keep them apart -------
+//
+//  1. INSTANTS — a moment in time ("now", an Anki revlog timestamp).
+//  2. CALENDAR DATES — a day, with no time zone and no time of day
+//     (a card's due date, a review's study day). Represented here as a
+//     Date at UTC midnight of that Y-M-D, so addDays/daysBetween are
+//     plain UTC arithmetic and immune to DST.
+//
+// Every scheduling function (reviewNode, concludeSession,
+// getDueNodes) takes CALENDAR DATES. Turning an instant into one is
+// studyDayOf's job, and only its job — it applies the user's local
+// time zone and day-rollover hour. dateOnly below just normalizes a
+// value that is ALREADY a calendar date; passing it a raw instant
+// buckets by UTC day, which is wrong for anyone not in UTC.
+
+// Anki's own default: the new day starts at 4am, so a 1am session
+// still counts toward the previous day.
+const DEFAULT_ROLLOVER_HOURS = 4;
+
+function assertValidRolloverHours(hours) {
+  if (typeof hours !== "number" || !Number.isFinite(hours) || hours < 0 || hours >= 24) {
+    throw new Error(`Rollover hour must be a number from 0 up to (not including) 24, got ${hours}.`);
+  }
+}
+
+// instant -> the study day it belongs to, as a calendar date.
+//   rolloverHours: wall-clock hour at which a new day begins (default 4)
+//   utcOffsetMinutes: the zone's offset from UTC AT THAT INSTANT
+//     (e.g. -420 for Seattle in summer). Omit to use the runtime's own
+//     local zone, DST-correct; pass it explicitly in tests so results
+//     don't depend on the machine's time zone.
+function studyDayOf(instant, { rolloverHours = DEFAULT_ROLLOVER_HOURS, utcOffsetMinutes } = {}) {
+  assertValidRolloverHours(rolloverHours);
+  const offset = utcOffsetMinutes !== undefined ? utcOffsetMinutes : -instant.getTimezoneOffset();
+  const wallClock = new Date(instant.getTime() + offset * 60000 - rolloverHours * 3600000);
+  return new Date(Date.UTC(wallClock.getUTCFullYear(), wallClock.getUTCMonth(), wallClock.getUTCDate()));
+}
+
+// Normalizes a value that is ALREADY a calendar date (see above).
+function dateOnly(date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function daysBetween(a, b) {
+  return Math.round((dateOnly(b) - dateOnly(a)) / 86400000);
+}
+
+function addDays(date, days) {
+  const d = dateOnly(date);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d;
+}
+
+// Grades a node and updates its scheduling state in place. Returns
+// the review-log entry (also appended to node.reviewLog). Does NOT
+// touch node.step — tempo automation from grade is a later feature.
+// reviewDate is a CALENDAR DATE (the study day — see studyDayOf), not
+// an instant. It's normalized here so what gets stored in fsrs and
+// reviewLog is always a plain calendar date.
+function reviewNode(node, grade, reviewDate = studyDayOf(new Date()), options = {}) {
+  const { params = FSRS_DEFAULT_PARAMS, requestRetention = 0.9 } = options;
+  reviewDate = dateOnly(reviewDate);
+
+  if (![1, 2, 3, 4].includes(grade)) {
+    throw new Error(`Invalid grade: ${grade}. Must be 1 (Again), 2 (Hard), 3 (Good), or 4 (Easy).`);
+  }
+
+  const isNew = node.fsrs === null;
+  let elapsedDays = null;
+  let r = null;
+  let newDifficulty, newStability;
+
+  if (isNew) {
+    newStability = initialStability(grade, params);
+    newDifficulty = initialDifficulty(grade, params);
+  } else {
+    elapsedDays = daysBetween(node.fsrs.lastReview, reviewDate);
+    r = retrievability(elapsedDays, node.fsrs.stability);
+    newDifficulty = nextDifficulty(node.fsrs.difficulty, grade, params);
+    newStability =
+      grade === GRADE.AGAIN
+        ? nextStabilityOnForget(node.fsrs.stability, node.fsrs.difficulty, r, params)
+        : nextStabilityOnRecall(node.fsrs.stability, node.fsrs.difficulty, r, grade, params);
+  }
+
+  const interval = nextIntervalDays(newStability, requestRetention);
+  const due = addDays(reviewDate, interval);
+
+  const priorStability = isNew ? null : node.fsrs.stability;
+  const priorDifficulty = isNew ? null : node.fsrs.difficulty;
+  const priorReps = isNew ? 0 : node.fsrs.reps;
+  const priorLapses = isNew ? 0 : node.fsrs.lapses;
+
+  node.fsrs = {
+    stability: newStability,
+    difficulty: newDifficulty,
+    due,
+    lastReview: reviewDate,
+    reps: priorReps + 1,
+    lapses: priorLapses + (grade === GRADE.AGAIN ? 1 : 0)
+  };
+
+  const entry = {
+    nodeId: node.id,
+    reviewDate,
+    grade,
+    elapsedDays,
+    retrievability: r,
+    priorStability,
+    priorDifficulty,
+    newStability,
+    newDifficulty,
+    interval,
+    due
+  };
+
+  node.reviewLog.push(entry);
+  return entry;
+}
+
+// Collects every node in the tree due for review as of asOfDate:
+// never-reviewed nodes, plus nodes whose fsrs.due has passed. Every
+// node participates, not just leaves — a decomposed parent still
+// comes back around on its own schedule.
+//
+// Tie-break for nodes that are equally new (both fsrs === null):
+// decomposeRank orders them Hotspot (0) before Child A (1) before
+// Child B (2), per the stated engagement policy. Nodes without a
+// rank (the root, or anything not created by decompose()) sort
+// after ranked siblings but are otherwise in traversal order.
+function getDueNodes(node, asOfDate = studyDayOf(new Date()), acc = []) {
+  const isDue = node.fsrs === null || dateOnly(node.fsrs.due) <= dateOnly(asOfDate);
+  if (isDue) acc.push(node);
+  node.children.forEach(c => getDueNodes(c, asOfDate, acc));
+  return acc.sort((a, b) => {
+    if (a.fsrs === null && b.fsrs === null) {
+      const rankA = a.decomposeRank === null ? Infinity : a.decomposeRank;
+      const rankB = b.decomposeRank === null ? Infinity : b.decomposeRank;
+      return rankA - rankB;
+    }
+    if (a.fsrs === null) return -1;
+    if (b.fsrs === null) return 1;
+    return a.fsrs.due - b.fsrs.due;
+  });
+}
+
+module.exports.GRADE = GRADE;
+module.exports.FSRS_DEFAULT_PARAMS = FSRS_DEFAULT_PARAMS;
+module.exports.retrievability = retrievability;
+module.exports.nextIntervalDays = nextIntervalDays;
+module.exports.daysBetween = daysBetween;
+module.exports.addDays = addDays;
+module.exports.dateOnly = dateOnly;
+module.exports.studyDayOf = studyDayOf;
+module.exports.DEFAULT_ROLLOVER_HOURS = DEFAULT_ROLLOVER_HOURS;
+module.exports.assertValidRolloverHours = assertValidRolloverHours;
+module.exports.reviewNode = reviewNode;
+module.exports.getDueNodes = getDueNodes;
+
+// =================================================================
+// Unit table (for non-metered pieces) and tempo map
+//
+// Ordinals are plain integers everywhere else in this file. For a
+// metered piece, the ordinal already equals the measure number, so
+// nothing further is needed. For an unmetered piece (e.g. Lauba's
+// Balafon), buildUnitTable() generates the ordinal <-> label mapping
+// from a per-line sequence of group sizes (each group being a
+// simple [2] or complex [3] beat, or an exceptional size the player
+// used), expanding it into page/line/beat-indexed units in order.
+//
+// A tempo map is an ordered list of {ordinal, tempo} anchors — a
+// held tempo takes effect at its ordinal and continues until the
+// next anchor. This covers a piece with abrupt tempo changes (e.g.
+// Q=96 then Q=144 at measure 24). Ramped (gradual) tempo changes are
+// deliberately NOT handled here — that's metronome-feature territory
+// per earlier design notes, and a held-tempo map is what Phase 0
+// needs. effectiveTempo() composes a map lookup with stepToTempo so
+// a node's displayed/played tempo is always relative to whatever
+// the map says applies at that node's location, not a single
+// piece-wide goal.
+// =================================================================
+
+// pages: [{ page: 1, lines: [[2,2,3,2], [3,3,2], ...] }, ...]
+// Each inner array is one line's sequence of group sizes (beats).
+// A group size is a pulse count and may be any positive number, not
+// just an integer — e.g. 1.5 for a complex beat when the pulse is
+// the quarter note rather than the eighth, or 0.625 for a quintuplet
+// of 32nd notes (5 x 1/32 / 1/4) under the same convention. Ordinals
+// stay plain integers regardless — an ordinal is just "the nth unit
+// in sequence," unrelated to how long that unit lasts. A group size
+// of 0 is a continuation marker — a note tied across a line break,
+// with no new attack of its own — and is skipped entirely: it
+// consumes no ordinal and generates no unit. It exists purely so a
+// line's array can visually line up with the score (a leading 0
+// stands in for "this line opens mid-note"); the real first beat of
+// that line becomes b1, not b2.
+// Returns an array of units: {ordinal, page, line, beatInLine, groupSize, label}.
+function buildUnitTable(pages) {
+  const units = [];
+  let ordinal = 1;
+
+  pages.forEach(({ page, lines }) => {
+    lines.forEach((groupSizes, lineIndex) => {
+      const lineNumber = lineIndex + 1;
+      let beatNumber = 0;
+      groupSizes.forEach(groupSize => {
+        if (groupSize === 0) return; // continuation marker — not a real unit
+        beatNumber++;
+        units.push({
+          ordinal,
+          page,
+          line: lineNumber,
+          beatInLine: beatNumber,
+          groupSize,
+          label: `p${page} l${lineNumber} b${beatNumber}`
+        });
+        ordinal++;
+      });
+    });
+  });
+
+  return units;
+}
+
+function findUnitByOrdinal(unitTable, ordinal) {
+  const unit = unitTable.find(u => u.ordinal === ordinal);
+  if (!unit) throw new Error(`No unit found for ordinal ${ordinal}.`);
+  return unit;
+}
+
+// Validates a tempo map's shape: non-empty, sorted strictly
+// ascending by ordinal, first anchor at ordinal 1 (every ordinal
+// from the start of the piece must be covered by some anchor).
+// An anchor may optionally carry a `rampTo: { ordinal, tempo }` —
+// tempo changes continuously from this anchor's ordinal/tempo to
+// rampTo's, then holds at rampTo.tempo until the next anchor (or end
+// of piece). A ramp's rampTo.ordinal must be strictly after its own
+// ordinal, and can't reach past the next anchor — a ramp can finish
+// exactly where the next anchor begins, but can't still be running
+// when something else already takes over.
+function validateTempoMap(tempoMap) {
+  if (!Array.isArray(tempoMap) || tempoMap.length === 0) {
+    throw new Error("Tempo map must be a non-empty array of {ordinal, tempo} anchors.");
+  }
+  if (tempoMap[0].ordinal !== 1) {
+    throw new Error("Tempo map's first anchor must be at ordinal 1, covering the start of the piece.");
+  }
+  for (let i = 1; i < tempoMap.length; i++) {
+    if (tempoMap[i].ordinal <= tempoMap[i - 1].ordinal) {
+      throw new Error("Tempo map anchors must be in strictly ascending ordinal order.");
+    }
+  }
+  tempoMap.forEach((anchor, i) => {
+    if (anchor.rampTo === undefined) return;
+    if (anchor.rampTo.ordinal <= anchor.ordinal) {
+      throw new Error(`Ramp at ordinal ${anchor.ordinal} must have rampTo.ordinal after its own ordinal.`);
+    }
+    if (anchor.rampTo.tempo <= 0) {
+      throw new Error(`Ramp at ordinal ${anchor.ordinal} must have a positive rampTo.tempo.`);
+    }
+    const next = tempoMap[i + 1];
+    if (next && anchor.rampTo.ordinal > next.ordinal) {
+      throw new Error(`Ramp at ordinal ${anchor.ordinal} reaches past the next anchor at ${next.ordinal}.`);
+    }
+    if (anchor.q !== undefined && !Number.isFinite(anchor.q)) {
+      throw new Error(`Ramp at ordinal ${anchor.ordinal} has a non-finite q (${anchor.q}).`);
+    }
+    if (anchor.easing !== undefined && !EASING_FUNCTIONS[anchor.easing]) {
+      throw new Error(`Ramp at ordinal ${anchor.ordinal} has an unknown easing "${anchor.easing}" — use ${Object.keys(EASING_FUNCTIONS).map(k => `"${k}"`).join(", ")}.`);
+    }
+  });
+}
+
+// Power-mean tempo interpolation — a single family that subsumes
+// what used to be separate named curves, as values of q:
+//   q = -1   period (60/tempo) linear in position — rarely useful on
+//            its own; included because it falls out of the family,
+//            not because it deserves a name.
+//   q =  0   geometric mean — constant PERCENTAGE change per step.
+//            Equivalent to linear motion in log-tempo, i.e. the same
+//            coordinate the step/percent system already uses.
+//   q =  1   tempo itself linear in position ("linear BPM") — simple,
+//            intuitive, good for drills; not evidence-backed as an
+//            expressive or final-ritard shape.
+//   q =  2   Friberg & Sundberg's final-ritard family (constant
+//            braking force).
+//   q =  3   the same family's constant-braking-POWER variant —
+//            closest fit to measured real ritardandi and to
+//            decelerating runners, per Friberg & Sundberg (1999).
+// Any other finite q is accepted; these five are just the values
+// worth naming.
+function powerMeanTempo(T0, T1, x, q) {
+  if (x <= 0) return T0;
+  if (x >= 1) return T1;
+  if (q === 0) return Math.pow(T0, 1 - x) * Math.pow(T1, x);
+  return Math.pow((1 - x) * Math.pow(T0, q) + x * Math.pow(T1, q), 1 / q);
+}
+
+const Q_PERIOD_LINEAR = -1;
+const Q_GEOMETRIC = 0;
+const Q_LINEAR_BPM = 1;
+const Q_KINEMATIC_MODERATE = 2;
+const Q_KINEMATIC_STRONG = 3;
+
+// Easing reshapes normalized position x (0 to 1) before it's handed
+// to powerMeanTempo — a second, independent axis from q. This is
+// what makes an S-curve possible: ease the approach, THEN pick which
+// mean to interpolate in. "smoothstep" and "raised-cosine" both give
+// zero rate of change at both ends (gentle entry and exit); they're
+// close but not identical in shape.
+const EASING_FUNCTIONS = {
+  linear: x => x,
+  smoothstep: x => x * x * (3 - 2 * x),
+  "raised-cosine": x => 0.5 * (1 - Math.cos(Math.PI * x))
+};
+
+// Returns the tempo in effect at the given ordinal. For a held
+// anchor, that's just its tempo. For a ramp anchor, position within
+// the ramp is eased (anchor.easing, default "linear" — no easing)
+// and then interpolated via the power mean at anchor.q (default 1,
+// linear BPM), clamped to rampTo.tempo once that ordinal is reached.
+function tempoAtOrdinal(tempoMap, ordinal) {
+  validateTempoMap(tempoMap);
+  if (ordinal < tempoMap[0].ordinal) {
+    throw new Error(`Ordinal ${ordinal} is before the tempo map's first anchor at ${tempoMap[0].ordinal}.`);
+  }
+  let applicable = tempoMap[0];
+  for (const anchor of tempoMap) {
+    if (anchor.ordinal <= ordinal) applicable = anchor;
+    else break;
+  }
+
+  if (applicable.rampTo === undefined) return applicable.tempo;
+
+  const { ordinal: endOrdinal, tempo: endTempo } = applicable.rampTo;
+  if (ordinal >= endOrdinal) return endTempo;
+
+  const rawFrac = (ordinal - applicable.ordinal) / (endOrdinal - applicable.ordinal);
+  const easingFn = EASING_FUNCTIONS[applicable.easing || "linear"];
+  const x = easingFn(rawFrac);
+  const q = applicable.q !== undefined ? applicable.q : Q_LINEAR_BPM;
+
+  return powerMeanTempo(applicable.tempo, endTempo, x, q);
+}
+
+// Composes a tempo-map lookup with stepToTempo: the actual tempo to
+// play (or display) for a given step, at a given location in the
+// piece, under whatever tempo change — held or ramped — is in effect
+// there.
+function effectiveTempo(tempoMap, ordinal, step) {
+  return stepToTempo(step, tempoAtOrdinal(tempoMap, ordinal));
+}
+
+// For an unmetered piece, a tempo anchor can't be authored as a raw
+// ordinal the way a measure number can — nobody thinks in "unit 94,"
+// they think "where the tempo marking actually sits on the page."
+// resolveTempoMap() lets each anchor (and a ramp's rampTo target) be
+// written as whichever of these is most natural, converting it to
+// the ordinal-based form tempoAtOrdinal/effectiveTempo expect:
+//   { ordinal, tempo }                — already resolved (metered pieces)
+//   { label, tempo }                  — matches a unit's table label exactly, e.g. "p1 l4 b1"
+//   { page, line, beat, tempo }       — matches by those three fields directly
+// Throws if an anchor (or rampTo) matches no unit, or specifies none
+// of the above. rampTo, q, and easing, if present, are carried through.
+function resolveLocation(anchorLike, unitTable, context) {
+  if (anchorLike.ordinal !== undefined) return anchorLike.ordinal;
+
+  let unit;
+  if (anchorLike.label !== undefined) {
+    unit = unitTable.find(u => u.label === anchorLike.label);
+    if (!unit) throw new Error(`${context}: no unit found with label "${anchorLike.label}".`);
+  } else if (anchorLike.page !== undefined && anchorLike.line !== undefined && anchorLike.beat !== undefined) {
+    unit = unitTable.find(u => u.page === anchorLike.page && u.line === anchorLike.line && u.beatInLine === anchorLike.beat);
+    if (!unit) throw new Error(`${context}: no unit found at page ${anchorLike.page}, line ${anchorLike.line}, beat ${anchorLike.beat}.`);
+  } else {
+    throw new Error(`${context}: must specify ordinal, label, or page/line/beat.`);
+  }
+  return unit.ordinal;
+}
+
+function resolveTempoMap(tempoMap, unitTable) {
+  return tempoMap.map(anchor => {
+    const ordinal = resolveLocation(anchor, unitTable, "Tempo anchor");
+    const resolved = { ordinal, tempo: anchor.tempo };
+    if (anchor.rampTo !== undefined) {
+      resolved.rampTo = {
+        ordinal: resolveLocation(anchor.rampTo, unitTable, "Ramp target"),
+        tempo: anchor.rampTo.tempo
+      };
+      if (anchor.q !== undefined) resolved.q = anchor.q;
+      if (anchor.easing !== undefined) resolved.easing = anchor.easing;
+    }
+    // meter: {beatsPerBar, pattern?} — marks this anchor (and ordinals
+    // under it, until the next anchor) as a genuinely metered region,
+    // as opposed to the unmetered/unit-table convention (Balafon-
+    // style groupSize click-doubling). Carried through opaquely, same
+    // as rampTo/q/easing — sip-te-export.js is what actually acts on
+    // it (see deriveMeteredPresetSpecs); tempoAtOrdinal/effectiveTempo
+    // don't need to know it exists at all.
+    if (anchor.meter !== undefined) resolved.meter = anchor.meter;
+    return resolved;
+  });
+}
+
+module.exports.buildUnitTable = buildUnitTable;
+module.exports.findUnitByOrdinal = findUnitByOrdinal;
+module.exports.validateTempoMap = validateTempoMap;
+module.exports.tempoAtOrdinal = tempoAtOrdinal;
+module.exports.effectiveTempo = effectiveTempo;
+module.exports.resolveTempoMap = resolveTempoMap;
+
+// The anchor governing a given ordinal — the last anchor at or before
+// it (the same "most recent anchor wins" rule tempoAtOrdinal applies
+// internally), exposed because callers sometimes need the anchor
+// itself (its `meter`, say), not just the tempo value. Returns null
+// if the ordinal precedes every anchor.
+function governingAnchor(tempoMap, ordinal) {
+  let applicable = null;
+  for (const anchor of tempoMap) {
+    if (anchor.ordinal <= ordinal) applicable = anchor;
+    else break;
+  }
+  return applicable;
+}
+module.exports.governingAnchor = governingAnchor;
+module.exports.powerMeanTempo = powerMeanTempo;
+module.exports.Q_PERIOD_LINEAR = Q_PERIOD_LINEAR;
+module.exports.Q_GEOMETRIC = Q_GEOMETRIC;
+module.exports.Q_LINEAR_BPM = Q_LINEAR_BPM;
+module.exports.Q_KINEMATIC_MODERATE = Q_KINEMATIC_MODERATE;
+module.exports.Q_KINEMATIC_STRONG = Q_KINEMATIC_STRONG;
+
+// Converts a unit's pulse count into real elapsed time. A "pulse" is
+// whatever note value groupSize was counted in at that point in the
+// piece — a quarter note in a free cadenza, an eighth note in a
+// metered section, or a fractional pulse (e.g. 1.5, or 0.625 for a
+// 32nd-note quintuplet) under a single uniform pulse convention
+// chosen for the whole piece — and that's exactly what the governing
+// tempo anchor's number already represents (pulses per minute,
+// locally defined). Nothing about this needs to know which note
+// value is meant, or whether groupSize is a whole number:
+// effectiveTempo already returns the right pulses-per-minute figure
+// for wherever the unit sits, so groupSize / tempo * 60 gives
+// seconds regardless of the convention. Sums correctly across a
+// tempo-map boundary, since each unit's own ordinal picks up
+// whichever anchor governs it.
+function estimateDurationSeconds(unitTable, startOrdinal, endOrdinal, tempoMap, step = 0) {
+  let totalSeconds = 0;
+  unitTable.forEach(unit => {
+    if (unit.ordinal < startOrdinal || unit.ordinal > endOrdinal) return;
+    const tempo = effectiveTempo(tempoMap, unit.ordinal, step);
+    totalSeconds += (unit.groupSize / tempo) * 60;
+  });
+  return totalSeconds;
+}
+
+module.exports.estimateDurationSeconds = estimateDurationSeconds;
+
+};
+__mods["./sip-piece"] = function (module, exports, require) {
+// sip-piece.js
+//
+// A piece as a self-contained object: its tree of nodes plus
+// everything needed to interpret and play it (unit table, tempo map).
+// Also the SAVE FORMAT — the one thing every front end (CLI, web,
+// phone, desktop) shares, whatever language or storage it uses.
+// That's why this module is pure data transformation: no file system,
+// no clock reads, no globals. Callers supply storage and time.
+//
+// The format is documented in docs/piece-format.md; validatePieceData
+// below is its executable form.
+
+const core = require("./sip-core");
+const {
+  buildUnitTable, resolveTempoMap, validateTempoMap, effectiveTempo, governingAnchor,
+  estimateDurationSeconds, stepToTempo, dateOnly, studyDayOf
+} = core;
+
+const FORMAT_VERSION = 2;
+const PIECE_KINDS = ["metered", "unmetered"];
+const NODE_KINDS = ["segment", "hotspot"];
+const CLICK_STATES = ["accent", "ordinary", "silent"]; // mirrors sip-te-export's pattern states
+
+// A root's end is set to this when a piece was imported without a
+// real one (see the Anki importer). It's a deliberately obvious
+// sentinel: nothing downstream (duration estimates, tempo-range
+// summaries) should treat it as a real location.
+const PLACEHOLDER_END = 9999;
+
+// ---------------------------------------------------------------
+// The piece model
+// ---------------------------------------------------------------
+//
+//   kind        "metered"   — ordinals are measure numbers
+//               "unmetered" — ordinals are units from a unit table
+//                             (page/line/beat; Balafon-style)
+//   goalTempo   a flat fallback tempo, used only when there's no tempo
+//               map; null if neither is known (nothing is invented)
+//   unitPages   the AUTHORED page/line group-size data a unit table is
+//               built from (unmetered only) — stored in source form
+//               and rebuilt, not stored as a long derived table
+//   tempoAnchors the AUTHORED tempo anchors (labels allowed), stored
+//               in source form for the same reason: if a unit table is
+//               ever corrected, label-based anchors follow it
+
+function assertValidGoalTempo(goalTempo) {
+  if (goalTempo !== null && !(typeof goalTempo === "number" && Number.isFinite(goalTempo) && goalTempo > 0)) {
+    throw new Error(`goalTempo must be a positive number or null, got ${JSON.stringify(goalTempo)}.`);
+  }
+}
+
+function makePiece({ label, root, kind = "metered", goalTempo = null, unitPages = null, tempoAnchors = null }) {
+  if (typeof label !== "string" || label.trim() === "") throw new Error("A piece needs a non-empty label.");
+  if (!PIECE_KINDS.includes(kind)) throw new Error(`Unknown piece kind "${kind}" — use ${PIECE_KINDS.join(" or ")}.`);
+  if (!root || typeof root !== "object") throw new Error("A piece needs a root node.");
+  assertValidGoalTempo(goalTempo);
+  if (kind === "unmetered" && unitPages === null) throw new Error("An unmetered piece needs unitPages.");
+  if (kind === "metered" && unitPages !== null) throw new Error("A metered piece can't have unitPages (its ordinals are measure numbers).");
+
+  const piece = { label, kind, goalTempo, root, unitPages: null, tempoAnchors: null };
+  if (unitPages !== null) setUnitPages(piece, unitPages);
+  if (tempoAnchors !== null) setTempoAnchors(piece, tempoAnchors);
+  return piece;
+}
+
+// Loading a unit table declares the piece unmetered — the table IS
+// what defines its ordinals. If tempo anchors already exist they must
+// still resolve against the new table; otherwise nothing changes.
+function setUnitPages(piece, pages) {
+  buildUnitTable(pages); // throws on bad input, before anything is touched
+  const previous = { kind: piece.kind, unitPages: piece.unitPages };
+  piece.kind = "unmetered";
+  piece.unitPages = JSON.parse(JSON.stringify(pages));
+  if (piece.tempoAnchors) {
+    try {
+      validateTempoMap(resolveTempoMap(piece.tempoAnchors, getUnitTable(piece)));
+    } catch (err) {
+      piece.kind = previous.kind;
+      piece.unitPages = previous.unitPages;
+      throw new Error(`The existing tempo anchors don't fit this unit table: ${err.message}`);
+    }
+  }
+}
+
+function assertValidMeter(meter, where) {
+  if (!Number.isInteger(meter.beatsPerBar) || meter.beatsPerBar < 1) {
+    throw new Error(`${where}: meter.beatsPerBar must be a positive integer, got ${JSON.stringify(meter.beatsPerBar)}.`);
+  }
+  if (meter.pattern !== undefined) {
+    if (!Array.isArray(meter.pattern) || meter.pattern.length !== meter.beatsPerBar) {
+      throw new Error(`${where}: meter.pattern must have exactly beatsPerBar (${meter.beatsPerBar}) entries.`);
+    }
+    meter.pattern.forEach((state, i) => {
+      if (!CLICK_STATES.includes(state)) {
+        throw new Error(`${where}: meter.pattern[${i}] is "${state}" — use ${CLICK_STATES.join(", ")}.`);
+      }
+    });
+  }
+}
+
+// Validates fully BEFORE storing, so a bad tempo map is rejected where
+// it's entered rather than at save, load, or export time.
+function setTempoAnchors(piece, anchors) {
+  if (!Array.isArray(anchors)) throw new Error("Tempo anchors must be an array.");
+  const copy = JSON.parse(JSON.stringify(anchors));
+  const resolved = resolveTempoMap(copy, getUnitTable(piece) || []);
+  validateTempoMap(resolved);
+  resolved.forEach(a => {
+    if (!(typeof a.tempo === "number" && a.tempo > 0)) {
+      throw new Error(`Tempo anchor at ordinal ${a.ordinal} needs a positive tempo, got ${JSON.stringify(a.tempo)}.`);
+    }
+    if (a.meter !== undefined) assertValidMeter(a.meter, `Tempo anchor at ordinal ${a.ordinal}`);
+  });
+  piece.tempoAnchors = copy;
+}
+
+function getUnitTable(piece) {
+  return piece.unitPages ? buildUnitTable(piece.unitPages) : null;
+}
+
+function getTempoMap(piece) {
+  if (!piece.tempoAnchors) return null;
+  return resolveTempoMap(piece.tempoAnchors, getUnitTable(piece) || []);
+}
+
+// ---------------------------------------------------------------
+// Tempo and duration for a stretch of a piece
+// ---------------------------------------------------------------
+
+// The lowest and highest tempo across [fromOrdinal, toOrdinal] at a
+// step, plus the tempo at each end. Exact without sampling every
+// ordinal: a tempo map is held segments and monotone ramps, so the
+// extremes can only sit at the ends of the range or at an anchor/ramp
+// boundary inside it.
+function tempoSpan(tempoMap, fromOrdinal, toOrdinal, step = 0) {
+  if (toOrdinal < fromOrdinal) throw new Error(`Range end (${toOrdinal}) is before its start (${fromOrdinal}).`);
+  const points = new Set([fromOrdinal, toOrdinal]);
+  tempoMap.forEach(a => {
+    if (a.ordinal > fromOrdinal && a.ordinal < toOrdinal) points.add(a.ordinal);
+    if (a.rampTo && a.rampTo.ordinal > fromOrdinal && a.rampTo.ordinal < toOrdinal) points.add(a.rampTo.ordinal);
+  });
+  const tempos = [...points].map(o => effectiveTempo(tempoMap, o, step));
+  return {
+    first: effectiveTempo(tempoMap, fromOrdinal, step),
+    last: effectiveTempo(tempoMap, toOrdinal, step),
+    min: Math.min(...tempos),
+    max: Math.max(...tempos)
+  };
+}
+
+// What tempo to show for playing [fromOrdinal, toOrdinal] at a step.
+// Uses the tempo map when the piece has one, else the flat goalTempo,
+// else null — never a made-up number. No note value is claimed ("Q=")
+// because a map's tempo is in whatever pulse the piece was authored in.
+function describeTempo(piece, fromOrdinal, toOrdinal, step = 0) {
+  const map = getTempoMap(piece);
+  const r = n => Math.round(n);
+  if (map) {
+    const span = tempoSpan(map, fromOrdinal, toOrdinal, step);
+    const varies = span.max - span.min > 0.5;
+    return {
+      source: "tempoMap", first: span.first, min: span.min, max: span.max, varies,
+      text: varies
+        ? `tempo ≈ ${r(span.first)} at the start (${r(span.min)}–${r(span.max)} across this range)`
+        : `tempo ≈ ${r(span.first)}`
+    };
+  }
+  if (piece.goalTempo !== null) {
+    const t = stepToTempo(step, piece.goalTempo);
+    return { source: "goalTempo", first: t, min: t, max: t, varies: false, text: `tempo ≈ ${r(t)}` };
+  }
+  return null;
+}
+
+// Estimated real seconds to play [fromOrdinal, toOrdinal] at a step,
+// or null when it can't be known honestly: no tempo map, a placeholder
+// end, an unmetered range past its unit table, or a metered anchor
+// that doesn't say how many beats are in a bar.
+function pieceDurationSeconds(piece, fromOrdinal, toOrdinal, step = 0) {
+  const map = getTempoMap(piece);
+  if (!map) return null;
+  if (toOrdinal >= PLACEHOLDER_END) return null;
+
+  if (piece.kind === "unmetered") {
+    const table = getUnitTable(piece);
+    if (toOrdinal > table.length) return null;
+    return estimateDurationSeconds(table, fromOrdinal, toOrdinal, map, step);
+  }
+
+  // Metered: each ordinal is a measure, taking beatsPerBar clicks at the
+  // map's click rate — the same convention the TE export uses.
+  let total = 0;
+  for (let ordinal = fromOrdinal; ordinal <= toOrdinal; ordinal++) {
+    const anchor = governingAnchor(map, ordinal);
+    if (!anchor || !anchor.meter) return null;
+    total += (anchor.meter.beatsPerBar / effectiveTempo(map, ordinal, step)) * 60;
+  }
+  return total;
+}
+
+function formatDuration(seconds) {
+  const total = Math.max(0, Math.round(seconds));
+  if (total < 60) return `${total}s`;
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
+  return `${m}m ${String(s).padStart(2, "0")}s`;
+}
+
+// ---------------------------------------------------------------
+// Editing a piece
+// ---------------------------------------------------------------
+//
+// A node's range isn't free-standing: decompose() splits a node into
+// Child A | hotspot | Child B so that the children exactly tile their
+// parent. So a root's END is shared by a whole chain down the right
+// edge of the tree — the root, its Child B, that node's Child B, and
+// so on, each ending exactly where its parent ends — and likewise the
+// START down the left edge. Editing the root's end moves that whole
+// chain together; every other node is untouched.
+//
+// The nodes on an edge are exactly those whose end (or start) still
+// equals the root's. That follows from the one rule the file validator
+// enforces — a child lies inside its parent: if a node ends where the
+// root ends, every ancestor between them must end there too.
+//
+// Each edit is checked completely BEFORE anything changes, so a
+// refused edit leaves the piece exactly as it was.
+
+function walkNodes(node, acc = []) {
+  acc.push(node);
+  node.children.forEach(c => walkNodes(c, acc));
+  return acc;
+}
+
+// Locations a node is committed to keeping inside its own range.
+function pinnedLocations(node) {
+  const pins = [];
+  if (node.hotspot !== null) pins.push({ value: node.hotspot, what: "the hotspot" });
+  if (node.bookmark !== null) pins.push({ value: node.bookmark, what: "the bookmark" });
+  if (node.search) {
+    if (Number.isInteger(node.search.hotspotCandidate)) pins.push({ value: node.search.hotspotCandidate, what: "the search's hotspot candidate" });
+    if (Number.isInteger(node.search.currentStartLocation)) pins.push({ value: node.search.currentStartLocation, what: "the search's current start location" });
+  }
+  return pins;
+}
+
+// How far an edge can move before it would cross something: for the
+// end, the lowest value that still contains everything on the edge
+// (each edge node's own start, anything pinned inside it) and every
+// node that is NOT on the edge (those don't move, so the edge can't
+// cross them). For the start, the same thing mirrored.
+function edgeLimit(nodes, side, oldValue) {
+  const isEnd = side === "end";
+  const other = isEnd ? "start" : "end";
+  let limit = { value: isEnd ? -Infinity : Infinity, because: null };
+  const consider = (value, because) => {
+    if (isEnd ? value > limit.value : value < limit.value) limit = { value, because };
+  };
+  for (const n of nodes) {
+    if (n[side] === oldValue) {
+      consider(n[other], `"${n.label}" ${isEnd ? "begins" : "ends"} at ${n[other]}`);
+      for (const pin of pinnedLocations(n)) consider(pin.value, `${pin.what} (${pin.value}) is in "${n.label}"`);
+    } else {
+      consider(n[side], `"${n.label}" ${isEnd ? "ends" : "starts"} at ${n[side]}`);
+    }
+  }
+  return limit;
+}
+
+function setRootEdge(piece, side, value) {
+  const isEnd = side === "end";
+  if (!Number.isInteger(value)) throw new Error(`The ${side} must be a whole number, got ${value}.`);
+  if (value < 1) throw new Error(`The ${side} must be at least 1 — ordinals count from 1, the first measure or unit.`);
+  const table = getUnitTable(piece);
+  if (table && value > table.length) {
+    throw new Error(`"${piece.label}" has ${table.length} units in its unit table, so its ${side} can't be ${value}.`);
+  }
+
+  const nodes = walkNodes(piece.root);
+  const oldValue = piece.root[side];
+  if (value === oldValue) return { side, from: oldValue, to: oldValue, changed: [], warnings: [] };
+
+  const limit = edgeLimit(nodes, side, oldValue);
+  if (isEnd ? value < limit.value : value > limit.value) {
+    throw new Error(`The ${side} can't be ${isEnd ? "lower" : "higher"} than ${limit.value}: ${limit.because}.`);
+  }
+
+  // A hotspot is one atomic unit. If one sits on the edge, the edge
+  // can't move outward: the new units would belong to no node.
+  const edge = nodes.filter(n => n[side] === oldValue);
+  const movingOutward = isEnd ? value > oldValue : value < oldValue;
+  const stuck = movingOutward ? edge.find(n => n.kind === "hotspot") : null;
+  if (stuck) {
+    const gap = isEnd ? `${oldValue + 1}–${value}` : `${value}–${oldValue - 1}`;
+    throw new Error(
+      `The ${side} can't move ${isEnd ? "later" : "earlier"} while a hotspot sits on the ${isEnd ? "last" : "first"} unit: ` +
+      `"${stuck.label}" is a single unit (${oldValue}), so units ${gap} would belong to no node.`
+    );
+  }
+
+  const changed = edge.map(n => ({
+    id: n.id,
+    label: n.label,
+    before: { start: n.start, end: n.end },
+    after: { start: isEnd ? n.start : value, end: isEnd ? value : n.end }
+  }));
+
+  // Review history stays with the node. For a placeholder end that is
+  // plainly right (the music was always the real passage; only the
+  // number was a stand-in). For a real change it may not be, so say so.
+  const warnings = [];
+  const reviewed = edge.filter(n => n.fsrs !== null || n.reviewLog.length > 0).length;
+  const resolvingPlaceholder = isEnd && oldValue === PLACEHOLDER_END;
+  if (reviewed > 0 && !resolvingPlaceholder) {
+    warnings.push(
+      `${reviewed} of the ${edge.length} changed node${edge.length === 1 ? "" : "s"} already ${reviewed === 1 ? "has" : "have"} review history; ` +
+      `it's kept as is, though ${reviewed === 1 ? "it now covers" : "they now cover"} a different stretch of the piece.`
+    );
+  }
+
+  edge.forEach(n => { n[side] = value; });
+  return { side, from: oldValue, to: value, changed, warnings };
+}
+
+// Sets the piece's last measure/unit, moving every node on the right
+// edge with it. Returns { side, from, to, changed: [{id, label,
+// before, after}], warnings }. Throws, changing nothing, if the new
+// end would cut off anything inside the piece.
+function setRootEnd(piece, value) { return setRootEdge(piece, "end", value); }
+
+// The mirror image, along the left edge.
+function setRootStart(piece, value) { return setRootEdge(piece, "start", value); }
+
+// Renames a piece. The root takes the new label, and so does the front
+// of every label decompose() built from it ("Old — Child A" becomes
+// "New — Child A"); a node someone labelled by hand is left alone.
+// Uniqueness among loaded pieces is the caller's business — this module
+// only knows about one piece.
+function renamePiece(piece, newLabel) {
+  if (typeof newLabel !== "string" || newLabel.trim() === "") throw new Error("A piece needs a non-empty label.");
+  const label = newLabel.trim();
+  const oldRootLabel = piece.root.label;
+  const derivedPrefix = `${oldRootLabel} — `;
+  let renamedNodes = 0;
+  walkNodes(piece.root).forEach(n => {
+    if (n === piece.root) {
+      if (n.label !== label) renamedNodes++;
+      n.label = label;
+    } else if (n.label.startsWith(derivedPrefix)) {
+      n.label = `${label} — ${n.label.slice(derivedPrefix.length)}`;
+      renamedNodes++;
+    }
+  });
+  const from = piece.label;
+  piece.label = label;
+  return { from, to: label, renamedNodes };
+}
+
+// ---------------------------------------------------------------
+// Save format (v2) — see docs/piece-format.md
+// ---------------------------------------------------------------
+//
+// Calendar dates (due dates, study days) are written as plain
+// "YYYY-MM-DD" strings: a date with no time zone must not carry one,
+// or the same file would mean different days on different devices.
+// Real instants (savedAt) are ISO timestamps.
+
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function dayToString(date) {
+  return dateOnly(date).toISOString().slice(0, 10);
+}
+
+function stringToDay(str) {
+  return new Date(`${str}T00:00:00.000Z`);
+}
+
+function isRealCalendarDay(str) {
+  return DAY_PATTERN.test(str) && stringToDay(str).toISOString().startsWith(str);
+}
+
+function serializeNode(node) {
+  return {
+    id: node.id,
+    parentId: node.parentId,
+    label: node.label,
+    start: node.start,
+    end: node.end,
+    kind: node.kind,
+    hotspot: node.hotspot,
+    hotspotNote: node.hotspotNote,
+    step: node.step,
+    readyForPerformance: node.readyForPerformance,
+    decomposeRank: node.decomposeRank,
+    bookmark: node.bookmark,
+    interrupted: node.interrupted,
+    fsrs: node.fsrs
+      ? { ...node.fsrs, due: dayToString(node.fsrs.due), lastReview: dayToString(node.fsrs.lastReview) }
+      : null,
+    reviewLog: node.reviewLog.map(e => ({ ...e, reviewDate: dayToString(e.reviewDate), due: dayToString(e.due) })),
+    search: node.search ? JSON.parse(JSON.stringify(node.search)) : null,
+    children: node.children.map(serializeNode)
+  };
+}
+
+// `now` is passed in, not read, so saving is deterministic in tests
+// and the module never touches the clock.
+function serializePiece(piece, { now = new Date() } = {}) {
+  return {
+    formatVersion: FORMAT_VERSION,
+    label: piece.label,
+    kind: piece.kind,
+    goalTempo: piece.goalTempo,
+    savedAt: now.toISOString(),
+    unitPages: piece.unitPages,
+    tempoAnchors: piece.tempoAnchors,
+    root: serializeNode(piece.root)
+  };
+}
+
+// Checks a parsed save file against the format, collecting every
+// problem (not just the first) so a damaged file can be diagnosed in
+// one pass. Reads versions 1 and 2.
+function validatePieceData(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Piece data must be a JSON object.");
+  }
+  const version = data.formatVersion;
+  if (version !== 1 && version !== 2) {
+    const newer = Number.isInteger(version) && version > FORMAT_VERSION;
+    throw new Error(
+      `Unsupported piece format version ${JSON.stringify(version)}; this build reads versions 1 and 2.` +
+      (newer ? " This file was written by a newer version of SIP — update SIP to open it." : "")
+    );
+  }
+
+  const errors = [];
+  const bad = (path, msg) => errors.push(`${path}: ${msg}`);
+  const isInt = v => Number.isInteger(v);
+
+  if (typeof data.label !== "string" || data.label.trim() === "") bad("label", "must be a non-empty string");
+  if (version === 2) {
+    if (!PIECE_KINDS.includes(data.kind)) bad("kind", `must be ${PIECE_KINDS.join(" or ")}`);
+    if (data.kind === "unmetered" && !Array.isArray(data.unitPages)) bad("unitPages", "required (an array) for an unmetered piece");
+    if (data.kind === "metered" && data.unitPages !== null) bad("unitPages", "must be null for a metered piece");
+    if (data.tempoAnchors !== null && !Array.isArray(data.tempoAnchors)) bad("tempoAnchors", "must be an array or null");
+  }
+  if (data.goalTempo !== null && !(typeof data.goalTempo === "number" && data.goalTempo > 0)) {
+    bad("goalTempo", "must be a positive number or null");
+  }
+
+  const checkDay = (value, path) => {
+    if (version === 2) {
+      if (typeof value !== "string" || !isRealCalendarDay(value)) bad(path, `must be a real YYYY-MM-DD date, got ${JSON.stringify(value)}`);
+    } else if (typeof value !== "string" || Number.isNaN(new Date(value).getTime())) {
+      bad(path, `must be an ISO date string, got ${JSON.stringify(value)}`);
+    }
+  };
+
+  const seenIds = new Set();
+  const checkNode = (node, path, parent) => {
+    if (!node || typeof node !== "object") { bad(path, "must be an object"); return; }
+    if (!isInt(node.id)) bad(`${path}.id`, "must be an integer");
+    else if (seenIds.has(node.id)) bad(`${path}.id`, `duplicate id ${node.id}`);
+    else seenIds.add(node.id);
+    if (typeof node.label !== "string") bad(`${path}.label`, "must be a string");
+    if (!isInt(node.start) || !isInt(node.end)) bad(`${path}.start/end`, "must be integers");
+    else if (node.end < node.start) bad(`${path}.end`, `${node.end} is before start ${node.start}`);
+    if (!NODE_KINDS.includes(node.kind)) bad(`${path}.kind`, `must be ${NODE_KINDS.join(" or ")}`);
+    if (node.hotspot !== null && !(isInt(node.hotspot) && node.hotspot >= node.start && node.hotspot <= node.end)) {
+      bad(`${path}.hotspot`, "must be null or an integer inside the node's own range");
+    }
+    if (typeof node.hotspotNote !== "string") bad(`${path}.hotspotNote`, "must be a string");
+    if (!isInt(node.step)) bad(`${path}.step`, "must be an integer");
+    if (typeof node.readyForPerformance !== "boolean") bad(`${path}.readyForPerformance`, "must be true or false");
+    if (!(node.decomposeRank === null || [0, 1, 2].includes(node.decomposeRank))) bad(`${path}.decomposeRank`, "must be null, 0, 1, or 2");
+    if (!(node.bookmark === null || isInt(node.bookmark))) bad(`${path}.bookmark`, "must be null or an integer");
+    if (typeof node.interrupted !== "boolean") bad(`${path}.interrupted`, "must be true or false");
+    if (!(node.search === null || (typeof node.search === "object" && !Array.isArray(node.search)))) bad(`${path}.search`, "must be null or an object");
+
+    if (node.fsrs !== null) {
+      if (!node.fsrs || typeof node.fsrs !== "object") bad(`${path}.fsrs`, "must be null or an object");
+      else {
+        if (!(typeof node.fsrs.stability === "number" && node.fsrs.stability > 0)) bad(`${path}.fsrs.stability`, "must be a positive number");
+        if (typeof node.fsrs.difficulty !== "number") bad(`${path}.fsrs.difficulty`, "must be a number");
+        if (!(isInt(node.fsrs.reps) && node.fsrs.reps >= 0)) bad(`${path}.fsrs.reps`, "must be a non-negative integer");
+        if (!(isInt(node.fsrs.lapses) && node.fsrs.lapses >= 0)) bad(`${path}.fsrs.lapses`, "must be a non-negative integer");
+        checkDay(node.fsrs.due, `${path}.fsrs.due`);
+        checkDay(node.fsrs.lastReview, `${path}.fsrs.lastReview`);
+      }
+    }
+    if (!Array.isArray(node.reviewLog)) bad(`${path}.reviewLog`, "must be an array");
+    else node.reviewLog.forEach((e, i) => {
+      const p = `${path}.reviewLog[${i}]`;
+      if (!e || typeof e !== "object") { bad(p, "must be an object"); return; }
+      if (![1, 2, 3, 4].includes(e.grade)) bad(`${p}.grade`, "must be 1, 2, 3, or 4");
+      checkDay(e.reviewDate, `${p}.reviewDate`);
+      checkDay(e.due, `${p}.due`);
+    });
+
+    if (!Array.isArray(node.children)) { bad(`${path}.children`, "must be an array"); return; }
+    if (node.kind === "hotspot" && node.children.length > 0) bad(`${path}.children`, "a hotspot node is atomic and can't have children");
+    node.children.forEach((child, i) => {
+      const childPath = `${path}.children[${i}]`;
+      if (child && child.parentId !== node.id) bad(`${childPath}.parentId`, `is ${child.parentId} but its parent's id is ${node.id}`);
+      if (child && isInt(child.start) && isInt(child.end) && isInt(node.start) && isInt(node.end)
+          && (child.start < node.start || child.end > node.end)) {
+        bad(`${childPath}`, `range ${child.start}-${child.end} falls outside its parent's ${node.start}-${node.end}`);
+      }
+      checkNode(child, childPath, node);
+    });
+  };
+
+  if (!data.root) bad("root", "is missing");
+  else {
+    if (data.root.parentId !== null) bad("root.parentId", "must be null");
+    checkNode(data.root, "root", null);
+  }
+
+  if (errors.length > 0) {
+    const shown = errors.slice(0, 20);
+    const more = errors.length > 20 ? `\n  …and ${errors.length - 20} more.` : "";
+    throw new Error(`Piece data is invalid (${errors.length} problem${errors.length === 1 ? "" : "s"}):\n  ${shown.join("\n  ")}${more}`);
+  }
+}
+
+// Rebuilds a node from its saved form. Ids are NOT trusted across
+// files — they come from a counter that restarts every run, so two
+// files saved in different sessions can collide. Every node gets a
+// fresh id from `counter`, in pre-order, with parentId (and each
+// review-log entry's nodeId) fixed up to match.
+function deserializeNode(obj, parentId, counter, parseDay, preserveIds) {
+  // Normally ids are handed out fresh, so pieces loaded from different files can't collide.
+  // preserveIds keeps the ids the file has (validatePieceData already guarantees they're unique
+  // within it) — a workspace needs this, because a saved session refers to nodes by id.
+  const id = preserveIds ? obj.id : counter.next++;
+  if (id >= counter.next) counter.next = id + 1;
+  const node = {
+    id,
+    parentId,
+    label: obj.label,
+    start: obj.start,
+    end: obj.end,
+    kind: obj.kind,
+    hotspot: obj.hotspot,
+    hotspotNote: obj.hotspotNote,
+    step: obj.step,
+    readyForPerformance: obj.readyForPerformance,
+    decomposeRank: obj.decomposeRank,
+    bookmark: obj.bookmark,
+    interrupted: obj.interrupted,
+    fsrs: obj.fsrs ? { ...obj.fsrs, due: parseDay(obj.fsrs.due), lastReview: parseDay(obj.fsrs.lastReview) } : null,
+    reviewLog: obj.reviewLog.map(e => ({ ...e, nodeId: id, reviewDate: parseDay(e.reviewDate), due: parseDay(e.due) })),
+    search: obj.search ? JSON.parse(JSON.stringify(obj.search)) : null,
+    children: []
+  };
+  node.children = obj.children.map(child => deserializeNode(child, id, counter, parseDay, preserveIds));
+  return node;
+}
+
+// Validates, then rebuilds a piece. Returns { piece, nextFreeId } —
+// the caller advances its own id counter (core.resetIdCounter) so
+// later nodes don't collide with these.
+//
+// startingId: first id to assign (pass max-id-in-use + 1 when other
+//   pieces are already loaded).
+// dayConfig: only used migrating a version-1 file, whose dates were
+//   ISO instants: a value at exactly UTC midnight was already a
+//   calendar date and is kept as is; any other instant (v1 stored raw
+//   instants for imported history) is bucketed into its study day.
+function deserializePiece(data, { startingId = 1, dayConfig = {}, preserveIds = false } = {}) {
+  validatePieceData(data);
+  const version = data.formatVersion;
+
+  const parseDay = version === 2
+    ? stringToDay
+    : iso => {
+        const d = new Date(iso);
+        const isUtcMidnight = d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0;
+        return isUtcMidnight ? dateOnly(d) : studyDayOf(d, dayConfig);
+      };
+
+  const counter = { next: startingId };
+  const root = deserializeNode(data.root, null, counter, parseDay, preserveIds);
+
+  const piece = makePiece({
+    label: data.label,
+    root,
+    kind: version === 2 ? data.kind : "metered",
+    goalTempo: data.goalTempo,
+    unitPages: version === 2 ? data.unitPages : null,
+    tempoAnchors: version === 2 ? data.tempoAnchors : null
+  });
+  return { piece, nextFreeId: counter.next };
+}
+
+module.exports = {
+  FORMAT_VERSION, PIECE_KINDS, PLACEHOLDER_END,
+  makePiece, setUnitPages, setTempoAnchors, getUnitTable, getTempoMap,
+  tempoSpan, describeTempo, pieceDurationSeconds, formatDuration,
+  setRootEnd, setRootStart, renamePiece,
+  serializePiece, validatePieceData, deserializePiece
+};
+
+};
+__mods["./sip-session"] = function (module, exports, require) {
+// sip-session.js
+//
+// The practice-session runner: a countdown, a "winding down" phase
+// instead of a hard cutoff, the order work is offered in, and the
+// rules for what happens to each node when time runs out.
+//
+// Pure, like the rest of core — no timers, no clock reads, no I/O, no
+// DOM. Every function is handed `now`, so the same logic runs under a
+// CLI, a browser, a phone, or a test that controls the clock. A
+// session is a plain JSON-able object the front end owns (and can
+// persist); functions update it, and the nodes they work on, in place,
+// as the rest of core does. See docs/session-runner.md.
+//
+// Extracted from the HTML prototype, where this was tangled into DOM
+// code and a setInterval. Behavior is preserved, with these
+// deliberate changes (the prototype had bugs here):
+//
+//  - A final "grace" attempt that happens to FINISH the search is
+//    graded (with the suggested grade), not deferred. The prototype
+//    deferred it, leaving a converged search flagged "interrupted";
+//    resuming that throws and strands the node.
+//  - Grading a node that was waiting on its final attempt takes it
+//    off the waiting list. The prototype left it there, so the
+//    session could never finish.
+//  - Winding down only sweeps nodes this session actually worked on.
+//    The prototype swept every open search in the tree, so a node
+//    graded in an earlier session and left alone would be flagged
+//    "interrupted" and jump the queue for no reason.
+//  - Grading a node clears its interrupted flag (it has now been
+//    dealt with), and `endSessionNow` during the wind-down gives up
+//    the remaining final attempts instead of leaving the session
+//    waiting forever.
+//
+// Expected, normal refusals (new work while winding down, any action
+// after the end) are RETURNED as { refused: "reason", events }, not
+// thrown — they're part of the flow, and the events from the clock
+// check that preceded them still matter. Calls that make no sense
+// (a missing `now`, a bad grade) throw.
+
+const core = require("./sip-core");
+const {
+  getDueNodes, getInterruptedNodes, daysBetween, dateOnly, effectiveNote,
+  beginHotspotSearch, nextTrial, recordTrialResult, isSearchConverged,
+  concludeSession, suggestGrade, reviewNode, interruptSession, resumeInterrupted
+} = core;
+
+const SESSION_VERSION = 1;
+const DEFAULT_SESSION_MINUTES = 25; // one Pomodoro
+const RETRY_MINUTES = 10; // an Again node is set aside this long, then comes back to be measured against its new tempo
+const GRADE_NAME = { 1: "Again", 2: "Hard", 3: "Good", 4: "Easy" };
+const ENDED = "The session has ended.";
+const UNFINISHED = "The search isn't finished yet — keep going with pass / fail until it converges (or set it aside with interrupt). A grade comes after the search.";
+const WRAPPING_UP = "The session is wrapping up — new work is available next session.";
+
+// ---------------------------------------------------------------
+// Small helpers
+// ---------------------------------------------------------------
+
+// `now` is a Date or milliseconds. It is always passed in: this module
+// has no clock of its own, which is what keeps it portable and testable.
+function toMs(now) {
+  const ms = now instanceof Date ? now.getTime() : now;
+  if (typeof ms !== "number" || !Number.isFinite(ms)) {
+    throw new Error("`now` is required, as a Date or milliseconds — the session module never reads the clock itself.");
+  }
+  return ms;
+}
+
+function toDayString(day) {
+  const str = day instanceof Date ? dateOnly(day).toISOString().slice(0, 10) : day;
+  if (typeof str !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(str) || !new Date(`${str}T00:00:00.000Z`).toISOString().startsWith(str)) {
+    throw new Error(`studyDay must be a real calendar day ("YYYY-MM-DD") or a Date, got ${JSON.stringify(day)}.`);
+  }
+  return str;
+}
+const dayDate = str => new Date(`${str}T00:00:00.000Z`);
+
+function collectNodes(pieces) {
+  const acc = [];
+  const walk = n => { acc.push(n); n.children.forEach(walk); };
+  pieces.forEach(p => walk(p.root));
+  return acc;
+}
+
+// A failure location or bookmark must lie inside the node it belongs to.
+// Core would accept any integer here, and a typo ("99" on a node covering
+// 1-32) would sit quietly until grading, where decompose() throws — after
+// reviewNode has already graded the node, leaving it half-updated with a
+// hotspot outside its own range (a state the file validator rejects, so
+// the piece couldn't even be saved). Stopping it at the door costs nothing.
+function assertWithin(node, value, what) {
+  if (!Number.isInteger(value) || value < node.start || value > node.end) {
+    throw new Error(`${what} must be a whole number inside this node's range (${node.start}–${node.end}), got ${value}.`);
+  }
+}
+
+function addOnce(list, id) { if (!list.includes(id)) list.push(id); }
+function removeId(list, id) { const i = list.indexOf(id); if (i >= 0) list.splice(i, 1); }
+
+// Records an event on the session and in this call's output. `notify`
+// marks the ones a person should be told about (as opposed to
+// bookkeeping), so a front end needn't know every event type.
+function emit(session, out, at, type, node, message, notify, extra) {
+  const event = { at, type, nodeId: node ? node.id : null, label: node ? node.label : null, message, notify, ...(extra || {}) };
+  session.events.push(event);
+  out.push(event);
+  return event;
+}
+
+// ---------------------------------------------------------------
+// Starting a session and reading its clock
+// ---------------------------------------------------------------
+//
+// The session's state, all plain data:
+//   startedAt, endsAt   milliseconds
+//   minutes             planned length
+//   studyDay            "YYYY-MM-DD" — fixed for the whole session, so
+//                       every grade in it lands on the same day and
+//                       "due today" can't shift mid-session (even if a
+//                       session straddles the rollover hour)
+//   phase               "active" -> "winding_down" -> "ended"
+//   endReason           "timeout" | "manual" | "away" once winding down
+//                       ("away": it ran out while SIP was closed — see settleSession)
+//   touchedNodeIds      nodes worked on this session
+//   gradedNodeIds       nodes graded this session
+//   queueOrder          the session's FIFO of waiting nodes, as ids: what
+//                       was waiting when it started, in order, with
+//                       everything a split spawns since appended to the
+//                       END (null until first needed)
+//   graceEligibleIds    while winding down: nodes with a trial in
+//                       flight, each owed one more Pass/Fail
+//   events              everything that happened, in order
+
+// Pass `pieces` to take the queue snapshot immediately; otherwise it's taken
+// the first time the queue is read or a node is graded (before anything
+// can be split, so it still reflects what was waiting at the start).
+//
+// softEnd: true makes running out of time a prompt instead of a stop. The
+// session stays active (an `overtime` flag and a "time_up" event say so) until
+// the player extends it (extendSession) or ends it (endSessionNow, which
+// winds down as usual). The default, false, keeps the original hard stop.
+function startSession({ now, minutes = DEFAULT_SESSION_MINUTES, studyDay, pieces, softEnd = false } = {}) {
+  const startedAt = toMs(now);
+  if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) {
+    throw new Error(`A session needs a positive length in minutes, got ${minutes}.`);
+  }
+  if (studyDay === undefined) {
+    throw new Error("A session needs a studyDay — the study day it belongs to (see studyDayOf in sip-core).");
+  }
+  const session = {
+    version: SESSION_VERSION,
+    startedAt,
+    minutes,
+    endsAt: startedAt + Math.round(minutes * 60000),
+    studyDay: toDayString(studyDay),
+    phase: "active",
+    endedAt: null,
+    endReason: null,
+    touchedNodeIds: [],
+    gradedNodeIds: [],
+    graceEligibleIds: [],
+    retryAt: {},     // node id -> ms: when an Again-graded node comes back this session
+    softEnd: softEnd === true,
+    overtime: false, // softEnd only: time has run out and the player hasn't decided yet
+    reopenedIds: [], // Again-graded nodes picked up again: open work even though they were graded
+    queueOrder: null,
+    events: []
+  };
+  emit(session, [], startedAt, "session_started", null, `Started a ${minutes}-minute practice session.`, false);
+  if (pieces) snapshotQueueOrder(session, pieces);
+  return session;
+}
+
+// A read-only look at the clock. It never changes the session — that's
+// tickSession's job — so it's safe to call as often as a display needs.
+function sessionClock(session, now) {
+  const t = toMs(now);
+  return {
+    phase: session.phase,
+    remainingMs: session.phase === "active" ? Math.max(0, session.endsAt - t) : 0,
+    elapsedMs: Math.max(0, t - session.startedAt),
+    timeIsUp: session.phase !== "active" || t >= session.endsAt,
+    overtimeMs: session.phase === "active" ? Math.max(0, t - session.endsAt) : 0,
+    soft: session.softEnd === true
+  };
+}
+
+// ---------------------------------------------------------------
+// Winding down
+// ---------------------------------------------------------------
+
+function finishIfDone(session, t, out) {
+  if (session.phase === "winding_down" && session.graceEligibleIds.length === 0) {
+    session.phase = "ended";
+    session.endedAt = t;
+    emit(session, out, t, "session_ended", null, "Session ended.", true);
+  }
+}
+
+function autoGrade(session, node, t, out, why) {
+  const grade = suggestGrade(node);
+  const result = concludeSession(node, grade, dayDate(session.studyDay));
+  appendSpawned(session, result.decomposedChildren);
+  node.interrupted = false;
+  addOnce(session.gradedNodeIds, node.id);
+  removeId(reopenedList(session), node.id);
+  emit(session, out, t, "auto_graded", node,
+    `${node.label}: ${why} — auto-graded ${GRADE_NAME[grade]}${result.decomposedChildren ? ", and split around its hotspot" : ""}.`,
+    true, { grade, decomposed: result.decomposedChildren !== null });
+  return result;
+}
+
+function deferInternal(session, node, bookmark, t, out, why) {
+  interruptSession(node, bookmark);
+  emit(session, out, t, "deferred", node,
+    `${node.label}: ${why ? why + " — " : ""}saved, no grade assigned${bookmark !== undefined ? ` — bookmarked @ ${bookmark}` : ""}. It will come up first next session.`,
+    true, { bookmark: node.bookmark });
+}
+
+// What happens when time is up (or the player ends the session):
+//  - a node with a trial in flight is owed exactly one more Pass/Fail —
+//    a real stopping point, not an arbitrary cutoff;
+//  - a search that had already converged has nothing left to lose, so
+//    it's graded with the suggested grade;
+//  - any other open search is deferred on the spot (no grade, flagged
+//    for priority pickup).
+// Only nodes worked on THIS session are touched; everything else is
+// left exactly as it was.
+// A session that was saved while SIP was open can come back after its time
+// has run out. Nobody was there to play, so nothing "in flight" is a real
+// attempt any more: this winds the session down the way running out of time
+// does, but gives up the final attempts instead of offering them. A session
+// that still has time left is untouched and simply carries on (its clock is
+// absolute, so the minutes spent away count against it). Returns the events.
+function settleSession(session, pieces, { now } = {}) {
+  const t = toMs(now);
+  if (session.phase === "ended") return [];
+  const expired = session.phase === "winding_down" || t >= session.endsAt;
+  if (!expired) return [];
+  const events = [];
+  emit(session, events, t, "session_expired_while_away", null,
+    "This session ran out while SIP was closed — nothing was in play, so no final attempt is offered.", true);
+  if (session.phase === "active") {
+    events.push(...beginWindDown(session, pieces, t, "away"));     // never offers a final attempt
+  } else {
+    events.push(...endSessionNow(session, pieces, { now: t }));    // saved mid-wrap-up: give up the attempt it was waiting on
+  }
+  session.graceEligibleIds = []; // ids of nodes that no longer exist can't be owed an attempt
+  return events;
+}
+
+function beginWindDown(session, pieces, t, reason) {
+  const out = [];
+  snapshotQueueOrder(session, pieces); // before auto-grading can split anything
+  session.phase = "winding_down";
+  session.endReason = reason;
+  const away = reason === "away";   // nobody is there to play: say nothing extra, offer no final attempt
+  emit(session, out, t, "wind_down_started", null, reason === "timeout" ? "Time's up." : "Ending the session.", !away, { reason });
+
+  const touched = new Set(session.touchedNodeIds);
+  const graded = new Set(session.gradedNodeIds);
+  const reopened = new Set(reopenedList(session));
+  const open = collectNodes(pieces).filter(n => touched.has(n.id) && n.search !== null && !n.interrupted && (!graded.has(n.id) || reopened.has(n.id)));
+
+  session.graceEligibleIds = away ? [] : open.filter(n => n.search.trialInProgress).map(n => n.id);
+  open.forEach(n => {
+    if (away && n.search.trialInProgress) {
+      deferInternal(session, n, undefined, t, out, "was mid-attempt when SIP was closed");
+    } else if (session.graceEligibleIds.includes(n.id)) {
+      emit(session, out, t, "grace_offered", n,
+        `${n.label}: finish this attempt if you like — one more Pass/Fail is allowed — then it's saved for next time.`, true);
+    } else if (isSearchConverged(n.search)) {
+      autoGrade(session, n, t, out, "had already converged");
+    } else {
+      deferInternal(session, n, undefined, t, out, "wasn't mid-attempt");
+    }
+  });
+
+  finishIfDone(session, t, out);
+  return out;
+}
+
+// Checks the clock and, if time has run out, starts winding down.
+// Idempotent. Every action below calls this first, so nothing can
+// slip past the deadline just because nobody polled in time. Returns
+// the events it caused.
+function tickSession(session, pieces, { now } = {}) {
+  const t = toMs(now);
+  if (session.phase === "active" && t >= session.endsAt) {
+    if (session.softEnd === true) {
+      if (session.overtime) return [];
+      session.overtime = true;
+      const out = [];
+      emit(session, out, t, "time_up", null, "Time's up. Extend 5 minutes, or end the session.", true);
+      return out;
+    }
+    return beginWindDown(session, pieces, t, "timeout");
+  }
+  return [];
+}
+
+// "Keep going": gives a running session more time. The new minutes count from
+// now if the time had already run out. Returns { events } or { refused, events }.
+function extendSession(session, pieces, { now, minutes = 5 } = {}) {
+  const t = toMs(now);
+  if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) throw new Error(`Extending needs a positive number of minutes, got ${minutes}.`);
+  const events = tickSession(session, pieces, { now: t });
+  if (session.phase !== "active") return { refused: session.phase === "ended" ? ENDED : WRAPPING_UP, events };
+  session.endsAt = Math.max(session.endsAt, t) + Math.round(minutes * 60000);
+  session.minutes += minutes;
+  session.overtime = false;
+  emit(session, events, t, "extended", null, `Extended by ${minutes} minute${minutes === 1 ? "" : "s"}.`, false, { minutes });
+  return { events };
+}
+
+// "End session now" — the same road as a timeout. During the wind-down
+// itself it means "I'm done": the final attempts still owed are given
+// up (those nodes are deferred, no grade) so the session can finish.
+function endSessionNow(session, pieces, { now } = {}) {
+  const t = toMs(now);
+  const events = tickSession(session, pieces, { now: t });
+  if (session.phase === "active") {
+    events.push(...beginWindDown(session, pieces, t, "manual"));
+  } else if (session.phase === "winding_down") {
+    const waiting = collectNodes(pieces).filter(n => session.graceEligibleIds.includes(n.id));
+    waiting.forEach(n => deferInternal(session, n, undefined, t, events, "stopped before its final attempt"));
+    session.graceEligibleIds = [];
+    finishIfDone(session, t, events);
+  }
+  return events;
+}
+
+// ---------------------------------------------------------------
+// What to work on
+// ---------------------------------------------------------------
+
+// The order work is offered in.
+//
+//  1. Interrupted nodes first — cut off mid-practice, so picked up before
+//     anything else — across all pieces.
+//  2. Then each piece's waiting nodes: never-reviewed ones first, then
+//     reviewed ones by how overdue they are. Pieces are interleaved
+//     round-robin, so a session spreads over the repertoire instead of
+//     exhausting the first piece before touching the second.
+//
+// WITHIN a piece, never-reviewed nodes come out breadth-first: level by
+// level, and within a level Hotspot, then Child A, then Child B. That is
+// the order a queue fills in when every decomposition appends its three
+// children to the END and work is taken from the FRONT (the original
+// design — see simulateDailyQueue). It matters: a Child B that was already
+// waiting is reached BEFORE the pieces Child A splits into, instead of
+// starving until Child A's whole subtree is done. (getDueNodes, which this
+// uses only to decide WHAT is due, sorts by rank across the whole tree —
+// every hotspot at any depth ahead of every Child B — which is not this.)
+//
+// Decomposed parents are queued too; they come around on their own
+// schedule and are graded directly, without a search.
+function breadthFirstIndex(root) {
+  const rank = n => (n.decomposeRank === null ? 3 : n.decomposeRank);
+  const index = new Map();
+  const frontier = [root];
+  for (let i = 0; i < frontier.length; i++) {
+    index.set(frontier[i].id, i);
+    [...frontier[i].children].sort((x, y) => rank(x) - rank(y)).forEach(c => frontier.push(c));
+  }
+  return index;
+}
+
+function interleave(lists) {
+  const out = [];
+  const longest = Math.max(0, ...lists.map(l => l.length));
+  for (let i = 0; i < longest; i++) lists.forEach(l => { if (i < l.length) out.push(l[i]); });
+  return out;
+}
+
+// Sessions saved before retries existed have no retryAt map.
+function retryMap(session) {
+  if (!session.retryAt) session.retryAt = {};
+  return session.retryAt;
+}
+function reopenedList(session) {
+  if (!session.reopenedIds) session.reopenedIds = [];
+  return session.reopenedIds;
+}
+
+function buildQueue(pieces, studyDay, { excludeIds = [] } = {}) {
+  const day = dayDate(toDayString(studyDay));
+  const excluded = new Set(excludeIds);
+  const entry = (piece, node, status) => ({
+    piece, node, status,
+    daysOverdue: status === "due" ? daysBetween(node.fsrs.due, day) : null,
+    bookmark: node.bookmark,
+    hasChildren: node.children.length > 0,
+    converged: node.search !== null && isSearchConverged(node.search),
+    note: effectiveNote(piece.root, node)
+  });
+
+  const interrupted = [];
+  const waitingDue = [];
+  const waitingNew = [];
+  pieces.forEach(piece => {
+    const order = breadthFirstIndex(piece.root);
+    const bySpawnOrder = (a, b) => order.get(a.id) - order.get(b.id);
+
+    getInterruptedNodes(piece.root).filter(n => !excluded.has(n.id)).sort(bySpawnOrder)
+      .forEach(n => interrupted.push(entry(piece, n, "interrupted")));
+
+    const due = getDueNodes(piece.root, day).filter(n => !n.interrupted && !excluded.has(n.id));
+    const fresh = due.filter(n => n.fsrs === null).sort(bySpawnOrder);
+    const reviewed = due.filter(n => n.fsrs !== null).sort((a, b) => (a.fsrs.due - b.fsrs.due) || bySpawnOrder(a, b));
+    waitingDue.push(reviewed.map(n => entry(piece, n, "due")));
+    waitingNew.push(fresh.map(n => entry(piece, n, "new")));
+  });
+  // Reviews that have come due go before anything never practised, across all pieces.
+  return [...interrupted, ...interleave(waitingDue), ...interleave(waitingNew)];
+}
+
+// The queue for a running session — nodes already graded this session
+// don't come back around within it.
+// buildQueue says what is waiting and in what order a FRESH queue would be
+// laid out. A running session needs more than that: it needs a queue with
+// memory, because the order is about WHEN things joined. Piece #1's root is
+// graded and splits: its Hotspot / Child A / Child B join the queue NOW, so
+// they belong behind Piece #2's root, which was already waiting — not ahead
+// of it just because, rebuilt from scratch, they'd sit at the front of their
+// own piece's list. (The same rule inside a piece: a Child B already waiting
+// is reached before the pieces Child A splits into.)
+//
+// So the session keeps its own FIFO (`queueOrder`, ids): a snapshot of what
+// was waiting when it began, with every node a split spawns appended to the
+// end, in Hotspot / Child A / Child B order. Interrupted nodes are a
+// separate priority lane at the front. Anything waiting that the FIFO
+// doesn't know (the piece was edited outside the runner mid-session) is
+// appended in the order a fresh queue would give it.
+function snapshotQueueOrder(session, pieces) {
+  if (session.queueOrder === null) {
+    session.queueOrder = buildQueue(pieces, session.studyDay, { excludeIds: session.gradedNodeIds }).map(e => e.node.id);
+  }
+}
+
+function appendSpawned(session, children) {
+  if (!children || session.queueOrder === null) return;
+  const rank = n => (n.decomposeRank === null ? 3 : n.decomposeRank);
+  [...children].sort((a, b) => rank(a) - rank(b)).forEach(c => {
+    if (!session.queueOrder.includes(c.id)) session.queueOrder.push(c.id);
+  });
+}
+
+// Nodes graded Again this session come back once RETRY_MINUTES have passed
+// (pass `now`; without it every retry counts as ready). A ready retry goes
+// right after any interrupted work; one that isn't ready yet is held back —
+// unless nothing else is waiting, so the player is never left with an empty
+// queue while a retry is only minutes away. Retry entries carry status
+// "retry", `retryAt` (ms) and `waitMs` (how much longer it is being held).
+function sessionQueue(session, pieces, { now } = {}) {
+  snapshotQueueOrder(session, pieces);
+  const fresh = buildQueue(pieces, session.studyDay, { excludeIds: session.gradedNodeIds });
+  const position = new Map(session.queueOrder.map((id, i) => [id, i]));
+  const interrupted = fresh.filter(e => e.status === "interrupted");
+  const rest = fresh.filter(e => e.status !== "interrupted");
+  const remembered = rest.filter(e => position.has(e.node.id)).sort((a, b) => position.get(a.node.id) - position.get(b.node.id));
+  const unknown = rest.filter(e => !position.has(e.node.id));
+
+  const t = now === undefined ? null : toMs(now);
+  const retries = [];
+  const pending = session.phase === "ended" ? {} : retryMap(session); // nothing comes back once the session is over
+  pieces.forEach(piece => {
+    const walk = n => {
+      if (pending[n.id] !== undefined && session.gradedNodeIds.includes(n.id)) {
+        const waitMs = t === null ? 0 : Math.max(0, pending[n.id] - t);
+        retries.push({
+          piece, node: n, status: "retry", daysOverdue: null, bookmark: n.bookmark,
+          hasChildren: n.children.length > 0,
+          converged: n.search !== null && isSearchConverged(n.search),
+          note: effectiveNote(piece.root, n), retryAt: pending[n.id], waitMs
+        });
+      }
+      n.children.forEach(walk);
+    };
+    walk(piece.root);
+  });
+  retries.sort((a, b) => a.retryAt - b.retryAt);
+  const ready = retries.filter(e => e.waitMs === 0);
+  const held = retries.filter(e => e.waitMs > 0);
+  const queue = [...interrupted, ...ready, ...remembered, ...unknown];
+  return queue.length === 0 ? held : queue;
+}
+
+// ---------------------------------------------------------------
+// Working on a node
+// ---------------------------------------------------------------
+
+function touch(session, node) { addOnce(session.touchedNodeIds, node.id); }
+
+// Picks a node up. Returns { mode, trial, events }:
+//   "search"    a hotspot search is running; `trial` is the attempt to play
+//   "resumed"   an interrupted search was resumed — from its bookmark if it
+//               has one, else its own hotspot candidate (resume: "auto", the
+//               default); resume: "bookmark" / "hotspot" forces either
+//               (a decomposed parent gets one too: it is played through whole
+//               and its tempo step is re-measured)
+//   "converged" the search is already finished; it just needs a grade
+// or { refused, events } if the session is winding down or over.
+function startNodeWork(session, pieces, node, { now, resume = "auto" } = {}) {
+  const t = toMs(now);
+  if (resume !== "auto" && resume !== "hotspot" && resume !== "bookmark") throw new Error('resume must be "auto", "hotspot" or "bookmark".');
+  const events = tickSession(session, pieces, { now: t });
+  if (session.phase === "ended") return { refused: ENDED, events };
+  if (session.phase === "winding_down") return { refused: WRAPPING_UP, events };
+
+  touch(session, node);
+  const pendingRetry = retryMap(session);
+  if (pendingRetry[node.id] !== undefined) { // an Again node coming back: it is open work again
+    delete pendingRetry[node.id];
+    addOnce(reopenedList(session), node.id);
+  }
+  const started = (mode, trial) => {
+    emit(session, events, t, "work_started", node, `${node.label}: ${mode}.`, false, { mode });
+    return { mode, trial, events };
+  };
+
+  if (node.interrupted) {
+    if (node.search !== null && isSearchConverged(node.search)) {
+      node.interrupted = false; // nothing left to resume: it only needs its grade
+      return started("converged", null);
+    }
+    // "auto": where the player physically stopped, if they said so; otherwise the
+    // search's own hotspot candidate. Either can still be forced by name.
+    const useBookmark = resume === "bookmark" || (resume === "auto" && node.bookmark !== null);
+    return started("resumed", resumeInterrupted(node, useBookmark));
+  }
+  if (node.search !== null) {
+    if (isSearchConverged(node.search)) return started("converged", null);
+    const trial = node.search.trialInProgress
+      ? { step: node.search.currentStep, startLocation: node.search.currentStartLocation }
+      : nextTrial(node.search);
+    return started("search", trial);
+  }
+  // A node that is already split is searched again like any other: the player
+  // plays it through from the top, finds a new candidate if one breaks, and works
+  // out the tempo it holds now. The candidate starts at the node's first measure
+  // (not at the hotspot it was split around) because it may have moved.
+  node.search = beginHotspotSearch(node, node.children.length > 0 ? { initialCandidate: node.start } : {});
+  return started("search", nextTrial(node.search));
+}
+
+// Records the result of the trial in flight. While winding down, a node
+// owed its final attempt gets exactly this one: afterwards it's
+// deferred (optionally bookmarked where the player physically stopped)
+// — or graded, if that attempt happened to finish the search.
+// Returns { entry, converged, outcome, events }; outcome is null
+// normally, or "deferred" / "auto_graded" when this was the final
+// attempt. Or { refused, events }.
+function recordTrial(session, pieces, node, { now, passed, failureLocation = null, bookmark } = {}) {
+  const t = toMs(now);
+  if (typeof passed !== "boolean") throw new Error("recordTrial needs passed: true or false.");
+  // A node covering a single unit (every hotspot) has nowhere else to fail:
+  // the failure location IS that unit, so it needn't be given.
+  const location = !passed && failureLocation === null && node.start === node.end ? node.start : failureLocation;
+  if (bookmark !== undefined) assertWithin(node, bookmark, "A bookmark");
+  if (!passed && location !== null) assertWithin(node, location, "The failure location");
+  const events = tickSession(session, pieces, { now: t });
+  if (session.phase === "ended") return { refused: ENDED, events };
+
+  const grace = session.phase === "winding_down";
+  if (grace && !session.graceEligibleIds.includes(node.id)) {
+    return { refused: "The session is wrapping up — only an attempt already in progress can be finished.", events };
+  }
+
+  touch(session, node);
+  const entry = recordTrialResult(node.search, passed, location);
+  const converged = isSearchConverged(node.search);
+  if (!grace) return { entry, converged, outcome: null, events };
+
+  removeId(session.graceEligibleIds, node.id);
+  let outcome;
+  if (converged) {
+    autoGrade(session, node, t, events, "that final attempt finished the search");
+    outcome = "auto_graded";
+  } else {
+    deferInternal(session, node, bookmark, t, events, null);
+    outcome = "deferred";
+  }
+  finishIfDone(session, t, events);
+  return { entry, converged, outcome, events };
+}
+
+// Grades a node. A node with a search goes through concludeSession
+// (which commits its step and may split it around a hotspot); one
+// without — a decomposed parent, say — is reviewed directly. Either
+// way it counts as dealt with: it leaves the queue, its interrupted
+// flag clears, and if it was waiting on a final attempt the wind-down
+// stops waiting for it.
+// Returns { reviewEntry, converged, foundHotspot, decomposedChildren,
+// direct, events } or { refused, events }.
+function gradeNode(session, pieces, node, grade, { now } = {}) {
+  const t = toMs(now);
+  if (![1, 2, 3, 4].includes(grade)) throw new Error(`Invalid grade: ${grade}. Must be 1 (Again), 2 (Hard), 3 (Good), or 4 (Easy).`);
+  const events = tickSession(session, pieces, { now: t });
+  if (session.phase === "ended") return { refused: ENDED, events };
+  // A grade is the verdict on a finished search. Not-yet-converged work is
+  // set aside (interrupt / defer), never graded.
+  if (node.search !== null && !isSearchConverged(node.search)) return { refused: UNFINISHED, events };
+
+  touch(session, node);
+  snapshotQueueOrder(session, pieces); // before this grade can split anything
+  const day = dayDate(session.studyDay);
+  let result;
+  const direct = node.search === null;
+  if (direct) {
+    result = { reviewEntry: reviewNode(node, grade, day), converged: false, foundHotspot: false, decomposedChildren: null };
+  } else {
+    result = concludeSession(node, grade, day);
+  }
+  appendSpawned(session, result.decomposedChildren);
+  node.interrupted = false;
+  addOnce(session.gradedNodeIds, node.id);
+  removeId(session.graceEligibleIds, node.id);
+  removeId(reopenedList(session), node.id);
+  // Again: set aside and measured against the tempo just established.
+  const pending = retryMap(session);
+  let retryAt = null;
+  if (grade === 1) { retryAt = t + RETRY_MINUTES * 60000; pending[node.id] = retryAt; } else delete pending[node.id];
+  emit(session, events, t, "graded", node,
+    `${node.label}: graded ${GRADE_NAME[grade]}${retryAt !== null ? `; it comes back in about ${RETRY_MINUTES} minutes` : ""}.`,
+    false, { grade, direct });
+  finishIfDone(session, t, events);
+  return { ...result, direct, retryAt, events };
+}
+
+// "Defer now": give up the final attempt a node is owed, saving it
+// (optionally bookmarked) with no grade. Returns { events } or
+// { refused, events }.
+function deferNode(session, pieces, node, { now, bookmark } = {}) {
+  const t = toMs(now);
+  if (bookmark !== undefined) assertWithin(node, bookmark, "A bookmark");
+  const events = tickSession(session, pieces, { now: t });
+  if (session.phase === "ended") return { refused: ENDED, events };
+  if (!session.graceEligibleIds.includes(node.id)) {
+    return { refused: "That node isn't waiting on a final attempt.", events };
+  }
+  removeId(session.graceEligibleIds, node.id);
+  deferInternal(session, node, bookmark, t, events, null);
+  finishIfDone(session, t, events);
+  return { events };
+}
+
+// ---------------------------------------------------------------
+// Summary
+// ---------------------------------------------------------------
+
+function sessionSummary(session) {
+  const graded = [];
+  const deferred = [];
+  session.events.forEach(e => {
+    if (e.type === "graded" || e.type === "auto_graded") graded.push({ nodeId: e.nodeId, label: e.label, grade: e.grade, auto: e.type === "auto_graded" });
+    if (e.type === "deferred") deferred.push({ nodeId: e.nodeId, label: e.label, bookmark: e.bookmark });
+  });
+  return {
+    phase: session.phase,
+    minutesPlanned: session.minutes,
+    endReason: session.endReason,
+    elapsedMs: session.endedAt === null ? null : session.endedAt - session.startedAt,
+    worked: session.touchedNodeIds.length,
+    graded,
+    deferred
+  };
+}
+
+module.exports = {
+  SESSION_VERSION, DEFAULT_SESSION_MINUTES, RETRY_MINUTES,
+  startSession, sessionClock, tickSession, extendSession, endSessionNow, settleSession,
+  buildQueue, sessionQueue,
+  startNodeWork, recordTrial, gradeNode, deferNode,
+  sessionSummary
+};
+
+};
+__mods["./sip-store"] = function (module, exports, require) {
+// sip-store.js
+// The workspace: everything SIP remembers between runs — the pieces, the
+// running practice session, the wishlist, the settings, and which piece and
+// node you were on. Written and read through a small ASYNC adapter, so the
+// same logic can sit on a folder (Node: sip-store-fs.js), IndexedDB (a web
+// app) or a phone's file system. See docs/workspace.md.
+//
+// Adapter contract. Keys are slash-separated names such as
+// "pieces/piece-0001.json" (letters, digits, "." "_" "-" only):
+//   async get(key)       -> string | null      null when there is no such key
+//   async put(key, text) -> void               ATOMIC: afterwards the key holds
+//                                              all of `text` or all of what it
+//                                              held before — never half of each
+//   async delete(key)    -> void               no error if it isn't there
+//   async list(prefix)   -> string[]           every key under a "dir/" prefix
+//
+// What is guaranteed (and tested, including with writes failing at every
+// step): a crash or a failed write loses at most the change being saved —
+// never an earlier one; a file that can't be read is left untouched, never
+// overwritten; and nothing is ever deleted outright (removed pieces move to
+// removed/, and the first save of each day keeps a backup of what it replaced).
+
+"use strict";
+
+const { serializePiece, deserializePiece } = require("./sip-piece");
+const { flattenTree, assertValidRolloverHours, DEFAULT_ROLLOVER_HOURS } = require("./sip-core");
+const { SESSION_VERSION } = require("./sip-session");
+
+const WORKSPACE_VERSION = 1;
+const WORKSPACE_KEY = "workspace.json";
+const PIECE_PREFIX = "pieces/";
+const PIECE_KEY_RE = /^pieces\/piece-(\d{4,})\.json$/;
+const KEY_NUMBER_RE = /piece-(\d{4,})\.json$/;
+const EPOCH_ISO = new Date(0).toISOString();
+const SESSION_PHASES = ["active", "winding_down", "ended"];
+
+const pieceKeyFor = n => `${PIECE_PREFIX}piece-${String(n).padStart(4, "0")}.json`;
+const stampOf = now => now.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z"); // 20261009T153012Z
+const dayOf = now => now.toISOString().slice(0, 10);
+
+// ---------------------------------------------------------------------------
+// Keys
+// ---------------------------------------------------------------------------
+function assertValidKey(key) {
+  const ok = typeof key === "string"
+    && /^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*$/.test(key)
+    && key.split("/").every(seg => seg !== "." && seg !== "..");
+  if (!ok) throw new Error(`Invalid storage key: ${JSON.stringify(key)}`);
+}
+
+// ---------------------------------------------------------------------------
+// An in-memory adapter: for tests, and for running without a workspace.
+// ---------------------------------------------------------------------------
+function createMemoryAdapter(initial = {}) {
+  const files = new Map(Object.entries(initial));
+  return {
+    files,
+    describe: () => "memory (nothing is saved)",
+    async get(key) { assertValidKey(key); return files.has(key) ? files.get(key) : null; },
+    async put(key, text) {
+      assertValidKey(key);
+      if (typeof text !== "string") throw new Error("put needs text");
+      files.set(key, text);
+    },
+    async delete(key) { assertValidKey(key); files.delete(key); },
+    async list(prefix) {
+      if (!prefix.endsWith("/")) throw new Error(`list takes a "dir/" prefix, got ${JSON.stringify(prefix)}`);
+      return [...files.keys()].filter(k => k.startsWith(prefix)).sort();
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// workspace.json
+// ---------------------------------------------------------------------------
+function validateWorkspace(ws) {
+  if (!ws || typeof ws !== "object" || Array.isArray(ws)) return ["it isn't an object"];
+  const problems = [];
+  if (!Number.isInteger(ws.formatVersion)) problems.push("formatVersion must be an integer");
+  if (!Array.isArray(ws.pieceOrder) || !ws.pieceOrder.every(k => typeof k === "string" && PIECE_KEY_RE.test(k))) {
+    problems.push("pieceOrder must be a list of piece file keys");
+  } else if (new Set(ws.pieceOrder).size !== ws.pieceOrder.length) {
+    problems.push("pieceOrder lists a piece twice");
+  }
+  if (!ws.settings || typeof ws.settings !== "object" || Array.isArray(ws.settings)) problems.push("settings must be an object");
+  if (!Array.isArray(ws.wishlist)) problems.push("wishlist must be a list");
+  if (!ws.ui || typeof ws.ui !== "object" || Array.isArray(ws.ui)) problems.push("ui must be an object");
+  if (ws.session !== null && ws.session !== undefined) {
+    if (typeof ws.session !== "object" || !ws.session.state || typeof ws.session.state !== "object" || !Array.isArray(ws.session.pieces)) {
+      problems.push("session must be null or { state, pieces }");
+    }
+  }
+  return problems;
+}
+
+function sessionStateLooksValid(s) {
+  return s && s.version === SESSION_VERSION && SESSION_PHASES.includes(s.phase)
+    && Number.isFinite(s.startedAt) && Number.isFinite(s.endsAt) && typeof s.studyDay === "string"
+    && ["touchedNodeIds", "gradedNodeIds", "graceEligibleIds", "events"].every(f => Array.isArray(s[f]));
+}
+
+const canonicalPiece = piece => JSON.stringify(serializePiece(piece, { now: new Date(0) }));
+
+// ---------------------------------------------------------------------------
+// The store
+// ---------------------------------------------------------------------------
+function createStore(adapter, { backupDays = 14 } = {}) {
+  let loaded = false;
+  const keyOf = new Map();         // piece object -> its key in storage
+  const lastWritten = new Map();   // key -> canonical content known to be in storage
+  let lastWorkspaceCanon = null;   // same, for workspace.json
+  let nextKeyNumber = 1;
+  const backedUp = new Set();      // "backups/<day>/<key>" already taken (or found) this run
+
+  // One operation at a time: load and save never interleave.
+  let tail = Promise.resolve();
+  const serial = fn => {
+    const run = tail.then(() => fn());
+    tail = run.catch(() => {});
+    return run;
+  };
+
+  const newKey = () => pieceKeyFor(nextKeyNumber++);
+
+  function buildWorkspace({ pieces, settings, wishlist, ui, session }, savedAt) {
+    // Only pieces that actually exist in storage are listed: a listed piece with no file would be a dangling reference.
+    const order = pieces.map(p => keyOf.get(p)).filter(k => k && lastWritten.has(k));
+    return {
+      formatVersion: WORKSPACE_VERSION,
+      savedAt,
+      pieceOrder: order,
+      settings: { rolloverHours: settings.rolloverHours },
+      wishlist,
+      ui: {
+        piece: ui && ui.piece && keyOf.has(ui.piece) ? keyOf.get(ui.piece) : null,
+        nodeId: ui && ui.piece && Number.isInteger(ui.nodeId) ? ui.nodeId : null
+      },
+      session: session ? { state: session.session, pieces: session.pieces.map(p => keyOf.get(p) || null) } : null
+    };
+  }
+  const canonicalWorkspace = (state) => JSON.stringify(buildWorkspace(state, EPOCH_ISO));
+
+  async function writeWithBackup(key, text, day, warnings) {
+    const backupKey = `backups/${day}/${key}`;
+    if (!backedUp.has(backupKey)) {
+      try {
+        const previous = await adapter.get(key);
+        if (previous !== null && (await adapter.get(backupKey)) === null) await adapter.put(backupKey, previous);
+        backedUp.add(backupKey);
+      } catch (err) {
+        // A backup that can't be taken must not stop the user's current work being saved.
+        warnings.push(`couldn't back up ${key} before replacing it: ${err.message}`);
+      }
+    }
+    await adapter.put(key, text);
+  }
+
+  // -------------------------------------------------------------------------
+  async function loadImpl({ now = new Date() } = {}) {
+    const warnings = [];
+
+    // 1. what's in storage
+    const listing = await adapter.list(PIECE_PREFIX);
+    const pieceKeys = listing.filter(k => PIECE_KEY_RE.test(k)).sort();
+    // Key numbers are never reused, even those of removed pieces and old backups.
+    const numbers = [];
+    for (const prefix of [PIECE_PREFIX, "removed/", "backups/"]) {
+      (prefix === PIECE_PREFIX ? listing : await adapter.list(prefix)).forEach(k => {
+        const m = KEY_NUMBER_RE.exec(k);
+        if (m) numbers.push(Number(m[1]));
+      });
+    }
+    nextKeyNumber = 1 + Math.max(0, ...numbers);
+
+    // 2. workspace.json
+    const rawWorkspace = await adapter.get(WORKSPACE_KEY);
+    let ws = null;
+    if (rawWorkspace !== null) {
+      let parsed;
+      try { parsed = JSON.parse(rawWorkspace); } catch (e) { parsed = undefined; }
+      if (parsed && Number.isInteger(parsed.formatVersion) && parsed.formatVersion > WORKSPACE_VERSION) {
+        throw new Error(`This workspace was written by a newer version of SIP (workspace format ${parsed.formatVersion}; this version understands up to ${WORKSPACE_VERSION}). Open it with the newer version — nothing has been changed.`);
+      }
+      const problems = parsed === undefined ? ["it isn't valid JSON"] : validateWorkspace(parsed);
+      if (problems.length === 0) {
+        ws = parsed;
+      } else {
+        await adapter.put(`corrupt/${stampOf(now)}-workspace.json`, rawWorkspace);
+        warnings.push(`workspace.json couldn't be read (${problems.join("; ")}). A copy was kept in corrupt/. The piece list was rebuilt from the piece files; the saved session, settings and place were reset.`);
+      }
+    } else if (pieceKeys.length > 0) {
+      warnings.push("workspace.json is missing. The piece list was rebuilt from the piece files; the saved session, settings and place were reset.");
+    }
+
+    // 3. which pieces, in what order
+    let order = [];
+    if (ws) {
+      order = ws.pieceOrder.filter(k => pieceKeys.includes(k));
+      ws.pieceOrder.filter(k => !pieceKeys.includes(k)).forEach(k => warnings.push(`The workspace lists ${k}, but its file is missing.`));
+      const orphans = pieceKeys.filter(k => !order.includes(k));
+      if (orphans.length) {
+        warnings.push(`Found piece file(s) the workspace didn't list — adopted ${orphans.join(", ")}. (This is what a crash between saving a new piece and updating the list looks like.)`);
+        order = [...order, ...orphans];
+      }
+    } else {
+      order = pieceKeys;
+    }
+
+    // 4. settings (needed to read old-format files)
+    let rolloverHours = DEFAULT_ROLLOVER_HOURS;
+    if (ws) {
+      try { assertValidRolloverHours(ws.settings.rolloverHours); rolloverHours = ws.settings.rolloverHours; }
+      catch (err) { warnings.push(`The saved day-rollover setting was unusable (${err.message}); using ${DEFAULT_ROLLOVER_HOURS}.`); }
+    }
+
+    // 5. the pieces
+    keyOf.clear();
+    lastWritten.clear();
+    const pieces = [];
+    const keyToPiece = new Map();
+    const usedIds = new Set();
+    const labels = new Set();
+    let maxId = 0;
+    let idsRemapped = false;
+    for (const key of order) {
+      const text = await adapter.get(key);
+      if (text === null) { warnings.push(`${key} disappeared while loading; skipped.`); continue; }
+      let data;
+      try { data = JSON.parse(text); }
+      catch (err) { warnings.push(`${key} couldn't be read (${err.message}) and was left untouched.`); continue; }
+
+      let result;
+      try { result = deserializePiece(data, { preserveIds: true, dayConfig: { rolloverHours } }); }
+      catch (err) { warnings.push(`${key} couldn't be loaded and was left untouched: ${err.message}`); continue; }
+
+      let { piece } = result;
+      let collides = false;
+      flattenTree(piece.root).forEach(n => { if (usedIds.has(n.id)) collides = true; });
+      if (collides) {
+        // Node numbers must be unique across the workspace. Give this piece fresh ones.
+        ({ piece } = deserializePiece(data, { startingId: Math.max(maxId, ...usedIds) + 1, dayConfig: { rolloverHours } }));
+        idsRemapped = true;
+        warnings.push(`${key} used node numbers that another piece already uses; it was renumbered.`);
+      }
+      flattenTree(piece.root).forEach(n => { usedIds.add(n.id); if (n.id > maxId) maxId = n.id; });
+
+      if (labels.has(piece.label)) {
+        let n = 2;
+        while (labels.has(`${piece.label} (${n})`)) n++;
+        warnings.push(`Two pieces were called "${piece.label}"; the second is now "${piece.label} (${n})".`);
+        piece.label = `${piece.label} (${n})`;
+      }
+      labels.add(piece.label);
+
+      keyOf.set(piece, key);
+      keyToPiece.set(key, piece);
+      pieces.push(piece);
+      // Already in canonical form on disk? Then there's nothing to rewrite until it changes.
+      const canon = canonicalPiece(piece);
+      if (JSON.stringify({ ...data, savedAt: EPOCH_ISO }) === canon) lastWritten.set(key, canon);
+    }
+
+    // 6. wishlist, place, session
+    let wishlist = [];
+    if (ws) {
+      const good = ws.wishlist.filter(w => w && typeof w.name === "string" && typeof w.source === "string");
+      if (good.length !== ws.wishlist.length) warnings.push(`${ws.wishlist.length - good.length} unreadable wishlist entr${ws.wishlist.length - good.length === 1 ? "y was" : "ies were"} dropped.`);
+      wishlist = good.map(w => ({ name: w.name, source: w.source }));
+    }
+
+    let current = null;
+    if (ws && ws.ui.piece && keyToPiece.has(ws.ui.piece)) {
+      const piece = keyToPiece.get(ws.ui.piece);
+      const node = !idsRemapped && Number.isInteger(ws.ui.nodeId) ? flattenTree(piece.root).find(n => n.id === ws.ui.nodeId) : null;
+      current = { piece, node: node || piece.root };
+    }
+
+    let session = null;
+    if (ws && ws.session) {
+      const sessionPieces = ws.session.pieces.map(k => keyToPiece.get(k));
+      if (idsRemapped) warnings.push("The saved session was dropped because node numbers had to be reassigned.");
+      else if (sessionPieces.some(p => !p)) warnings.push("The saved session was dropped because one of its pieces couldn't be loaded.");
+      else if (!sessionStateLooksValid(ws.session.state)) warnings.push("The saved session was unreadable and was dropped.");
+      else session = { session: ws.session.state, pieces: sessionPieces };
+    }
+
+    // 7. is workspace.json already exactly what a save would write?
+    loaded = true;
+    const settings = { rolloverHours };
+    const probe = { pieces, settings, wishlist, ui: current ? { piece: current.piece, nodeId: current.node.id } : null, session };
+    lastWorkspaceCanon = ws && JSON.stringify({ ...ws, savedAt: EPOCH_ISO }) === canonicalWorkspace(probe) ? canonicalWorkspace(probe) : null;
+
+    await pruneBackups(now).catch(() => {});
+
+    return {
+      pieces, settings, wishlist, current, session, warnings,
+      nextFreeId: maxId + 1,
+      empty: pieceKeys.length === 0 && rawWorkspace === null
+    };
+  }
+
+  async function pruneBackups(now) {
+    const cutoff = dayOf(new Date(now.getTime() - backupDays * 86400000));
+    for (const key of await adapter.list("backups/")) {
+      const m = /^backups\/(\d{4}-\d{2}-\d{2})\//.exec(key);
+      if (m && m[1] < cutoff) await adapter.delete(key);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  async function saveImpl(state, { now = new Date(), studyDay } = {}) {
+    if (!loaded) throw new Error("load() the workspace before saving it — saving first could overwrite what's there.");
+    const day = studyDay || dayOf(now);
+    const wrote = [];
+    const failed = [];
+    const warnings = [];
+    const attempt = async (key, text) => {
+      try { await writeWithBackup(key, text, day, warnings); wrote.push(key); return true; }
+      catch (error) { failed.push({ key, error }); return false; }
+    };
+
+    // Pieces first, then the list that names them: a crash in between leaves a file the
+    // list doesn't know yet (adopted on the next load), never a list naming a file that isn't there.
+    for (const piece of state.pieces) {
+      if (!keyOf.has(piece)) keyOf.set(piece, newKey());
+      const key = keyOf.get(piece);
+      const canon = canonicalPiece(piece);
+      if (lastWritten.get(key) === canon) continue;
+      if (await attempt(key, JSON.stringify(serializePiece(piece, { now }), null, 2))) lastWritten.set(key, canon);
+    }
+
+    // A piece that's gone from the state is set aside, never deleted outright.
+    const present = new Set(state.pieces);
+    for (const [piece, key] of [...keyOf]) {
+      if (present.has(piece)) continue;
+      try {
+        const previous = await adapter.get(key);
+        if (previous !== null) await adapter.put(`removed/${day}/${stampOf(now)}-${key.slice(PIECE_PREFIX.length)}`, previous);
+        await adapter.delete(key);
+        keyOf.delete(piece);
+        lastWritten.delete(key);
+        wrote.push(`removed ${key}`);
+      } catch (error) { failed.push({ key, error }); }
+    }
+
+    const canon = canonicalWorkspace(state);
+    if (canon !== lastWorkspaceCanon) {
+      const text = JSON.stringify(buildWorkspace(state, now.toISOString()), null, 2);
+      if (await attempt(WORKSPACE_KEY, text)) lastWorkspaceCanon = canon;
+    }
+    return { wrote, failed, warnings };
+  }
+
+  return {
+    describe: () => (adapter.describe ? adapter.describe() : "storage"),
+    load: opts => serial(() => loadImpl(opts)),
+    save: (state, opts) => serial(() => saveImpl(state, opts)),
+    keyOf: piece => keyOf.get(piece) || null
+  };
+}
+
+module.exports = {
+  WORKSPACE_VERSION, WORKSPACE_KEY,
+  createStore, createMemoryAdapter, assertValidKey, validateWorkspace
+};
+
+};
+
+</script>
+<script>
+"use strict";
+const core = __req("./sip-core"), pc = __req("./sip-piece"), sess = __req("./sip-session"), sto = __req("./sip-store");
+const { GRADE } = core;
+const GRADE_NAME = { 1: "Again", 2: "Hard", 3: "Good", 4: "Easy" };
+const GRADE_HINT = { 1: "needs another look soon", 2: "got through, but barely", 3: "solid, as expected", 4: "ready to perform" };
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const now = () => Date.now();
+
+/* ---------------------------------------------------------------- storage */
+function idbAdapter(dbName) {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    const rq = indexedDB.open(dbName, 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore("files");
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  }));
+  const run = async (mode, fn) => {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction("files", mode);
+      let out;
+      try { out = fn(tx.objectStore("files")); } catch (e) { rej(e); return; }
+      tx.oncomplete = () => res(out && "result" in out ? out.result : undefined);
+      tx.onerror = () => rej(tx.error);
+      tx.onabort = () => rej(tx.error || new Error("storage write was aborted"));
+    });
+  };
+  return {
+    describe: () => "this device (IndexedDB)",
+    async get(key) { sto.assertValidKey(key); const v = await run("readonly", s => s.get(key)); return typeof v === "string" ? v : null; },
+    async put(key, text) { sto.assertValidKey(key); if (typeof text !== "string") throw new Error("put needs text"); await run("readwrite", s => s.put(text, key)); },
+    async delete(key) { sto.assertValidKey(key); await run("readwrite", s => s.delete(key)); },
+    async list(prefix) {
+      if (!prefix.endsWith("/")) throw new Error("list takes a dir/ prefix");
+      const keys = await run("readonly", s => s.getAllKeys());
+      return (keys || []).filter(k => typeof k === "string" && k.startsWith(prefix)).sort();
+    }
+  };
+}
+async function makeAdapter() {
+  try {
+    if (typeof indexedDB === "undefined") throw new Error("no IndexedDB");
+    const a = idbAdapter("sip-practice");
+    await a.put("probe.txt", "ok"); await a.delete("probe.txt");
+    return { adapter: a, durable: true };
+  } catch (e) {
+    const m = sto.createMemoryAdapter();
+    m.describe = () => "memory only (this browser would not allow saving)";
+    return { adapter: m, durable: false };
+  }
+}
+
+/* ------------------------------------------------------------------ state */
+const S = {
+  ready: false, store: null, adapter: null, durable: true,
+  pieces: [], settings: { rolloverHours: 4 }, wishlist: [],
+  session: null, sessionPieces: [], endedSession: null, asideLog: [],
+  cur: null, result: null, skip: new Set(),
+  view: "practice", sheet: null, minutes: 15,
+  form: { label: "", start: "1", end: "", tempo: "" }, formError: "",
+  saveError: null, exportText: "", importText: "", importMsg: "", asideNote: ""
+};
+const dayDate = () => core.studyDayOf(new Date(), S.settings);
+const dayStr = () => dayDate().toISOString().slice(0, 10);
+const live = () => S.session !== null && S.session.phase !== "ended";
+const active = () => S.session !== null && S.session.phase === "active";
+
+function workspaceState() {
+  return {
+    pieces: S.pieces, settings: S.settings, wishlist: S.wishlist,
+    ui: S.cur ? { piece: S.cur.piece, nodeId: S.cur.node.id } : null,
+    session: live() ? { session: S.session, pieces: S.sessionPieces } : null
+  };
+}
+let saveChain = Promise.resolve();
+function persist() {
+  saveChain = saveChain.then(async () => {
+    try {
+      const r = await S.store.save(workspaceState(), { now: new Date(), studyDay: dayStr() });
+      S.saveError = r.failed.length ? r.failed[0].error.message : null;
+    } catch (e) { S.saveError = e.message; }
+    paintTop();
+  });
+  return saveChain;
+}
+
+/* ---------------------------------------------------------------- helpers */
+const fmtPct = step => { const p = Math.round(core.stepToPercent(step)); return p === 0 ? "0%" : (p > 0 ? "+" : "−") + Math.abs(p) + "%"; };
+const fmtStep = s => (s > 0 ? "+" : s < 0 ? "−" : "") + Math.abs(s);
+const rng = n => n.start === n.end ? `m. ${n.start}` : `mm. ${n.start}–${n.end}`;
+const fmtDate = d => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+const fmtClock = ms => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+function roleOf(piece, node) {
+  if (node === piece.root) return "Whole piece";
+  const rest = node.label.startsWith(piece.label + " — ") ? node.label.slice(piece.label.length + 3) : node.label;
+  return rest.split(" — ").join(" › ");
+}
+function tempoFor(piece, node, step) {
+  try { return pc.describeTempo(piece, node.start, node.end, step); } catch (e) { return null; }
+}
+function pieceOf(node) { return S.pieces.find(p => core.flattenTree(p.root).includes(node)); }
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.h); toast.h = setTimeout(() => { t.hidden = true; }, 4200);
+}
+function reportEvents(events) {
+  (events || []).filter(e => e.notify && e.type !== "time_up").forEach(e => toast(e.message));
+}
+
+/* ---------------------------------------------------------------- session */
+function startSession(minutes) {
+  if (S.pieces.length === 0) { toast("Add a piece first."); return; }
+  S.session = sess.startSession({ now: now(), minutes, studyDay: dayStr(), pieces: S.pieces, softEnd: true });
+  S.sessionPieces = S.pieces.slice();
+  S.endedSession = null; S.skip = new Set(); S.asideLog = []; S.result = null; S.cur = null;
+  requestWake();
+  pickNext();
+}
+function queueNow() {
+  if (live()) return sess.sessionQueue(S.session, S.sessionPieces, { now: now() });
+  return sess.buildQueue(S.pieces, dayStr());
+}
+function pickNext() {
+  S.result = null;
+  if (!active()) { S.cur = null; persist(); render(); return; }
+  const q = queueNow().filter(e => !S.skip.has(e.node.id));
+  if (q.length === 0) { S.cur = null; persist(); render(); return; }
+  pick(q[0].piece, q[0].node);
+}
+function pick(piece, node) {
+  if (S.cur && S.cur.node !== node && S.cur.node.search && S.cur.node.search.trialInProgress) core.pauseSearch(S.cur.node.search);
+  const r = sess.startNodeWork(S.session, S.sessionPieces, node, { now: now() });
+  reportEvents(r.events);
+  if (r.refused) { toast(r.refused); persist(); render(); return; }
+  S.cur = { piece, node }; S.result = null; S.view = "practice";
+  persist(); render(); window.scrollTo(0, 0);
+}
+function ensureTrial() {
+  if (!S.cur) return;
+  const s = S.cur.node.search;
+  if (s && !core.isSearchConverged(s) && !s.trialInProgress && active()) core.nextTrial(s);
+}
+function answer(passed, loc) {
+  if (!S.cur) return;
+  const { node } = S.cur;
+  const r = sess.recordTrial(S.session, S.sessionPieces, node, { now: now(), passed, failureLocation: passed ? null : loc });
+  reportEvents(r.events);
+  if (r.refused) { toast(r.refused); render(); return; }
+  if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) { /* optional */ } }
+  if (r.outcome === "deferred") { S.result = { kind: "saved", node }; S.cur = null; }
+  else if (r.outcome === "auto_graded") { S.result = { kind: "autograded", node, piece: pieceOf(node) }; S.cur = null; }
+  else ensureTrial();
+  afterSessionChange();
+}
+function grade(g) {
+  const { piece, node } = S.cur;
+  const hadSplit = node.children.length;
+  const note = ($("why") ? $("why").value : "").trim();
+  const r = sess.gradeNode(S.session, S.sessionPieces, node, g, { now: now() });
+  reportEvents(r.events);
+  if (r.refused) { toast(r.refused); render(); return; }
+  if (r.decomposedChildren && note) {
+    const hs = r.decomposedChildren.find(c => c.kind === "hotspot");
+    if (hs) hs.hotspotNote = note;
+  }
+  S.result = { kind: "graded", grade: g, entry: r.reviewEntry, children: r.decomposedChildren, retryAt: r.retryAt, node, piece, step: node.step, hadSplit };
+  S.cur = null;
+  afterSessionChange();
+}
+function setAside(bookmark) {
+  const { node } = S.cur;
+  if (S.session.phase === "winding_down" && S.session.graceEligibleIds.includes(node.id)) {
+    const r = sess.deferNode(S.session, S.sessionPieces, node, { now: now(), bookmark });
+    reportEvents(r.events);
+    S.result = { kind: "saved", node };
+  } else {
+    if (node.search && node.search.trialInProgress) core.pauseSearch(node.search);
+    core.interruptSession(node, bookmark);
+    S.skip.add(node.id);
+    S.asideLog.push({ label: node.label, bookmark: bookmark === undefined ? null : bookmark });
+    S.result = { kind: "aside", node, bookmark };
+  }
+  S.cur = null;
+  afterSessionChange();
+}
+function amend(loc) {
+  try { core.amendLastFailure(S.cur.node.search, loc); toast(`Last failure moved to m. ${loc}.`); }
+  catch (e) { toast(e.message); }
+  persist(); render();
+}
+function extend() {
+  const r = sess.extendSession(S.session, S.sessionPieces, { now: now(), minutes: 5 });
+  if (r.refused) toast(r.refused); else toast("Five more minutes.");
+  persist(); render();
+}
+function endSession() {
+  const events = sess.endSessionNow(S.session, S.sessionPieces, { now: now() });
+  reportEvents(events);
+  afterSessionChange();
+}
+function afterSessionChange() {
+  if (S.session && S.session.phase === "ended") {
+    S.endedSession = { summary: sess.sessionSummary(S.session), minutes: S.session.minutes, aside: S.asideLog.slice() };
+    S.session = null; S.sessionPieces = []; S.cur = null; releaseWake();
+  }
+  persist(); render(); window.scrollTo(0, 0);
+}
+
+/* wake lock: keep the tablet awake while practising */
+let wake = null;
+async function requestWake() { try { if (navigator.wakeLock && live() && document.visibilityState === "visible") wake = await navigator.wakeLock.request("screen"); } catch (e) { /* optional */ } }
+function releaseWake() { try { if (wake) wake.release(); } catch (e) { /* optional */ } wake = null; }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { requestWake(); tick(); } });
+
+/* ----------------------------------------------------------------- render */
+const ICON = {
+  practice: '<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+  queue: '<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>',
+  pieces: '<svg viewBox="0 0 24 24"><path d="M4 4h12l4 4v12H4z"/><path d="M16 4v4h4"/></svg>',
+  data: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>'
+};
+function paintTabs() {
+  const items = [["practice", "Practice"], ["queue", "Queue"], ["pieces", "Pieces"], ["data", "Data"]];
+  $("tabs").innerHTML = items.map(([k, l]) => `<button data-act="view" data-v="${k}" aria-current="${S.view === k}">${ICON[k]}<span>${l}</span></button>`).join("");
+}
+function timerChip() {
+  if (!S.session) return "";
+  const c = sess.sessionClock(S.session, now());
+  if (S.session.phase === "winding_down") return `<span class="chip amber" id="clock">Wrapping up</span>`;
+  if (c.timeIsUp) return `<span class="chip red" id="clock">+${fmtClock(c.overtimeMs)} over</span>`;
+  const amber = c.remainingMs <= 120000;
+  return `<span class="chip ${amber ? "amber" : ""}" id="clock">${fmtClock(c.remainingMs)} left</span>`;
+}
+function paintTop() {
+  const sub = live() ? "" : "Systematic Instrumental Practice";
+  $("topbar").innerHTML = `<div class="brand"><b>SIP</b><span>${esc(sub)}</span></div><div class="spacer"></div>${S.saveError ? `<span class="chip save-bad" title="${esc(S.saveError)}">Not saved</span>` : ""}${timerChip()}`;
+}
+function render() {
+  if (!S.ready) return;
+  paintTabs(); paintTop();
+  const v = { practice: viewPractice, queue: viewQueue, pieces: viewPieces, data: viewData }[S.view];
+  $("main").innerHTML = v();
+  $("overlay").innerHTML = S.sheet ? sheetHtml() : "";
+}
+
+/* ---------- practice ---------- */
+function viewPractice() {
+  if (S.endedSession) return summaryCard();
+  if (!S.session) return startCard();
+  let h = overtimeBanner();
+  if (S.result) return h + resultCard();
+  if (!S.cur) return h + idleCard();
+  const { piece, node } = S.cur, s = node.search;
+  if (!s) return h + idleCard();
+  if (core.isSearchConverged(s)) return h + gradeCard();
+  return h + workCard();
+}
+function overtimeBanner() {
+  const c = sess.sessionClock(S.session, now());
+  if (S.session.phase === "winding_down") return `<div class="banner"><span class="grow">Wrapping up. Finish the attempt in front of you, or set it aside.</span></div>`;
+  if (!c.timeIsUp) return "";
+  return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
+}
+function startCard() {
+  if (S.pieces.length === 0) return `<section class="card"><h1>Welcome</h1><p class="muted" style="margin:0">SIP breaks a piece down to the exact spots that need work, and schedules each one so your short practice sessions go where they matter. Add a piece to begin. Everything stays on this device.</p><button class="btn primary" data-act="view" data-v="pieces">Add a piece</button></section>`;
+  const q = queueNow();
+  const due = q.filter(e => e.status === "due" || e.status === "retry").length, fresh = q.filter(e => e.status === "new").length, back = q.filter(e => e.status === "interrupted").length;
+  return `<section class="card"><div class="eyebrow">Today</div><h1>Ready to practise</h1>
+    <div class="row">${back ? `<span class="tag retry">${back} to resume</span>` : ""}<span class="tag due">${due} due</span><span class="tag new">${fresh} new</span></div>
+    <div><div class="eyebrow" style="margin-bottom:8px">How long?</div><div class="chips" role="group" aria-label="Session length">${[10, 15, 25, 40].map(m => `<button data-act="mins" data-m="${m}" aria-pressed="${S.minutes === m}">${m}</button>`).join("")}<span class="muted" style="align-self:center">minutes</span></div></div>
+    <button class="btn primary" style="min-height:64px;font-size:1.2rem" data-act="start" ${q.length ? "" : "disabled"}>${q.length ? "Start session" : "Nothing due today"}</button>
+    ${q.length ? `<div class="small muted">First up: <b>${esc(q[0].piece.label)}</b>, ${esc(roleOf(q[0].piece, q[0].node))}, ${rng(q[0].node)}</div>` : ""}</section>`;
+}
+function idleCard() {
+  const q = queueNow().filter(e => !S.skip.has(e.node.id));
+  if (q.length === 0) return `<section class="card"><h2>Queue is clear</h2><p class="muted" style="margin:0">Nothing else is waiting right now. Finish the session to see what you covered.</p><button class="btn primary" data-act="end">Finish session</button></section>`;
+  return `<section class="card"><div class="eyebrow">Next</div><div class="where"><div class="piece">${esc(q[0].piece.label)}</div><div class="node">${esc(roleOf(q[0].piece, q[0].node))}</div><div class="range">${rng(q[0].node)}</div></div><button class="btn primary" style="min-height:64px;font-size:1.2rem" data-act="next">Start</button><button class="btn ghost" data-act="end">Finish session</button></section>`;
+}
+function workCard() {
+  ensureTrial();
+  const { piece, node } = S.cur, s = node.search;
+  const step = s.currentStep, loc = s.currentStartLocation;
+  const t = tempoFor(piece, node, step), t0 = tempoFor(piece, node, 0);
+  const note = core.effectiveNote(piece.root, node);
+  const grace = S.session.phase === "winding_down";
+  const single = node.start === node.end;
+  const last = s.history[s.history.length - 1];
+  const canAmend = last && last.result === "fail" && !single;
+  const chips = s.history.map(h => `<span class="trial-chip ${h.result === "pass" ? "p" : "f"}">${fmtPct(h.step)} ${h.result === "pass" ? "✓" : "✗ m." + h.failureLocation}</span>`).join("");
+  return `<section class="card">
+    <div class="where"><div class="piece">${esc(piece.label)}</div><div class="node">${esc(roleOf(piece, node))}</div><div class="range">${rng(node)}</div></div>
+    ${grace ? `<div class="banner"><span class="grow">Last attempt, then it's saved for next time.</span></div>` : ""}
+    <div class="tempo">
+      ${t0 ? `<div class="label">Metronome as marked</div><div class="marked">♩ ${Math.round(t0.first)}${t0.varies ? " at the start" : ""}</div>` : ""}
+      <div class="label">${t0 ? "Then adjust" : "Tempo adjustment"}</div>
+      <div class="adjust ${step < 0 ? "neg" : ""}">${fmtPct(step)}</div>
+      ${t ? `<div class="result">plays at ♩ ${Math.round(t.first)}</div>` : ""}
+    </div>
+    <div class="startat"><span class="muted">Start at</span><b>m. ${loc}</b></div>
+    ${note ? `<div class="note"><b>Watch for:</b> ${esc(note)}</div>` : ""}
+    <div class="answers">
+      <button class="pass" data-act="pass">Pass<small>played clean</small></button>
+      <button class="fail" data-act="fail">Fail<small>${single ? "it broke" : "it broke somewhere"}</small></button>
+    </div>
+    ${chips ? `<div class="ladder" aria-label="Trials so far">${chips}</div>` : ""}
+    <div class="row">
+      ${canAmend ? `<button class="btn small ghost" data-act="amend">Fix last failure (m. ${last.failureLocation})</button>` : ""}
+      <button class="btn small ghost" data-act="aside">${grace ? "Save for next time" : "Set aside"}</button>
+    </div>
+  </section><p class="small muted" style="margin:0;text-align:center"><span class="kbd">P</span> pass &nbsp; <span class="kbd">F</span> fail</p>`;
+}
+function gradeCard() {
+  const { piece, node } = S.cur, s = node.search;
+  const found = s.history.some(h => h.result === "fail");
+  const willSplit = found && node.children.length === 0 && node.kind !== "hotspot";
+  const sug = core.suggestGrade(node);
+  const t = tempoFor(piece, node, s.passStep);
+  const first = node.fsrs === null;
+  const delta = s.passStep - node.step;
+  const cmp = first ? "" : `Last time ${fmtStep(node.step)}, now ${fmtStep(s.passStep)} (${delta === 0 ? "no change" : fmtStep(delta) + " steps"}).`;
+  const hs = s.hotspotCandidate;
+  return `<section class="card">
+    <div class="where"><div class="piece">${esc(piece.label)}</div><div class="node">${esc(roleOf(piece, node))}</div><div class="range">${rng(node)}</div></div>
+    <div class="tempo"><div class="label">${found ? "It holds up to" : "Clean at the top of the range"}</div><div class="adjust ${s.passStep < 0 ? "neg" : ""}">${fmtPct(s.passStep)}</div>${t ? `<div class="result">♩ ${Math.round(t.first)}</div>` : ""}</div>
+    ${found && !single(node) ? `<div class="startat"><span class="muted">Trouble spot</span><b>m. ${hs}</b></div>` : ""}
+    ${cmp ? `<div class="small muted" style="text-align:center">${cmp}</div>` : ""}
+    ${willSplit ? `<label class="field" for="why">Why does it break there?<small>Optional. It stays with the hotspot as a reminder.</small><input type="text" id="why" maxlength="100" placeholder="e.g. ring finger not covering the tone hole" autocomplete="off"></label>` : ""}
+    <div class="eyebrow">How did it go?</div>
+    <div class="grades">${[1, 2, 3, 4].map(g => `<button data-act="grade" data-g="${g}" class="${g === sug ? "suggested" : ""}">${g === sug ? '<span class="sug">Suggested</span>' : ""}${GRADE_NAME[g]}<small>${GRADE_HINT[g]}</small></button>`).join("")}</div>
+    <div class="row"><button class="btn small ghost" data-act="amend">Fix last failure</button></div>
+  </section>`;
+}
+const single = n => n.start === n.end;
+function resultCard() {
+  const r = S.result;
+  const next = `<div class="row"><button class="btn primary grow" style="min-height:60px" data-act="next">Next</button><button class="btn ghost" data-act="end">Finish</button></div>`;
+  if (r.kind === "graded") {
+    const days = r.entry.interval;
+    const parts = r.children ? `<div class="small muted">Now split into ${r.children.length} parts that come up on their own:</div><div class="row">${r.children.map(c => `<span class="tag ${c.kind === "hotspot" ? "due" : "new"}">${esc(roleOf(r.piece, c))} · ${rng(c)}</span>`).join("")}</div>` : "";
+    const hs = r.children && r.children.find(c => c.kind === "hotspot");
+    const retry = r.retryAt ? `<div class="banner"><span class="grow">Set aside. It comes back in about ${sess.RETRY_MINUTES} minutes, measured against ${fmtPct(r.step)}.</span></div>` : "";
+    return `<section class="card"><div class="eyebrow">Graded ${GRADE_NAME[r.grade]}</div><h2>${esc(r.piece.label)} · ${esc(roleOf(r.piece, r.node))}</h2>
+      <div>Comes back in <b>${days} day${days === 1 ? "" : "s"}</b> (${fmtDate(r.entry.due)}).</div>${retry}${parts}
+      ${hs && hs.hotspotNote ? `<div class="note">${esc(hs.hotspotNote)}</div>` : ""}${next}</section>`;
+  }
+  if (r.kind === "autograded") return `<section class="card"><h2>Graded automatically</h2><p class="muted" style="margin:0">That last attempt finished the search, so it was graded for you.</p><button class="btn primary" data-act="end">See summary</button></section>`;
+  if (r.kind === "saved") return `<section class="card"><h2>Saved for next time</h2><p class="muted" style="margin:0">It will be first in line next session.</p>${S.session && S.session.phase === "active" ? next : ""}</section>`;
+  return `<section class="card"><h2>Set aside</h2><p class="muted" style="margin:0">${r.bookmark ? `It's bookmarked at m. ${r.bookmark} and will be first in line next session.` : "It will be first in line next session."}</p>${next}</section>`;
+}
+function summaryCard() {
+  const { summary, aside = [] } = S.endedSession;
+  const g = summary.graded, d = summary.deferred.concat(aside.map(a => ({ label: a.label, bookmark: a.bookmark })));
+  const total = g.length + d.length;
+  return `<section class="card"><div class="eyebrow">Session finished</div><h1>${total === 0 ? "Nothing worked on" : `${total} section${total === 1 ? "" : "s"} worked`}</h1>
+    ${g.length ? `<div class="list">${g.map(x => `<div class="item"><div class="body"><div class="t">${esc(x.label)}</div></div><span class="tag ${x.grade >= 3 ? "ok" : "due"}">${GRADE_NAME[x.grade]}${x.auto ? " (auto)" : ""}</span></div>`).join("")}</div>` : ""}
+    ${d.length ? `<div class="small muted">Saved for next time</div><div class="list">${d.map(x => `<div class="item"><div class="body"><div class="t">${esc(x.label)}</div><div class="s">${x.bookmark !== null && x.bookmark !== undefined ? "bookmarked at m. " + x.bookmark : "resumes from its hotspot candidate"}</div></div></div>`).join("")}</div>` : ""}
+    <button class="btn primary" data-act="dismiss">Done</button></section>`;
+}
+
+/* ---------- queue ---------- */
+function viewQueue() {
+  const q = queueNow();
+  if (S.pieces.length === 0) return `<section class="card"><h2>Queue</h2><div class="empty">Add a piece and its sections will line up here.</div></section>`;
+  if (q.length === 0) return `<section class="card"><h2>Queue</h2><div class="empty">Nothing is due today.</div></section>`;
+  const canPick = active();
+  return `<section class="card"><div class="row"><h2 class="grow">Queue</h2><span class="muted small">${q.length} waiting</span></div>
+    <div class="list">${q.map((e, i) => {
+      const tag = e.status === "interrupted" ? `<span class="tag retry">resume${e.bookmark !== null ? " @ m. " + e.bookmark : ""}</span>`
+        : e.status === "retry" ? `<span class="tag retry">${e.waitMs > 0 ? "retry in " + Math.ceil(e.waitMs / 60000) + " min" : "retry now"}</span>`
+        : e.status === "new" ? `<span class="tag new">new</span>`
+        : `<span class="tag due">${e.daysOverdue === 0 ? "due today" : e.daysOverdue + " d overdue"}</span>`;
+      const cur = S.cur && S.cur.node === e.node;
+      return `<div class="item"><div class="body"><div class="t">${esc(e.piece.label)} · ${esc(roleOf(e.piece, e.node))}</div><div class="s"><span class="num">${rng(e.node)}</span>${tag}${e.hasChildren ? '<span class="tag">whole review</span>' : ""}</div>${e.note ? `<div class="s">why: ${esc(e.note)}</div>` : ""}</div>${canPick ? `<button class="btn small ${cur ? "ghost" : ""}" data-act="pick" data-id="${e.node.id}">${cur ? "Current" : "Practise"}</button>` : ""}</div>`;
+    }).join("")}</div>
+    ${live() ? "" : `<button class="btn primary" data-act="view" data-v="practice">Go to Practice to start</button>`}</section>`;
+}
+
+/* ---------- pieces ---------- */
+function viewPieces() {
+  const f = S.form;
+  let h = `<section class="card"><h2>Add a piece</h2>
+    <label class="field" for="f-label">Title<input id="f-label" type="text" value="${esc(f.label)}" autocomplete="off" placeholder="e.g. Gaston"></label>
+    <div class="row"><label class="field grow" for="f-start">First measure<input id="f-start" type="number" inputmode="numeric" min="1" value="${esc(f.start)}"></label>
+    <label class="field grow" for="f-end">Last measure<input id="f-end" type="number" inputmode="numeric" min="1" value="${esc(f.end)}"></label>
+    <label class="field grow" for="f-tempo">Marked tempo<small>♩ per minute, optional</small><input id="f-tempo" type="number" inputmode="numeric" min="1" value="${esc(f.tempo)}"></label></div>
+    ${S.formError ? `<div class="banner red"><span class="grow">${esc(S.formError)}</span></div>` : ""}
+    <div class="row"><button class="btn primary grow" data-act="addpiece">Add piece</button>${S.pieces.length === 0 ? `<button class="btn ghost" data-act="example">Try an example</button>` : ""}</div></section>`;
+  S.pieces.forEach((p, pi) => {
+    const nodes = []; const walk = (n, d) => { nodes.push([n, d]); n.children.forEach(c => walk(c, d + 1)); }; walk(p.root, 0);
+    h += `<section class="card"><div class="row"><div class="grow"><h2>${esc(p.label)}</h2><div class="small muted num">${rng(p.root)}${p.goalTempo ? " · ♩ " + p.goalTempo : ""}</div></div><button class="btn small danger" data-act="removepiece" data-i="${pi}">Remove</button></div>
+      <div class="list tree">${nodes.map(([n, d]) => {
+        const t = tempoFor(p, n, n.step);
+        const st = n.fsrs ? (core.dateOnly(n.fsrs.due) <= dayDate() ? `<span class="tag due">due</span>` : `<span class="tag ok">${fmtDate(core.dateOnly(n.fsrs.due))}</span>`) : `<span class="tag new">new</span>`;
+        return `<div class="item" style="--depth:${d}"><div class="body"><div class="t">${esc(roleOf(p, n))}</div><div class="s"><span class="num">${rng(n)}</span>${st}${n.fsrs ? `<span class="num">${fmtPct(n.step)}${t ? " · ♩ " + Math.round(t.first) : ""}</span>` : ""}</div></div>${active() ? `<button class="btn small ghost" data-act="pick" data-id="${n.id}">Practise</button>` : ""}</div>`;
+      }).join("")}</div></section>`;
+  });
+  return h;
+}
+function addPiece(label, start, end, tempo) {
+  const L = label.trim();
+  if (!L) throw new Error("Give the piece a title.");
+  if (S.pieces.some(p => p.label === L)) throw new Error(`There is already a piece called "${L}".`);
+  const a = Number(start), b = Number(end);
+  if (!Number.isInteger(a) || !Number.isInteger(b) || a < 1 || b < a) throw new Error("Measures must be whole numbers, with the last measure at or after the first.");
+  let goal = null;
+  if (String(tempo).trim() !== "") { goal = Number(tempo); if (!Number.isFinite(goal) || goal <= 0) throw new Error("Tempo must be a positive number, or left empty."); }
+  const root = core.makeNode({ label: L, start: a, end: b, parentId: null });
+  const piece = pc.makePiece({ label: L, root, goalTempo: goal });
+  S.pieces.push(piece);
+  return piece;
+}
+
+/* ---------- data ---------- */
+function viewData() {
+  return `<section class="card"><h2>Saved on this device</h2>
+    <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
+    ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
+    <div class="row"><button class="btn small" data-act="persistent">Ask the browser to keep it</button><span class="small muted" id="persistmsg"></span></div></section>
+  <section class="card"><h2>Back up or move</h2>
+    <p class="muted" style="margin:0">Make a backup before changing devices or clearing browser data. Import replaces what is here; the old pieces are kept in a removed folder inside the app.</p>
+    <div class="row"><button class="btn" data-act="export">Make backup</button></div>
+    ${S.exportText ? `<pre class="out" id="exportout">${esc(S.exportText.slice(0, 600))}${S.exportText.length > 600 ? "\n…" : ""}</pre><div class="row"><button class="btn small" data-act="download">Save as file</button><button class="btn small" data-act="copy">Copy</button><span class="small muted">${Math.round(S.exportText.length / 1024)} KB</span></div>` : ""}
+    <label class="field" for="importbox">Restore<small>Choose a backup file, or paste its text here.</small><input id="importfile" type="file" accept=".json,application/json,.txt"><textarea id="importbox" rows="3" placeholder="Paste backup text">${esc(S.importText)}</textarea></label>
+    <div class="row"><button class="btn" data-act="import">Restore from backup</button></div>
+    ${S.importMsg ? `<div class="small">${esc(S.importMsg)}</div>` : ""}</section>
+  <section class="card"><h2>Look</h2><div class="chips" role="group" aria-label="Theme">${["system", "light", "dark"].map(t => `<button data-act="theme" data-t="${t}" aria-pressed="${themePref() === t}">${t}</button>`).join("")}</div>
+    <div class="small muted">Keyboard: <span class="kbd">P</span> pass, <span class="kbd">F</span> fail, <span class="kbd">N</span> next.</div></section>
+  <section class="card flat"><h3>Tip for the music stand</h3><p class="muted small" style="margin:0">Put SIP in split screen next to your score and metronome. The practice screen is one column, so a narrow panel works. Add it to the home screen to open it full screen, and it keeps working offline.</p></section>`;
+}
+function themePref() { try { return localStorage.getItem("sip-theme") || "system"; } catch (e) { return "system"; } }
+function applyTheme() {
+  const t = themePref(), r = document.documentElement;
+  if (t === "system") r.removeAttribute("data-theme"); else r.setAttribute("data-theme", t);
+}
+async function buildBackup() {
+  const files = {};
+  const ad = S.adapter;
+  for (const k of await ad.list("pieces/")) files[k] = await ad.get(k);
+  const ws = await ad.get(sto.WORKSPACE_KEY); if (ws !== null) files[sto.WORKSPACE_KEY] = ws;
+  return JSON.stringify({ format: "sip-backup", version: 1, savedAt: new Date().toISOString(), files }, null, 1);
+}
+async function restoreBackup(text) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) { throw new Error("That is not a backup file (it could not be read)."); }
+  if (!data || data.format !== "sip-backup" || typeof data.files !== "object" || data.files === null) throw new Error("That is not a SIP backup file.");
+  const keys = Object.keys(data.files);
+  keys.forEach(k => { sto.assertValidKey(k); if (!(k === sto.WORKSPACE_KEY || /^pieces\/[A-Za-z0-9._-]+\.json$/.test(k)) || typeof data.files[k] !== "string") throw new Error(`Unexpected entry in the backup: ${k}`); });
+  if (!keys.includes(sto.WORKSPACE_KEY)) throw new Error("The backup has no workspace.json.");
+  const ad = S.adapter, stamp = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14);
+  for (const k of await ad.list("pieces/")) { const old = await ad.get(k); if (old !== null) await ad.put(`removed/${dayStr()}/${stamp}-${k.slice(7)}`, old); await ad.delete(k); }
+  for (const k of keys) await ad.put(k, data.files[k]);
+  await loadAll();
+}
+
+/* ------------------------------------------------------------------ sheet */
+function sheetHtml() {
+  const sh = S.sheet;
+  if (sh.kind === "confirm") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted" style="margin:0">${esc(sh.body)}</p><div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn danger grow" data-act="sheet-ok">${esc(sh.cta)}</button></div></div></div>`;
+  return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1">
+    <h2>${esc(sh.title)}</h2>${sh.sub ? `<div class="muted small" style="margin-top:-8px">${esc(sh.sub)}</div>` : ""}
+    <div class="bigval" id="bigval">m. ${sh.value}</div>
+    <div class="stepper">${[-5, -1, 1, 5].map(d => `<button data-act="sheet-adj" data-d="${d}">${d > 0 ? "+" : "−"}${Math.abs(d)}</button>`).join("")}</div>
+    <input type="range" id="sheetrange" min="${sh.lo}" max="${sh.hi}" value="${sh.value}" aria-label="Measure">
+    <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button>${sh.skip ? `<button class="btn grow" data-act="sheet-skip">${esc(sh.skip)}</button>` : ""}<button class="btn primary grow" data-act="sheet-ok" id="sheetok">${esc(sh.cta)}</button></div></div></div>`;
+}
+function setSheetValue(v) {
+  const sh = S.sheet; if (!sh || sh.kind === "confirm") return;
+  sh.value = Math.min(sh.hi, Math.max(sh.lo, Math.round(v)));
+  const bv = $("bigval"), rg = $("sheetrange"); if (bv) bv.textContent = `m. ${sh.value}`; if (rg) rg.value = sh.value;
+}
+function openFail() {
+  const { node } = S.cur, s = node.search;
+  const lo = Math.max(node.start, s.currentStartLocation), hi = node.end;
+  if (node.start === node.end) { answer(false, node.start); return; }
+  S.sheet = { kind: "fail", title: "Where did it break?", sub: `Measures ${lo}–${hi}`, lo, hi, value: Math.round((lo + hi) / 2), cta: "Broke here" };
+  render();
+}
+
+/* ---------------------------------------------------------------- actions */
+function onAct(act, el) {
+  switch (act) {
+    case "view": S.view = el.dataset.v; S.sheet = null; render(); window.scrollTo(0, 0); break;
+    case "mins": S.minutes = Number(el.dataset.m); render(); break;
+    case "start": startSession(S.minutes); break;
+    case "next": pickNext(); break;
+    case "pick": {
+      const id = Number(el.dataset.id);
+      for (const p of S.pieces) { const n = core.flattenTree(p.root).find(x => x.id === id); if (n) { pick(p, n); break; } }
+      break;
+    }
+    case "pass": answer(true); break;
+    case "fail": openFail(); break;
+    case "grade": grade(Number(el.dataset.g)); break;
+    case "amend": {
+      const { node } = S.cur, last = node.search.history[node.search.history.length - 1];
+      if (!last || last.result !== "fail") { toast("There is no failure to fix."); break; }
+      S.sheet = { kind: "amend", title: "Where did it really break?", sub: `Was m. ${last.failureLocation}`, lo: node.start, hi: node.end, value: last.failureLocation, cta: "Move it here" };
+      render(); break;
+    }
+    case "aside": {
+      const { node } = S.cur;
+      if (node.start === node.end) { setAside(); break; }
+      S.sheet = { kind: "aside", title: "Where did you stop?", sub: "Next time you can pick up from here.", lo: node.start, hi: node.end, value: Math.max(node.start, node.search ? node.search.currentStartLocation : node.start), cta: "Bookmark here", skip: "No bookmark" };
+      render(); break;
+    }
+    case "extend": extend(); break;
+    case "end": endSession(); break;
+    case "dismiss": S.endedSession = null; render(); break;
+    case "sheet-adj": setSheetValue(S.sheet.value + Number(el.dataset.d)); break;
+    case "sheet-cancel": S.sheet = null; render(); break;
+    case "sheet-skip": { const k = S.sheet.kind; S.sheet = null; if (k === "aside") setAside(undefined); break; }
+    case "sheet-ok": {
+      const sh = S.sheet; S.sheet = null;
+      if (sh.kind === "fail") answer(false, sh.value);
+      else if (sh.kind === "amend") amend(sh.value);
+      else if (sh.kind === "aside") setAside(sh.value);
+      else if (sh.kind === "confirm") sh.run();
+      break;
+    }
+    case "addpiece":
+      try { const p = addPiece(S.form.label, S.form.start, S.form.end, S.form.tempo); S.form = { label: "", start: "1", end: "", tempo: "" }; S.formError = ""; toast(`Added ${p.label}.`); persist(); }
+      catch (e) { S.formError = e.message; }
+      render(); break;
+    case "example": {
+      try { addPiece("Example Etude", 1, 48, 96); S.formError = ""; persist(); toast("Added an example piece."); } catch (e) { S.formError = e.message; }
+      render(); break;
+    }
+    case "removepiece": {
+      const p = S.pieces[Number(el.dataset.i)];
+      if (live()) { toast("Finish the session before removing a piece."); break; }
+      S.sheet = { kind: "confirm", title: `Remove ${p.label}?`, body: "Its history moves to the removed folder inside the app, so it can be recovered from a backup.", cta: "Remove", run: () => { S.pieces.splice(S.pieces.indexOf(p), 1); S.cur = null; persist(); render(); toast("Removed."); } };
+      render(); break;
+    }
+    case "export": buildBackup().then(t => { S.exportText = t; render(); }).catch(e => toast(e.message)); break;
+    case "download": downloadText(S.exportText); break;
+    case "copy": copyText(S.exportText); break;
+    case "import": {
+      const text = $("importbox").value; S.importText = text;
+      if (!text.trim()) { S.importMsg = "Choose a file or paste the backup text first."; render(); break; }
+      S.sheet = { kind: "confirm", title: "Replace everything here?", body: "This swaps the pieces and history on this device for the ones in the backup.", cta: "Restore", run: () => restoreBackup(text).then(() => { S.importMsg = "Restored."; S.importText = ""; render(); }).catch(e => { S.importMsg = e.message; render(); }) };
+      render(); break;
+    }
+    case "theme": try { localStorage.setItem("sip-theme", el.dataset.t); } catch (e) { /* optional */ } applyTheme(); render(); break;
+    case "persistent":
+      (navigator.storage && navigator.storage.persist ? navigator.storage.persist() : Promise.resolve(false)).then(ok => { const m = $("persistmsg"); if (m) m.textContent = ok ? "Done. The browser will keep it." : "The browser did not agree. Back up now and then."; });
+      break;
+  }
+}
+function downloadText(text) {
+  try {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    a.download = `sip-backup-${dayStr()}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) { toast("Saving a file is not possible here. Use Copy instead."); }
+}
+function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast("Copied."), () => toast("Could not copy. Select the text and copy it."));
+  else toast("Could not copy. Select the text and copy it.");
+}
+
+document.addEventListener("click", ev => {
+  const el = ev.target.closest("[data-act]");
+  if (!el) return;
+  if (el.classList.contains("scrim") && ev.target !== el) return; // clicks inside the sheet don't dismiss it
+  onAct(el.dataset.act, el);
+});
+document.addEventListener("input", ev => {
+  const t = ev.target;
+  if (t.id === "sheetrange") setSheetValue(Number(t.value));
+  else if (t.id === "f-label") S.form.label = t.value;
+  else if (t.id === "f-start") S.form.start = t.value;
+  else if (t.id === "f-end") S.form.end = t.value;
+  else if (t.id === "f-tempo") S.form.tempo = t.value;
+  else if (t.id === "importbox") S.importText = t.value;
+});
+document.addEventListener("change", ev => {
+  if (ev.target.id === "importfile" && ev.target.files && ev.target.files[0]) {
+    const rd = new FileReader();
+    rd.onload = () => { S.importText = String(rd.result); render(); };
+    rd.readAsText(ev.target.files[0]);
+  }
+});
+document.addEventListener("keydown", ev => {
+  if (ev.target.closest && ev.target.closest("input, textarea")) return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  const k = ev.key.toLowerCase();
+  if (S.sheet) { if (k === "enter") onAct("sheet-ok"); else if (k === "escape") onAct("sheet-cancel"); else if (k === "arrowleft" || k === "arrowdown") setSheetValue(S.sheet.value - 1); else if (k === "arrowright" || k === "arrowup") setSheetValue(S.sheet.value + 1); return; }
+  if (S.view !== "practice" || !S.cur || !S.session) return;
+  const s = S.cur.node.search;
+  if (s && !S.result && !core.isSearchConverged(s)) { if (k === "p") onAct("pass"); else if (k === "f") onAct("fail"); }
+  if (S.result && k === "n") onAct("next");
+});
+
+/* ------------------------------------------------------------------ clock */
+function tick() {
+  if (!S.ready || !S.session) return;
+  const events = sess.tickSession(S.session, S.sessionPieces, { now: now() });
+  if (events.length) { reportEvents(events); persist(); render(); return; }
+  const chip = $("clock");
+  if (chip) { const fresh = document.createElement("div"); fresh.innerHTML = timerChip(); if (fresh.firstElementChild) { chip.className = fresh.firstElementChild.className; chip.textContent = fresh.firstElementChild.textContent; } }
+}
+setInterval(tick, 1000);
+
+/* ------------------------------------------------------------------- boot */
+async function loadAll() {
+  const loaded = await S.store.load({ now: new Date() });
+  S.pieces = loaded.pieces; S.settings = loaded.settings; S.wishlist = loaded.wishlist;
+  core.resetIdCounter(loaded.nextFreeId);
+  S.session = null; S.sessionPieces = []; S.cur = null; S.result = null;
+  if (loaded.session) { S.session = loaded.session.session; S.sessionPieces = loaded.session.pieces; }
+  if (S.session) {
+    const events = sess.settleSession(S.session, S.sessionPieces, { now: now() });
+    reportEvents(events);
+    if (S.session.phase === "ended") { S.endedSession = { summary: sess.sessionSummary(S.session), minutes: S.session.minutes }; S.session = null; S.sessionPieces = []; }
+    else if (loaded.current && loaded.current.node.search !== null) S.cur = { piece: loaded.current.piece, node: loaded.current.node };
+    if (S.session) requestWake();
+  }
+  loaded.warnings.forEach(w => toast(w));
+  S.ready = true;
+  render();
+  if (S.cur) { ensureTrial(); render(); }
+  persist();
+}
+(async function boot() {
+  applyTheme();
+  const { adapter, durable } = await makeAdapter();
+  S.adapter = adapter; S.durable = durable; S.store = sto.createStore(adapter);
+  try { await loadAll(); } catch (e) { S.ready = true; $("main").innerHTML = `<section class="card"><h2>Could not open your data</h2><p class="muted" style="margin:0">${esc(e.message)}</p></section>`; }
+  try { if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) { /* optional */ }
+  window.__sip = { S, core, sess, pc, sto }; // for tests
+})();
+</script>
+
+</html>
