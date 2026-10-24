@@ -76,7 +76,7 @@ header.top .wrap { display: flex; align-items: center; gap: 12px; padding-block:
 .chip.amber { background: var(--warn-soft); color: var(--warn); }
 .chip.red { background: var(--fail-soft); color: var(--fail); }
 .chip.save-bad { background: var(--fail-soft); color: var(--fail); font-family: var(--font-ui); }
-main { flex: 1; padding-block: 16px 120px; display: flex; flex-direction: column; gap: 14px; }
+main { flex: 1; padding-block: 12px calc(84px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; }
 
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
 nav.tabs .wrap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding-block: 6px; }
@@ -167,6 +167,28 @@ input[type="range"] { width: 100%; height: 40px; accent-color: var(--accent); }
 .empty { text-align: center; padding: 24px 8px; color: var(--muted); }
 .kbd { font-family: var(--font-num); font-size: .8rem; padding: 1px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); }
 pre.out { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-family: var(--font-num); font-size: .78rem; }
+
+/* start screen of each play-through: the piece leads, the segment is a small caption, tempo is the number to read */
+.card.tight { gap: 8px; padding: 14px; }
+.head { display: flex; flex-direction: column; gap: 2px; }
+.ptitle { font-size: clamp(1.55rem, 7vw, 2.1rem); font-weight: 700; line-height: 1.08; overflow-wrap: anywhere; text-wrap: balance; }
+.seg { font-size: .82rem; color: var(--muted); }
+.seg .num { font-size: .8rem; }
+.readout { display: flex; flex-direction: column; align-items: center; gap: 0; padding-block: 2px; text-align: center; }
+.readout .mk { font-size: .88rem; color: var(--muted); }
+.readout .mk b { font-family: var(--font-num); color: var(--fg); font-weight: 600; }
+.readout .pct { font-family: var(--font-num); font-size: clamp(2.7rem, 12.5vw, 4.2rem); font-weight: 600; line-height: 1.02; letter-spacing: -.02em; color: var(--muted); }
+.readout .pct.pos { color: var(--accent); }
+.readout .calc { font-family: var(--font-num); font-size: clamp(2.1rem, 10vw, 3.1rem); font-weight: 600; line-height: 1.05; color: var(--fg); }
+.readout .calc small { font-family: var(--font-ui); font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 8px; }
+.startat.tight { padding: 6px 12px; }
+.startat.tight b { font-size: 1.35rem; }
+.answers.tight button { min-height: 84px; font-size: 1.6rem; border-radius: 16px; }
+.answers.tight button small { font-size: .74rem; }
+.note.tight { padding: 7px 12px; font-size: .92rem; }
+.footrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.footrow .ladder { flex: 1; min-width: 0; }
+@media (pointer: coarse) { .kbdhint { display: none; } }
 @media (min-width: 900px) { body { font-size: 18px; } .wrap { max-width: 760px; } }
 @media (prefers-reduced-motion: no-preference) { .sheet { animation: rise .18s ease-out; } @keyframes rise { from { transform: translateY(24px); } } }
 </style>
@@ -3360,27 +3382,26 @@ function workCard() {
   const last = s.history[s.history.length - 1];
   const canAmend = last && last.result === "fail" && !single;
   const chips = s.history.map(h => `<span class="trial-chip ${h.result === "pass" ? "p" : "f"}">${fmtPct(h.step)} ${h.result === "pass" ? "✓" : "✗ m." + h.failureLocation}</span>`).join("");
-  return `<section class="card">
-    <div class="where"><div class="piece">${esc(piece.label)}</div><div class="node">${esc(roleOf(piece, node))}</div><div class="range">${rng(node)}</div></div>
+  return `<section class="card tight">
+    <div class="head"><div class="ptitle">${esc(piece.label)}</div><div class="seg">${esc(roleOf(piece, node))} · <span class="num">${rng(node)}</span></div></div>
     ${grace ? `<div class="banner"><span class="grow">Last attempt, then it's saved for next time.</span></div>` : ""}
-    <div class="tempo">
-      ${t0 ? `<div class="label">Metronome as marked</div><div class="marked">♩ ${Math.round(t0.first)}${t0.varies ? " at the start" : ""}</div>` : ""}
-      <div class="label">${t0 ? "Then adjust" : "Tempo adjustment"}</div>
-      <div class="adjust ${step < 0 ? "neg" : ""}">${fmtPct(step)}</div>
-      ${t ? `<div class="result">plays at ♩ ${Math.round(t.first)}</div>` : ""}
+    <div class="readout">
+      ${t0 ? `<div class="mk">Metronome <b>♩ ${Math.round(t0.first)}</b> as marked${t0.varies ? " at the start" : ""}, then</div>` : `<div class="mk">Tempo adjustment</div>`}
+      <div class="pct ${step >= 0 ? "pos" : ""}">${fmtPct(step)}</div>
+      ${t ? `<div class="calc"><small>plays at</small>♩ ${Math.round(t.first)}</div>` : ""}
     </div>
-    <div class="startat"><span class="muted">Start at</span><b>m. ${loc}</b></div>
-    ${note ? `<div class="note"><b>Watch for:</b> ${esc(note)}</div>` : ""}
-    <div class="answers">
+    <div class="startat tight"><span class="muted">Start at</span><b>m. ${loc}</b></div>
+    ${note ? `<div class="note tight"><b>Watch for:</b> ${esc(note)}</div>` : ""}
+    <div class="answers tight">
       <button class="pass" data-act="pass">Pass<small>played clean</small></button>
       <button class="fail" data-act="fail">Fail<small>${single ? "it broke" : "it broke somewhere"}</small></button>
     </div>
-    ${chips ? `<div class="ladder" aria-label="Trials so far">${chips}</div>` : ""}
-    <div class="row">
-      ${canAmend ? `<button class="btn small ghost" data-act="amend">Fix last failure (m. ${last.failureLocation})</button>` : ""}
+    <div class="footrow">
+      ${chips ? `<div class="ladder" aria-label="Trials so far">${chips}</div>` : '<span class="grow" style="flex:1"></span>'}
+      ${canAmend ? `<button class="btn small ghost" data-act="amend">Fix last failure</button>` : ""}
       <button class="btn small ghost" data-act="aside">${grace ? "Save for next time" : "Set aside"}</button>
     </div>
-  </section><p class="small muted" style="margin:0;text-align:center"><span class="kbd">P</span> pass &nbsp; <span class="kbd">F</span> fail</p>`;
+  </section><p class="small muted kbdhint" style="margin:0;text-align:center"><span class="kbd">P</span> pass &nbsp; <span class="kbd">F</span> fail</p>`;
 }
 function gradeCard() {
   const { piece, node } = S.cur, s = node.search;
