@@ -382,6 +382,67 @@ function recursiveDecompose(node, { minChildLength = 3, placementJitter = 1, rng
 
 module.exports.flattenTree = flattenTree;
 
+// ---------------------------------------------------------------
+// Instruments
+//
+// A piece lists the instruments it is played on (`piece.instruments`, []
+// when untagged). Any node may carry its own list (`node.instruments`),
+// which then covers that node and everything below it until a deeper node
+// says otherwise. Untagged work matches every selection, so nothing is ever
+// hidden by accident; a session that selects nothing sees everything.
+// ---------------------------------------------------------------
+function normalizeInstruments(list) {
+  const raw = Array.isArray(list) ? list : (typeof list === "string" ? list.split(",") : []);
+  const seen = new Set(), out = [];
+  raw.forEach(x => {
+    if (typeof x !== "string") return;
+    const name = x.trim().replace(/\s+/g, " ");
+    if (name && !seen.has(name.toLowerCase())) { seen.add(name.toLowerCase()); out.push(name); }
+  });
+  return out;
+}
+
+function pathTo(root, node) {
+  const walk = (n, trail) => {
+    const here = [...trail, n];
+    if (n === node || n.id === node.id) return here;
+    for (const c of n.children) { const r = walk(c, here); if (r) return r; }
+    return null;
+  };
+  return walk(root, []);
+}
+
+// The instruments that apply to `node`: its own list, else the nearest
+// ancestor's, else the piece's. [] means "no instrument named".
+function effectiveInstruments(piece, node) {
+  const trail = pathTo(piece.root, node) || [node];
+  for (let i = trail.length - 1; i >= 0; i--) {
+    if (Array.isArray(trail[i].instruments) && trail[i].instruments.length > 0) return trail[i].instruments;
+  }
+  return Array.isArray(piece.instruments) ? piece.instruments : [];
+}
+
+function matchesInstruments(piece, node, selected) {
+  const want = normalizeInstruments(selected).map(x => x.toLowerCase());
+  if (want.length === 0) return true;
+  const have = effectiveInstruments(piece, node);
+  if (have.length === 0) return true;
+  return have.some(x => want.includes(x.toLowerCase()));
+}
+
+// Every instrument named anywhere in these pieces, once each, sorted.
+function collectInstruments(pieces) {
+  const byKey = new Map();
+  const add = list => (list || []).forEach(x => { if (!byKey.has(x.toLowerCase())) byKey.set(x.toLowerCase(), x); });
+  pieces.forEach(p => { add(p.instruments); flattenTree(p.root).forEach(n => add(n.instruments)); });
+  return [...byKey.values()].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+}
+
+module.exports.normalizeInstruments = normalizeInstruments;
+module.exports.effectiveInstruments = effectiveInstruments;
+module.exports.matchesInstruments = matchesInstruments;
+module.exports.collectInstruments = collectInstruments;
+
 // Why a node deserves special attention, in the player's own words ("what's
 // wrong here?" — the prototype's field for it). A node's own note wins. A
 // hotspot node with none falls back to the note on the node it was split
@@ -1485,7 +1546,7 @@ function assertValidGoalTempo(goalTempo) {
   }
 }
 
-function makePiece({ label, root, kind = "metered", goalTempo = null, unitPages = null, tempoAnchors = null }) {
+function makePiece({ label, root, kind = "metered", goalTempo = null, unitPages = null, tempoAnchors = null, instruments = [] }) {
   if (typeof label !== "string" || label.trim() === "") throw new Error("A piece needs a non-empty label.");
   if (!PIECE_KINDS.includes(kind)) throw new Error(`Unknown piece kind "${kind}" — use ${PIECE_KINDS.join(" or ")}.`);
   if (!root || typeof root !== "object") throw new Error("A piece needs a root node.");
@@ -1493,7 +1554,7 @@ function makePiece({ label, root, kind = "metered", goalTempo = null, unitPages 
   if (kind === "unmetered" && unitPages === null) throw new Error("An unmetered piece needs unitPages.");
   if (kind === "metered" && unitPages !== null) throw new Error("A metered piece can't have unitPages (its ordinals are measure numbers).");
 
-  const piece = { label, kind, goalTempo, root, unitPages: null, tempoAnchors: null };
+  const piece = { label, kind, goalTempo, root, unitPages: null, tempoAnchors: null, instruments: core.normalizeInstruments(instruments) };
   if (unitPages !== null) setUnitPages(piece, unitPages);
   if (tempoAnchors !== null) setTempoAnchors(piece, tempoAnchors);
   return piece;
@@ -1837,6 +1898,7 @@ function serializeNode(node) {
       : null,
     reviewLog: node.reviewLog.map(e => ({ ...e, reviewDate: dayToString(e.reviewDate), due: dayToString(e.due) })),
     search: node.search ? JSON.parse(JSON.stringify(node.search)) : null,
+    ...(Array.isArray(node.instruments) && node.instruments.length > 0 ? { instruments: [...node.instruments] } : {}),
     children: node.children.map(serializeNode)
   };
 }
@@ -1852,6 +1914,7 @@ function serializePiece(piece, { now = new Date() } = {}) {
     savedAt: now.toISOString(),
     unitPages: piece.unitPages,
     tempoAnchors: piece.tempoAnchors,
+    instruments: Array.isArray(piece.instruments) ? [...piece.instruments] : [],
     root: serializeNode(piece.root)
   };
 }
@@ -1883,6 +1946,8 @@ function validatePieceData(data) {
     if (data.kind === "metered" && data.unitPages !== null) bad("unitPages", "must be null for a metered piece");
     if (data.tempoAnchors !== null && !Array.isArray(data.tempoAnchors)) bad("tempoAnchors", "must be an array or null");
   }
+  const badInstruments = v => v !== undefined && !(Array.isArray(v) && v.every(x => typeof x === "string" && x.trim() !== ""));
+  if (badInstruments(data.instruments)) bad("instruments", "must be a list of non-empty names");
   if (data.goalTempo !== null && !(typeof data.goalTempo === "number" && data.goalTempo > 0)) {
     bad("goalTempo", "must be a positive number or null");
   }
@@ -1909,6 +1974,7 @@ function validatePieceData(data) {
       bad(`${path}.hotspot`, "must be null or an integer inside the node's own range");
     }
     if (typeof node.hotspotNote !== "string") bad(`${path}.hotspotNote`, "must be a string");
+    if (badInstruments(node.instruments)) bad(`${path}.instruments`, "must be a list of non-empty names");
     if (!isInt(node.step)) bad(`${path}.step`, "must be an integer");
     if (typeof node.readyForPerformance !== "boolean") bad(`${path}.readyForPerformance`, "must be true or false");
     if (!(node.decomposeRank === null || [0, 1, 2].includes(node.decomposeRank))) bad(`${path}.decomposeRank`, "must be null, 0, 1, or 2");
@@ -1992,6 +2058,8 @@ function deserializeNode(obj, parentId, counter, parseDay, preserveIds) {
     search: obj.search ? JSON.parse(JSON.stringify(obj.search)) : null,
     children: []
   };
+  const tagged = core.normalizeInstruments(obj.instruments);
+  if (tagged.length > 0) node.instruments = tagged;
   node.children = obj.children.map(child => deserializeNode(child, id, counter, parseDay, preserveIds));
   return node;
 }
@@ -2027,12 +2095,27 @@ function deserializePiece(data, { startingId = 1, dayConfig = {}, preserveIds = 
     kind: version === 2 ? data.kind : "metered",
     goalTempo: data.goalTempo,
     unitPages: version === 2 ? data.unitPages : null,
-    tempoAnchors: version === 2 ? data.tempoAnchors : null
+    tempoAnchors: version === 2 ? data.tempoAnchors : null,
+    instruments: data.instruments
   });
   return { piece, nextFreeId: counter.next };
 }
 
+
+// Instruments (see sip-core): the list for the whole piece, or an override on one node.
+// Pass [] (or "") to clear. Returns the stored, normalised list.
+function setPieceInstruments(piece, list) {
+  piece.instruments = core.normalizeInstruments(list);
+  return piece.instruments;
+}
+function setNodeInstruments(node, list) {
+  const clean = core.normalizeInstruments(list);
+  if (clean.length === 0) delete node.instruments; else node.instruments = clean;
+  return clean;
+}
+
 module.exports = {
+  setPieceInstruments, setNodeInstruments,
   FORMAT_VERSION, PIECE_KINDS, PLACEHOLDER_END,
   makePiece, setUnitPages, setTempoAnchors, getUnitTable, getTempoMap,
   tempoSpan, describeTempo, pieceDurationSeconds, formatDuration,
@@ -2183,7 +2266,7 @@ function emit(session, out, at, type, node, message, notify, extra) {
 // session stays active (an `overtime` flag and a "time_up" event say so) until
 // the player extends it (extendSession) or ends it (endSessionNow, which
 // winds down as usual). The default, false, keeps the original hard stop.
-function startSession({ now, minutes = DEFAULT_SESSION_MINUTES, studyDay, pieces, softEnd = false } = {}) {
+function startSession({ now, minutes = DEFAULT_SESSION_MINUTES, studyDay, pieces, softEnd = false, instruments = [] } = {}) {
   const startedAt = toMs(now);
   if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) {
     throw new Error(`A session needs a positive length in minutes, got ${minutes}.`);
@@ -2207,6 +2290,7 @@ function startSession({ now, minutes = DEFAULT_SESSION_MINUTES, studyDay, pieces
     softEnd: softEnd === true,
     overtime: false, // softEnd only: time has run out and the player hasn't decided yet
     reopenedIds: [], // Again-graded nodes picked up again: open work even though they were graded
+    instruments: core.normalizeInstruments(instruments), // only work for these instruments (plus untagged work) is queued; [] = everything
     queueOrder: null,
     events: []
   };
@@ -2427,7 +2511,7 @@ function reopenedList(session) {
   return session.reopenedIds;
 }
 
-function buildQueue(pieces, studyDay, { excludeIds = [] } = {}) {
+function buildQueue(pieces, studyDay, { excludeIds = [], instruments = [] } = {}) {
   const day = dayDate(toDayString(studyDay));
   const excluded = new Set(excludeIds);
   const entry = (piece, node, status) => ({
@@ -2446,10 +2530,11 @@ function buildQueue(pieces, studyDay, { excludeIds = [] } = {}) {
     const order = breadthFirstIndex(piece.root);
     const bySpawnOrder = (a, b) => order.get(a.id) - order.get(b.id);
 
-    getInterruptedNodes(piece.root).filter(n => !excluded.has(n.id)).sort(bySpawnOrder)
+    const wanted = n => core.matchesInstruments(piece, n, instruments);
+    getInterruptedNodes(piece.root).filter(n => !excluded.has(n.id) && wanted(n)).sort(bySpawnOrder)
       .forEach(n => interrupted.push(entry(piece, n, "interrupted")));
 
-    const due = getDueNodes(piece.root, day).filter(n => !n.interrupted && !excluded.has(n.id));
+    const due = getDueNodes(piece.root, day).filter(n => !n.interrupted && !excluded.has(n.id) && wanted(n));
     const fresh = due.filter(n => n.fsrs === null).sort(bySpawnOrder);
     const reviewed = due.filter(n => n.fsrs !== null).sort((a, b) => (a.fsrs.due - b.fsrs.due) || bySpawnOrder(a, b));
     waitingDue.push(reviewed.map(n => entry(piece, n, "due")));
@@ -2478,7 +2563,7 @@ function buildQueue(pieces, studyDay, { excludeIds = [] } = {}) {
 // appended in the order a fresh queue would give it.
 function snapshotQueueOrder(session, pieces) {
   if (session.queueOrder === null) {
-    session.queueOrder = buildQueue(pieces, session.studyDay, { excludeIds: session.gradedNodeIds }).map(e => e.node.id);
+    session.queueOrder = buildQueue(pieces, session.studyDay, { excludeIds: session.gradedNodeIds, instruments: session.instruments }).map(e => e.node.id);
   }
 }
 
@@ -2498,7 +2583,7 @@ function appendSpawned(session, children) {
 // "retry", `retryAt` (ms) and `waitMs` (how much longer it is being held).
 function sessionQueue(session, pieces, { now } = {}) {
   snapshotQueueOrder(session, pieces);
-  const fresh = buildQueue(pieces, session.studyDay, { excludeIds: session.gradedNodeIds });
+  const fresh = buildQueue(pieces, session.studyDay, { excludeIds: session.gradedNodeIds, instruments: session.instruments });
   const position = new Map(session.queueOrder.map((id, i) => [id, i]));
   const interrupted = fresh.filter(e => e.status === "interrupted");
   const rest = fresh.filter(e => e.status !== "interrupted");
@@ -2510,7 +2595,7 @@ function sessionQueue(session, pieces, { now } = {}) {
   const pending = session.phase === "ended" ? {} : retryMap(session); // nothing comes back once the session is over
   pieces.forEach(piece => {
     const walk = n => {
-      if (pending[n.id] !== undefined && session.gradedNodeIds.includes(n.id)) {
+      if (pending[n.id] !== undefined && session.gradedNodeIds.includes(n.id) && core.matchesInstruments(piece, n, session.instruments)) {
         const waitMs = t === null ? 0 : Math.max(0, pending[n.id] - t);
         retries.push({
           piece, node: n, status: "retry", daysOverdue: null, bookmark: n.bookmark,
@@ -2528,6 +2613,15 @@ function sessionQueue(session, pieces, { now } = {}) {
   const held = retries.filter(e => e.waitMs > 0);
   const queue = [...interrupted, ...ready, ...remembered, ...unknown];
   return queue.length === 0 ? held : queue;
+}
+
+
+// How much work is waiting that this session's instrument choice is hiding.
+// The queue screen says so ("3 more for other instruments") so nothing seems lost.
+function hiddenByInstruments(session, pieces) {
+  const all = buildQueue(pieces, session.studyDay, { excludeIds: session.gradedNodeIds }).length;
+  const shown = buildQueue(pieces, session.studyDay, { excludeIds: session.gradedNodeIds, instruments: session.instruments }).length;
+  return all - shown;
 }
 
 // ---------------------------------------------------------------
@@ -2714,7 +2808,7 @@ function sessionSummary(session) {
 module.exports = {
   SESSION_VERSION, DEFAULT_SESSION_MINUTES, RETRY_MINUTES,
   startSession, sessionClock, tickSession, extendSession, endSessionNow, settleSession,
-  buildQueue, sessionQueue,
+  buildQueue, sessionQueue, hiddenByInstruments,
   startNodeWork, recordTrial, gradeNode, deferNode,
   sessionSummary
 };
@@ -3152,7 +3246,7 @@ const S = {
   session: null, sessionPieces: [], endedSession: null, asideLog: [],
   cur: null, result: null, skip: new Set(),
   view: "practice", sheet: null, minutes: 15,
-  form: { label: "", start: "1", end: "", tempo: "" }, formError: "",
+  form: { label: "", start: "1", end: "", tempo: "", inst: [] }, formError: "", picked: loadPicked(),
   saveError: null, exportText: "", importText: "", importMsg: "", asideNote: ""
 };
 const dayDate = () => core.studyDayOf(new Date(), S.settings);
@@ -3203,9 +3297,34 @@ function reportEvents(events) {
 }
 
 /* ---------------------------------------------------------------- session */
+/* instruments */
+function loadPicked() { try { return core.normalizeInstruments(JSON.parse(localStorage.getItem("sip-picked") || "[]")); } catch (e) { return []; } }
+function savePicked() { try { localStorage.setItem("sip-picked", JSON.stringify(S.picked)); } catch (e) { /* per-device convenience only */ } }
+const knownInstruments = () => core.collectInstruments(S.pieces);
+// The selection that applies today: only names some piece still uses, so a stale choice never hides everything.
+function pickedNow() { const k = knownInstruments().map(x => x.toLowerCase()); return S.picked.filter(x => k.includes(x.toLowerCase())); }
+function toggleName(list, name) {
+  const has = list.some(x => x.toLowerCase() === name.toLowerCase());
+  return core.normalizeInstruments(has ? list.filter(x => x.toLowerCase() !== name.toLowerCase()) : [...list, name]);
+}
+function instChips(selected, scope) {
+  const names = core.normalizeInstruments([...knownInstruments(), ...selected]);
+  const on = x => selected.some(y => y.toLowerCase() === x.toLowerCase());
+  return `<div class="chips" role="group" aria-label="Instruments">${names.map(x => `<button data-act="inst-toggle" data-scope="${scope}" data-name="${esc(x)}" aria-pressed="${on(x)}">${esc(x)}</button>`).join("")}</div>`;
+}
+function instAdder(scope) {
+  return `<div class="row"><input id="inst-new-${scope}" class="grow" type="text" autocomplete="off" placeholder="Add an instrument, e.g. Clarinet" aria-label="New instrument name"><button class="btn small" data-act="inst-add" data-scope="${scope}">Add</button></div>`;
+}
+function instOf(piece, node) { return core.effectiveInstruments(piece, node); }
+function hiddenCount() {
+  if (live()) return sess.hiddenByInstruments(S.session, S.sessionPieces);
+  return sess.buildQueue(S.pieces, dayStr()).length - sess.buildQueue(S.pieces, dayStr(), { instruments: pickedNow() }).length;
+}
+const hiddenNote = n => n > 0 ? `<div class="small muted">${n} more waiting for other instruments.</div>` : "";
+
 function startSession(minutes) {
   if (S.pieces.length === 0) { toast("Add a piece first."); return; }
-  S.session = sess.startSession({ now: now(), minutes, studyDay: dayStr(), pieces: S.pieces, softEnd: true });
+  S.session = sess.startSession({ now: now(), minutes, studyDay: dayStr(), pieces: S.pieces, softEnd: true, instruments: pickedNow() });
   S.sessionPieces = S.pieces.slice();
   S.endedSession = null; S.skip = new Set(); S.asideLog = []; S.result = null; S.cur = null;
   requestWake();
@@ -3213,7 +3332,7 @@ function startSession(minutes) {
 }
 function queueNow() {
   if (live()) return sess.sessionQueue(S.session, S.sessionPieces, { now: now() });
-  return sess.buildQueue(S.pieces, dayStr());
+  return sess.buildQueue(S.pieces, dayStr(), { instruments: pickedNow() });
 }
 function pickNext() {
   S.result = null;
@@ -3362,8 +3481,10 @@ function startCard() {
   const due = q.filter(e => e.status === "due" || e.status === "retry").length, fresh = q.filter(e => e.status === "new").length, back = q.filter(e => e.status === "interrupted").length;
   return `<section class="card"><div class="eyebrow">Today</div><h1>Ready to practise</h1>
     <div class="row">${back ? `<span class="tag retry">${back} to resume</span>` : ""}<span class="tag due">${due} due</span><span class="tag new">${fresh} new</span></div>
+    ${knownInstruments().length ? `<div><div class="eyebrow" style="margin-bottom:8px">Instruments out today</div>${instChips(pickedNow(), "start")}<div class="small muted" style="margin-top:6px">${pickedNow().length ? "Untagged work shows too." : "None chosen, so everything shows."}</div></div>` : ""}
     <div><div class="eyebrow" style="margin-bottom:8px">How long?</div><div class="chips" role="group" aria-label="Session length">${[10, 15, 25, 40].map(m => `<button data-act="mins" data-m="${m}" aria-pressed="${S.minutes === m}">${m}</button>`).join("")}<span class="muted" style="align-self:center">minutes</span></div></div>
-    <button class="btn primary" style="min-height:64px;font-size:1.2rem" data-act="start" ${q.length ? "" : "disabled"}>${q.length ? "Start session" : "Nothing due today"}</button>
+    <button class="btn primary" style="min-height:64px;font-size:1.2rem" data-act="start" ${q.length ? "" : "disabled"}>${q.length ? "Start session" : (hiddenCount() > 0 ? "Nothing due for these instruments" : "Nothing due today")}</button>
+    ${hiddenNote(hiddenCount())}
     ${q.length ? `<div class="small muted">First up: <b>${esc(q[0].piece.label)}</b>, ${esc(roleOf(q[0].piece, q[0].node))}, ${rng(q[0].node)}</div>` : ""}</section>`;
 }
 function idleCard() {
@@ -3383,7 +3504,7 @@ function workCard() {
   const canAmend = last && last.result === "fail" && !single;
   const chips = s.history.map(h => `<span class="trial-chip ${h.result === "pass" ? "p" : "f"}">${fmtPct(h.step)} ${h.result === "pass" ? "✓" : "✗ m." + h.failureLocation}</span>`).join("");
   return `<section class="card tight">
-    <div class="head"><div class="ptitle">${esc(piece.label)}</div><div class="seg">${esc(roleOf(piece, node))} · <span class="num">${rng(node)}</span></div></div>
+    <div class="head"><div class="ptitle">${esc(piece.label)}</div><div class="seg">${esc(roleOf(piece, node))} · <span class="num">${rng(node)}</span>${knownInstruments().length > 1 && instOf(piece, node).length ? " · " + esc(instOf(piece, node).join(" + ")) : ""}</div></div>
     ${grace ? `<div class="banner"><span class="grow">Last attempt, then it's saved for next time.</span></div>` : ""}
     <div class="readout">
       ${t0 ? `<div class="mk">Metronome <b>♩ ${Math.round(t0.first)}</b> as marked${t0.varies ? " at the start" : ""}, then</div>` : `<div class="mk">Tempo adjustment</div>`}
@@ -3455,9 +3576,9 @@ function summaryCard() {
 function viewQueue() {
   const q = queueNow();
   if (S.pieces.length === 0) return `<section class="card"><h2>Queue</h2><div class="empty">Add a piece and its sections will line up here.</div></section>`;
-  if (q.length === 0) return `<section class="card"><h2>Queue</h2><div class="empty">Nothing is due today.</div></section>`;
+  if (q.length === 0) return `<section class="card"><h2>Queue</h2><div class="empty">Nothing is due ${hiddenCount() > 0 ? "for these instruments" : "today"}.</div>${hiddenNote(hiddenCount())}</section>`;
   const canPick = active();
-  return `<section class="card"><div class="row"><h2 class="grow">Queue</h2><span class="muted small">${q.length} waiting</span></div>
+  return `<section class="card"><div class="row"><h2 class="grow">Queue</h2><span class="muted small">${q.length} waiting</span></div>${hiddenNote(hiddenCount())}
     <div class="list">${q.map((e, i) => {
       const tag = e.status === "interrupted" ? `<span class="tag retry">resume${e.bookmark !== null ? " @ m. " + e.bookmark : ""}</span>`
         : e.status === "retry" ? `<span class="tag retry">${e.waitMs > 0 ? "retry in " + Math.ceil(e.waitMs / 60000) + " min" : "retry now"}</span>`
@@ -3477,20 +3598,21 @@ function viewPieces() {
     <div class="row"><label class="field grow" for="f-start">First measure<input id="f-start" type="number" inputmode="numeric" min="1" value="${esc(f.start)}"></label>
     <label class="field grow" for="f-end">Last measure<input id="f-end" type="number" inputmode="numeric" min="1" value="${esc(f.end)}"></label>
     <label class="field grow" for="f-tempo">Marked tempo<small>♩ per minute, optional</small><input id="f-tempo" type="number" inputmode="numeric" min="1" value="${esc(f.tempo)}"></label></div>
+    <div><div class="eyebrow" style="margin-bottom:8px">Instruments <span class="muted" style="text-transform:none;letter-spacing:0">(optional)</span></div>${instChips(S.form.inst, "form")}${instAdder("form")}</div>
     ${S.formError ? `<div class="banner red"><span class="grow">${esc(S.formError)}</span></div>` : ""}
     <div class="row"><button class="btn primary grow" data-act="addpiece">Add piece</button>${S.pieces.length === 0 ? `<button class="btn ghost" data-act="example">Try an example</button>` : ""}</div></section>`;
   S.pieces.forEach((p, pi) => {
     const nodes = []; const walk = (n, d) => { nodes.push([n, d]); n.children.forEach(c => walk(c, d + 1)); }; walk(p.root, 0);
-    h += `<section class="card"><div class="row"><div class="grow"><h2>${esc(p.label)}</h2><div class="small muted num">${rng(p.root)}${p.goalTempo ? " · ♩ " + p.goalTempo : ""}</div></div><button class="btn small danger" data-act="removepiece" data-i="${pi}">Remove</button></div>
+    h += `<section class="card"><div class="row"><div class="grow"><h2>${esc(p.label)}</h2><div class="small muted num">${rng(p.root)}${p.goalTempo ? " · ♩ " + p.goalTempo : ""}</div><div class="small" style="margin-top:4px">${p.instruments.length ? p.instruments.map(x => `<span class="tag new">${esc(x)}</span>`).join(" ") : `<span class="muted">No instrument set</span>`}</div></div><button class="btn small ghost" data-act="inst-edit" data-pi="${pi}" data-id="${p.root.id}">Instruments</button><button class="btn small danger" data-act="removepiece" data-i="${pi}">Remove</button></div>
       <div class="list tree">${nodes.map(([n, d]) => {
         const t = tempoFor(p, n, n.step);
         const st = n.fsrs ? (core.dateOnly(n.fsrs.due) <= dayDate() ? `<span class="tag due">due</span>` : `<span class="tag ok">${fmtDate(core.dateOnly(n.fsrs.due))}</span>`) : `<span class="tag new">new</span>`;
-        return `<div class="item" style="--depth:${d}"><div class="body"><div class="t">${esc(roleOf(p, n))}</div><div class="s"><span class="num">${rng(n)}</span>${st}${n.fsrs ? `<span class="num">${fmtPct(n.step)}${t ? " · ♩ " + Math.round(t.first) : ""}</span>` : ""}</div></div>${active() ? `<button class="btn small ghost" data-act="pick" data-id="${n.id}">Practise</button>` : ""}</div>`;
+        return `<div class="item" style="--depth:${d}"><div class="body"><div class="t">${esc(roleOf(p, n))}</div><div class="s"><span class="num">${rng(n)}</span>${st}${n.instruments ? n.instruments.map(x => `<span class="tag new">${esc(x)}</span>`).join("") : ""}${n.fsrs ? `<span class="num">${fmtPct(n.step)}${t ? " · ♩ " + Math.round(t.first) : ""}</span>` : ""}</div></div>${d > 0 ? `<button class="btn small ghost" data-act="inst-edit" data-pi="${pi}" data-id="${n.id}">Tag</button>` : ""}${active() ? `<button class="btn small ghost" data-act="pick" data-id="${n.id}">Practise</button>` : ""}</div>`;
       }).join("")}</div></section>`;
   });
   return h;
 }
-function addPiece(label, start, end, tempo) {
+function addPiece(label, start, end, tempo, inst) {
   const L = label.trim();
   if (!L) throw new Error("Give the piece a title.");
   if (S.pieces.some(p => p.label === L)) throw new Error(`There is already a piece called "${L}".`);
@@ -3499,7 +3621,7 @@ function addPiece(label, start, end, tempo) {
   let goal = null;
   if (String(tempo).trim() !== "") { goal = Number(tempo); if (!Number.isFinite(goal) || goal <= 0) throw new Error("Tempo must be a positive number, or left empty."); }
   const root = core.makeNode({ label: L, start: a, end: b, parentId: null });
-  const piece = pc.makePiece({ label: L, root, goalTempo: goal });
+  const piece = pc.makePiece({ label: L, root, goalTempo: goal, instruments: inst });
   S.pieces.push(piece);
   return piece;
 }
@@ -3549,6 +3671,7 @@ async function restoreBackup(text) {
 /* ------------------------------------------------------------------ sheet */
 function sheetHtml() {
   const sh = S.sheet;
+  if (sh.kind === "inst") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted small" style="margin:-8px 0 0">${esc(sh.sub)}</p>${instChips(sh.value, "sheet")}${instAdder("sheet")}<div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
   if (sh.kind === "confirm") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted" style="margin:0">${esc(sh.body)}</p><div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn danger grow" data-act="sheet-ok">${esc(sh.cta)}</button></div></div></div>`;
   return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1">
     <h2>${esc(sh.title)}</h2>${sh.sub ? `<div class="muted small" style="margin-top:-8px">${esc(sh.sub)}</div>` : ""}
@@ -3558,7 +3681,7 @@ function sheetHtml() {
     <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button>${sh.skip ? `<button class="btn grow" data-act="sheet-skip">${esc(sh.skip)}</button>` : ""}<button class="btn primary grow" data-act="sheet-ok" id="sheetok">${esc(sh.cta)}</button></div></div></div>`;
 }
 function setSheetValue(v) {
-  const sh = S.sheet; if (!sh || sh.kind === "confirm") return;
+  const sh = S.sheet; if (!sh || sh.kind === "confirm" || sh.kind === "inst") return;
   sh.value = Math.min(sh.hi, Math.max(sh.lo, Math.round(v)));
   const bv = $("bigval"), rg = $("sheetrange"); if (bv) bv.textContent = `m. ${sh.value}`; if (rg) rg.value = sh.value;
 }
@@ -3609,10 +3732,38 @@ function onAct(act, el) {
       else if (sh.kind === "amend") amend(sh.value);
       else if (sh.kind === "aside") setAside(sh.value);
       else if (sh.kind === "confirm") sh.run();
+      else if (sh.kind === "inst") {
+        const piece = S.pieces[sh.pi];
+        if (sh.isPiece) pc.setPieceInstruments(piece, sh.value);
+        else { const n = core.flattenTree(piece.root).find(x => x.id === sh.nodeId); if (n) pc.setNodeInstruments(n, sh.value); }
+        persist(); render(); toast("Saved.");
+      }
       break;
     }
+    case "inst-toggle": {
+      const sc = el.dataset.scope, name = el.dataset.name;
+      if (sc === "start") { S.picked = toggleName(pickedNow(), name); savePicked(); }
+      else if (sc === "form") S.form.inst = toggleName(S.form.inst, name);
+      else if (S.sheet && S.sheet.kind === "inst") S.sheet.value = toggleName(S.sheet.value, name);
+      render(); break;
+    }
+    case "inst-add": {
+      const sc = el.dataset.scope, box = $("inst-new-" + sc), add = core.normalizeInstruments(box ? box.value : "");
+      if (!add.length) { if (box) box.focus(); break; }
+      if (sc === "form") S.form.inst = core.normalizeInstruments([...S.form.inst, ...add]);
+      else if (S.sheet && S.sheet.kind === "inst") S.sheet.value = core.normalizeInstruments([...S.sheet.value, ...add]);
+      render(); break;
+    }
+    case "inst-edit": {
+      const pi = Number(el.dataset.pi), piece = S.pieces[pi], id = Number(el.dataset.id);
+      const node = core.flattenTree(piece.root).find(x => x.id === id), isPiece = node === piece.root;
+      S.sheet = isPiece
+        ? { kind: "inst", title: `Instruments for ${piece.label}`, sub: "What this piece is played on. Sections inherit this unless you tag them separately.", value: piece.instruments.slice(), pi, isPiece: true }
+        : { kind: "inst", title: `Instruments for ${roleOf(piece, node)}`, sub: piece.instruments.length || (node.instruments || []).length ? "Leave all off to use the instruments of the section above (" + (instOf(piece, node).join(", ") || "none") + ")." : "Leave all off to use the instruments of the section above.", value: (node.instruments || []).slice(), pi, nodeId: id, isPiece: false };
+      render(); break;
+    }
     case "addpiece":
-      try { const p = addPiece(S.form.label, S.form.start, S.form.end, S.form.tempo); S.form = { label: "", start: "1", end: "", tempo: "" }; S.formError = ""; toast(`Added ${p.label}.`); persist(); }
+      try { const p = addPiece(S.form.label, S.form.start, S.form.end, S.form.tempo, S.form.inst); S.form = { label: "", start: "1", end: "", tempo: "", inst: S.form.inst }; S.formError = ""; toast(`Added ${p.label}.`); persist(); }
       catch (e) { S.formError = e.message; }
       render(); break;
     case "example": {
