@@ -182,9 +182,9 @@ pre.out { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; ove
 .readout .calc { font-family: var(--font-num); font-size: clamp(2.1rem, 10vw, 3.1rem); font-weight: 600; line-height: 1.05; color: var(--fg); }
 .readout .calc small { font-family: var(--font-ui); font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 8px; }
 .met { display: flex; align-items: center; gap: 10px; }
-.met .btn { min-height: 44px; }
-.chips.beats { flex: 1; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
-.chips.beats button { min-height: 44px; min-width: 44px; padding: 4px 0; flex: 1; max-width: 56px; }
+.met .btn { min-height: 44px; flex: none; }
+.chips.beats { flex: 1 1 0; min-width: 0; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
+.chips.beats button { min-height: 44px; min-width: 0; padding: 4px 0; flex: 1 1 0; max-width: 56px; }
 .startat.tight { padding: 6px 12px; }
 .startat.tight b { font-size: 1.35rem; }
 .answers.tight button { min-height: 84px; font-size: 1.6rem; border-radius: 16px; }
@@ -3519,7 +3519,7 @@ function metStrip(piece, t) {
   MET.target = !t ? null : (t.varies ? "varies" : t.first);
   if (MET.target === null) return `<div class="met"><span class="muted small grow">No tempo is set for this piece, so there is nothing to click.</span></div>`;
   if (MET.target === "varies") return `<div class="met"><span class="muted small grow">The tempo changes inside this passage, so the click is off. Use your own metronome here.</span></div>`;
-  return `<div class="met"><button class="btn small ${MET.on ? "primary" : ""}" data-act="met-toggle" aria-pressed="${MET.on}" style="min-width:104px">${MET.on ? "■ Click off" : "▶ Click"}</button>
+  return `<div class="met"><button class="btn small ${MET.on ? "primary" : ""}" data-act="met-toggle" aria-pressed="${MET.on}" style="min-width:96px;padding-inline:12px">${MET.on ? "■ Click off" : "▶ Click"}</button>
     <div class="chips beats" role="group" aria-label="Beats per accent">${[1, 2, 3, 4].map(n => `<button data-act="met-pattern" data-n="${n}" aria-pressed="${pat === n}" aria-label="${n === 1 ? "Every click the same" : "Accent every " + n + " beats"}">${n}</button>`).join("")}</div></div>`;
 }
 
@@ -3729,7 +3729,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 function viewData() {
   return `<section class="card"><h2>Click volume</h2><label class="field" for="metvol">Metronome<input id="metvol" type="range" min="0.1" max="1" step="0.05" value="${MET.cfg.vol}" aria-label="Metronome volume"></label><p class="small muted" style="margin:0">This is the app's own level. The device volume still applies.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-6</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-7</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
