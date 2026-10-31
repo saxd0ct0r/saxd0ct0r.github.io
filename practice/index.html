@@ -3701,6 +3701,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 function viewData() {
   return `<section class="card"><h2>Click volume</h2><label class="field" for="metvol">Metronome<input id="metvol" type="range" min="0.1" max="1" step="0.05" value="${MET.cfg.vol}" aria-label="Metronome volume"></label><p class="small muted" style="margin:0">This is the app's own level. The device volume still applies.</p></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-5</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -3811,6 +3812,12 @@ function onAct(act, el) {
         else { const n = core.flattenTree(piece.root).find(x => x.id === sh.nodeId); if (n) pc.setNodeInstruments(n, sh.value); }
         persist(); render(); toast("Saved.");
       }
+      break;
+    }
+    case "update-check": {
+      const msg = $("updatemsg"); if (msg) msg.textContent = "Checking…";
+      if (!S.swReg) { if (msg) msg.textContent = "Updates apply when the app is opened from its web address."; break; }
+      S.swReg.update().then(() => { if (msg) msg.textContent = "Checked. If a newer version exists it will load in a moment."; }).catch(() => { if (msg) msg.textContent = "Could not reach the server."; });
       break;
     }
     case "met-toggle": {
@@ -3955,7 +3962,14 @@ async function loadAll() {
   const { adapter, durable } = await makeAdapter();
   S.adapter = adapter; S.durable = durable; S.store = sto.createStore(adapter);
   try { await loadAll(); } catch (e) { S.ready = true; $("main").innerHTML = `<section class="card"><h2>Could not open your data</h2><p class="muted" style="margin:0">${esc(e.message)}</p></section>`; }
-  try { if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) { /* optional */ }
+  try {
+    if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+      const had = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.register("sw.js").then(r => { S.swReg = r; }).catch(() => {});
+      // A new version took over: load it now unless a session is running (then it loads next time the app opens).
+      navigator.serviceWorker.addEventListener("controllerchange", () => { if (!had) return; if (live()) toast("A new version is ready. It loads the next time you open the app."); else location.reload(); });
+    }
+  } catch (e) { /* optional */ }
   window.__sip = { S, core, sess, pc, sto, MET }; // for tests
 })();
 </script>
