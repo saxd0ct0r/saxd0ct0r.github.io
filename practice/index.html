@@ -181,6 +181,10 @@ pre.out { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; ove
 .readout .pct.pos { color: var(--accent); }
 .readout .calc { font-family: var(--font-num); font-size: clamp(2.1rem, 10vw, 3.1rem); font-weight: 600; line-height: 1.05; color: var(--fg); }
 .readout .calc small { font-family: var(--font-ui); font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 8px; }
+.met { display: flex; align-items: center; gap: 10px; }
+.met .btn { min-height: 44px; }
+.chips.beats { flex: 1; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
+.chips.beats button { min-height: 44px; min-width: 44px; padding: 4px 0; flex: 1; max-width: 56px; }
 .startat.tight { padding: 6px 12px; }
 .startat.tight b { font-size: 1.35rem; }
 .answers.tight button { min-height: 84px; font-size: 1.6rem; border-radius: 16px; }
@@ -3426,6 +3430,71 @@ async function requestWake() { try { if (navigator.wakeLock && live() && documen
 function releaseWake() { try { if (wake) wake.release(); } catch (e) { /* optional */ } wake = null; }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { requestWake(); tick(); } });
 
+/* -------------------------------------------------------------- metronome */
+// A plain click at the tempo the screen recommends. Web Audio schedules each click on the audio clock
+// (a little ahead of time), so it stays steady however busy the page is. The tempo is read at each beat,
+// so a change after a Pass or Fail takes effect on the next click without stopping.
+const MET = { ctx: null, on: false, bpm: 0, beat: 0, next: 0, timer: null, target: null, shown: false, hold: null,
+  cfg: (() => { try { const c = JSON.parse(localStorage.getItem("sip-met") || "{}"); return { patterns: c.patterns || {}, vol: typeof c.vol === "number" ? c.vol : 0.8 }; } catch (e) { return { patterns: {}, vol: 0.8 }; } })() };
+function metSave() { try { localStorage.setItem("sip-met", JSON.stringify(MET.cfg)); } catch (e) { /* per-device convenience only */ } }
+const metPattern = piece => [1, 2, 3, 4].includes(MET.cfg.patterns[piece.label]) ? MET.cfg.patterns[piece.label] : 1;
+function metClick(t, accent) {
+  const c = MET.ctx, o = c.createOscillator(), g = c.createGain(), v = Math.max(0.05, MET.cfg.vol);
+  o.type = "square"; o.frequency.value = accent ? 1760 : 1175;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime((accent ? 0.9 : 0.55) * v, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+  o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.06);
+}
+function metTick() {
+  const c = MET.ctx; if (!MET.on || !c || !MET.bpm) return;
+  const pat = MET.pattern || 1;
+  while (MET.next < c.currentTime + 0.15) {
+    if (MET.next >= c.currentTime - 0.05) metClick(Math.max(MET.next, c.currentTime), pat > 1 && MET.beat % pat === 0);
+    MET.beat++; MET.next += 60 / MET.bpm;
+  }
+}
+// iPhones mute Web Audio when the ringer switch is off, unless the page is also "playing media": a silent looping clip does that.
+function metKeepAudible() {
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) { /* optional */ }
+  try {
+    if (!MET.silent) {
+      const n = 4000, b = new DataView(new ArrayBuffer(44 + n * 2)), w = (o, t) => [...t].forEach((ch, i) => b.setUint8(o + i, ch.charCodeAt(0)));
+      w(0, "RIFF"); b.setUint32(4, 36 + n * 2, true); w(8, "WAVEfmt "); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+      b.setUint32(24, 8000, true); b.setUint32(28, 16000, true); b.setUint16(32, 2, true); b.setUint16(34, 16, true); w(36, "data"); b.setUint32(40, n * 2, true);
+      MET.silent = new Audio(URL.createObjectURL(new Blob([b.buffer], { type: "audio/wav" }))); MET.silent.loop = true;
+    }
+    const pr = MET.silent.play(); if (pr && pr.catch) pr.catch(() => {});
+  } catch (e) { /* optional */ }
+}
+function metStart(bpm, pattern) {
+  if (!MET.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) { toast("This browser cannot play a click."); return; } MET.ctx = new AC(); }
+  if (MET.ctx.state === "suspended") MET.ctx.resume();
+  metKeepAudible();
+  MET.bpm = bpm; MET.pattern = pattern; MET.beat = 0; MET.next = MET.ctx.currentTime + 0.08; MET.on = true;
+  clearInterval(MET.timer); MET.timer = setInterval(metTick, 25); metTick();
+}
+function metStop() {
+  MET.on = false; clearInterval(MET.timer); MET.timer = null;
+  try { if (MET.silent) MET.silent.pause(); } catch (e) { /* optional */ }
+}
+// Called after every render. While a practice screen with a usable tempo is showing, the click follows it.
+function metSync() {
+  if (!MET.on) return;
+  if (!live()) { metStop(); return; }
+  if (!MET.shown) return;                       // result / grade screens: keep clicking at the last tempo
+  if (typeof MET.target !== "number") { metStop(); return; }
+  MET.bpm = MET.target;
+  if (MET.pattern !== MET.piecePattern) { MET.pattern = MET.piecePattern; MET.beat = 0; }
+}
+function metStrip(piece, t) {
+  const pat = metPattern(piece);
+  MET.shown = true; MET.piecePattern = pat;
+  MET.target = !t ? null : (t.varies ? "varies" : t.first);
+  if (MET.target === null) return `<div class="met"><span class="muted small grow">No tempo is set for this piece, so there is nothing to click.</span></div>`;
+  if (MET.target === "varies") return `<div class="met"><span class="muted small grow">The tempo changes inside this passage, so the click is off. Use your own metronome here.</span></div>`;
+  return `<div class="met"><button class="btn small ${MET.on ? "primary" : ""}" data-act="met-toggle" aria-pressed="${MET.on}" style="min-width:104px">${MET.on ? "■ Click off" : "▶ Click"}</button>
+    <div class="chips beats" role="group" aria-label="Beats per accent">${[1, 2, 3, 4].map(n => `<button data-act="met-pattern" data-n="${n}" aria-pressed="${pat === n}" aria-label="${n === 1 ? "Every click the same" : "Accent every " + n + " beats"}">${n}</button>`).join("")}</div></div>`;
+}
+
 /* ----------------------------------------------------------------- render */
 const ICON = {
   practice: '<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
@@ -3451,10 +3520,12 @@ function paintTop() {
 }
 function render() {
   if (!S.ready) return;
+  MET.shown = false;
   paintTabs(); paintTop();
   const v = { practice: viewPractice, queue: viewQueue, pieces: viewPieces, data: viewData }[S.view];
   $("main").innerHTML = v();
   $("overlay").innerHTML = S.sheet ? sheetHtml() : "";
+  metSync();
 }
 
 /* ---------- practice ---------- */
@@ -3511,6 +3582,7 @@ function workCard() {
       <div class="pct ${step >= 0 ? "pos" : ""}">${fmtPct(step)}</div>
       ${t ? `<div class="calc"><small>plays at</small>♩ ${Math.round(t.first)}</div>` : ""}
     </div>
+    ${metStrip(piece, t)}
     <div class="startat tight"><span class="muted">Start at</span><b>m. ${loc}</b></div>
     ${note ? `<div class="note tight"><b>Watch for:</b> ${esc(note)}</div>` : ""}
     <div class="answers tight">
@@ -3628,7 +3700,8 @@ function addPiece(label, start, end, tempo, inst) {
 
 /* ---------- data ---------- */
 function viewData() {
-  return `<section class="card"><h2>Saved on this device</h2>
+  return `<section class="card"><h2>Click volume</h2><label class="field" for="metvol">Metronome<input id="metvol" type="range" min="0.1" max="1" step="0.05" value="${MET.cfg.vol}" aria-label="Metronome volume"></label><p class="small muted" style="margin:0">This is the app's own level. The device volume still applies.</p></section>
+  <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
     <div class="row"><button class="btn small" data-act="persistent">Ask the browser to keep it</button><span class="small muted" id="persistmsg"></span></div></section>
@@ -3740,6 +3813,15 @@ function onAct(act, el) {
       }
       break;
     }
+    case "met-toggle": {
+      if (MET.on) { metStop(); render(); break; }
+      if (typeof MET.target !== "number") break;
+      metStart(MET.target, MET.piecePattern); render(); break;
+    }
+    case "met-pattern": {
+      if (!S.cur) break;
+      MET.cfg.patterns[S.cur.piece.label] = Number(el.dataset.n); metSave(); render(); break;
+    }
     case "inst-toggle": {
       const sc = el.dataset.scope, name = el.dataset.name;
       if (sc === "start") { S.picked = toggleName(pickedNow(), name); savePicked(); }
@@ -3818,6 +3900,7 @@ document.addEventListener("input", ev => {
   else if (t.id === "f-end") S.form.end = t.value;
   else if (t.id === "f-tempo") S.form.tempo = t.value;
   else if (t.id === "importbox") S.importText = t.value;
+  else if (t.id === "metvol") { MET.cfg.vol = Number(t.value); metSave(); }
 });
 document.addEventListener("change", ev => {
   if (ev.target.id === "importfile" && ev.target.files && ev.target.files[0]) {
@@ -3873,7 +3956,7 @@ async function loadAll() {
   S.adapter = adapter; S.durable = durable; S.store = sto.createStore(adapter);
   try { await loadAll(); } catch (e) { S.ready = true; $("main").innerHTML = `<section class="card"><h2>Could not open your data</h2><p class="muted" style="margin:0">${esc(e.message)}</p></section>`; }
   try { if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) { /* optional */ }
-  window.__sip = { S, core, sess, pc, sto }; // for tests
+  window.__sip = { S, core, sess, pc, sto, MET }; // for tests
 })();
 </script>
 
