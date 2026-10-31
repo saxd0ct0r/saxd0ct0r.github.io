@@ -2106,6 +2106,34 @@ function deserializePiece(data, { startingId = 1, dayConfig = {}, preserveIds = 
 }
 
 
+// The flat tempo used when a piece has no tempo map. null clears it.
+function setGoalTempo(piece, goalTempo) {
+  assertValidGoalTempo(goalTempo);
+  piece.goalTempo = goalTempo;
+}
+
+// Changes a piece's title, first/last measure and flat tempo in one go. Any of the
+// four may be left out. All or nothing: the change is tried on a copy first, so a
+// refusal (a hotspot on the edge, a range that would cut something off, a bad
+// tempo) leaves the piece exactly as it was. Returns the warnings the range
+// edits produced (review history kept on nodes that now cover other music).
+// Uniqueness of the title among loaded pieces is the caller's business.
+function editPiece(piece, { label, start, end, goalTempo } = {}) {
+  const apply = p => {
+    const warnings = [];
+    const endFirst = end !== undefined && end >= p.root.end;
+    const doStart = () => { if (start !== undefined) warnings.push(...setRootStart(p, start).warnings); };
+    const doEnd = () => { if (end !== undefined) warnings.push(...setRootEnd(p, end).warnings); };
+    if (endFirst) { doEnd(); doStart(); } else { doStart(); doEnd(); }
+    if (goalTempo !== undefined) setGoalTempo(p, goalTempo);
+    if (label !== undefined) renamePiece(p, label);
+    return warnings;
+  };
+  const trial = deserializePiece(JSON.parse(JSON.stringify(serializePiece(piece))), { preserveIds: true }).piece;
+  apply(trial);
+  return apply(piece);
+}
+
 // Instruments (see sip-core): the list for the whole piece, or an override on one node.
 // Pass [] (or "") to clear. Returns the stored, normalised list.
 function setPieceInstruments(piece, list) {
@@ -2119,7 +2147,7 @@ function setNodeInstruments(node, list) {
 }
 
 module.exports = {
-  setPieceInstruments, setNodeInstruments,
+  setGoalTempo, editPiece, setPieceInstruments, setNodeInstruments,
   FORMAT_VERSION, PIECE_KINDS, PLACEHOLDER_END,
   makePiece, setUnitPages, setTempoAnchors, getUnitTable, getTempoMap,
   tempoSpan, describeTempo, pieceDurationSeconds, formatDuration,
@@ -3675,7 +3703,7 @@ function viewPieces() {
     <div class="row"><button class="btn primary grow" data-act="addpiece">Add piece</button>${S.pieces.length === 0 ? `<button class="btn ghost" data-act="example">Try an example</button>` : ""}</div></section>`;
   S.pieces.forEach((p, pi) => {
     const nodes = []; const walk = (n, d) => { nodes.push([n, d]); n.children.forEach(c => walk(c, d + 1)); }; walk(p.root, 0);
-    h += `<section class="card"><div class="row"><div class="grow"><h2>${esc(p.label)}</h2><div class="small muted num">${rng(p.root)}${p.goalTempo ? " · ♩ " + p.goalTempo : ""}</div><div class="small" style="margin-top:4px">${p.instruments.length ? p.instruments.map(x => `<span class="tag new">${esc(x)}</span>`).join(" ") : `<span class="muted">No instrument set</span>`}</div></div><button class="btn small ghost" data-act="inst-edit" data-pi="${pi}" data-id="${p.root.id}">Instruments</button><button class="btn small danger" data-act="removepiece" data-i="${pi}">Remove</button></div>
+    h += `<section class="card"><div class="row"><div class="grow"><h2>${esc(p.label)}</h2><div class="small muted num">${rng(p.root)}${p.goalTempo ? " · ♩ " + p.goalTempo : ""}</div><div class="small" style="margin-top:4px">${p.instruments.length ? p.instruments.map(x => `<span class="tag new">${esc(x)}</span>`).join(" ") : `<span class="muted">No instrument set</span>`}</div></div><button class="btn small ghost" data-act="piece-edit" data-pi="${pi}">Edit</button><button class="btn small ghost" data-act="inst-edit" data-pi="${pi}" data-id="${p.root.id}">Instruments</button><button class="btn small danger" data-act="removepiece" data-i="${pi}">Remove</button></div>
       <div class="list tree">${nodes.map(([n, d]) => {
         const t = tempoFor(p, n, n.step);
         const st = n.fsrs ? (core.dateOnly(n.fsrs.due) <= dayDate() ? `<span class="tag due">due</span>` : `<span class="tag ok">${fmtDate(core.dateOnly(n.fsrs.due))}</span>`) : `<span class="tag new">new</span>`;
@@ -3701,7 +3729,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 function viewData() {
   return `<section class="card"><h2>Click volume</h2><label class="field" for="metvol">Metronome<input id="metvol" type="range" min="0.1" max="1" step="0.05" value="${MET.cfg.vol}" aria-label="Metronome volume"></label><p class="small muted" style="margin:0">This is the app's own level. The device volume still applies.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-5</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-6</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -3743,8 +3771,41 @@ async function restoreBackup(text) {
 }
 
 /* ------------------------------------------------------------------ sheet */
+function editSheet(sh) {
+  const p = S.pieces[sh.pi], f = sh.f, unit = p.kind === "unmetered" ? "unit" : "measure";
+  return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="Edit piece" data-stop="1"><h2>Edit piece</h2>
+    <label class="field" for="e-label">Title<input id="e-label" type="text" value="${esc(f.label)}" autocomplete="off"></label>
+    <div class="row"><label class="field grow" for="e-start">First ${unit}<input id="e-start" type="number" inputmode="numeric" min="1" value="${esc(f.start)}"></label>
+    <label class="field grow" for="e-end">Last ${unit}<input id="e-end" type="number" inputmode="numeric" min="1" value="${esc(f.end)}"></label></div>
+    ${sh.hasMap ? `<p class="small muted" style="margin:0">The tempo comes from this piece's tempo map, so it is not edited here.</p>`
+      : `<label class="field" for="e-tempo">Marked tempo<small>♩ per minute; leave empty for none</small><input id="e-tempo" type="number" inputmode="numeric" min="1" value="${esc(f.tempo)}"></label>`}
+    ${sh.err ? `<div class="banner red"><span class="grow">${esc(sh.err)}</span></div>` : ""}
+    <p class="small muted" style="margin:0">Sections and history are kept. Changing the first or last ${unit} stretches the sections on that edge.</p>
+    <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
+}
+function saveEdit(sh) {
+  const p = S.pieces[sh.pi], f = sh.f;
+  try {
+    const label = f.label.trim();
+    if (!label) throw new Error("Give the piece a title.");
+    if (S.pieces.some(o => o !== p && o.label === label)) throw new Error(`There is already a piece called "${label}".`);
+    const a = Number(f.start), b = Number(f.end);
+    if (!Number.isInteger(a) || !Number.isInteger(b) || a < 1 || b < a) throw new Error("Measures must be whole numbers, with the last at or after the first.");
+    const change = { label, start: a, end: b };
+    if (!sh.hasMap) {
+      if (String(f.tempo).trim() === "") change.goalTempo = null;
+      else { const g = Number(f.tempo); if (!Number.isFinite(g) || g <= 0) throw new Error("Tempo must be a positive number, or left empty."); change.goalTempo = g; }
+    }
+    const old = p.label;
+    const warnings = pc.editPiece(p, change);
+    if (old !== p.label && MET.cfg.patterns[old] !== undefined) { MET.cfg.patterns[p.label] = MET.cfg.patterns[old]; delete MET.cfg.patterns[old]; metSave(); }
+    S.sheet = null; persist(); render();
+    toast(warnings.length ? "Saved. " + warnings[0] : "Saved.");
+  } catch (e) { sh.err = e.message; render(); }
+}
 function sheetHtml() {
   const sh = S.sheet;
+  if (sh.kind === "edit") return editSheet(sh);
   if (sh.kind === "inst") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted small" style="margin:-8px 0 0">${esc(sh.sub)}</p>${instChips(sh.value, "sheet")}${instAdder("sheet")}<div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
   if (sh.kind === "confirm") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted" style="margin:0">${esc(sh.body)}</p><div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn danger grow" data-act="sheet-ok">${esc(sh.cta)}</button></div></div></div>`;
   return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1">
@@ -3755,7 +3816,7 @@ function sheetHtml() {
     <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button>${sh.skip ? `<button class="btn grow" data-act="sheet-skip">${esc(sh.skip)}</button>` : ""}<button class="btn primary grow" data-act="sheet-ok" id="sheetok">${esc(sh.cta)}</button></div></div></div>`;
 }
 function setSheetValue(v) {
-  const sh = S.sheet; if (!sh || sh.kind === "confirm" || sh.kind === "inst") return;
+  const sh = S.sheet; if (!sh || sh.kind === "confirm" || sh.kind === "inst" || sh.kind === "edit") return;
   sh.value = Math.min(sh.hi, Math.max(sh.lo, Math.round(v)));
   const bv = $("bigval"), rg = $("sheetrange"); if (bv) bv.textContent = `m. ${sh.value}`; if (rg) rg.value = sh.value;
 }
@@ -3800,8 +3861,16 @@ function onAct(act, el) {
     case "sheet-adj": setSheetValue(S.sheet.value + Number(el.dataset.d)); break;
     case "sheet-cancel": S.sheet = null; render(); break;
     case "sheet-skip": { const k = S.sheet.kind; S.sheet = null; if (k === "aside") setAside(undefined); break; }
+    case "piece-edit": {
+      if (live()) { toast("Finish the session before editing a piece."); break; }
+      const pi = Number(el.dataset.pi), p = S.pieces[pi];
+      S.sheet = { kind: "edit", pi, err: "", hasMap: !!pc.getTempoMap(p), f: { label: p.label, start: String(p.root.start), end: String(p.root.end), tempo: p.goalTempo === null ? "" : String(p.goalTempo) } };
+      render(); break;
+    }
     case "sheet-ok": {
-      const sh = S.sheet; S.sheet = null;
+      const sh = S.sheet;
+      if (sh.kind === "edit") { saveEdit(sh); break; }
+      S.sheet = null;
       if (sh.kind === "fail") answer(false, sh.value);
       else if (sh.kind === "amend") amend(sh.value);
       else if (sh.kind === "aside") setAside(sh.value);
@@ -3907,6 +3976,7 @@ document.addEventListener("input", ev => {
   else if (t.id === "f-end") S.form.end = t.value;
   else if (t.id === "f-tempo") S.form.tempo = t.value;
   else if (t.id === "importbox") S.importText = t.value;
+  else if (S.sheet && S.sheet.kind === "edit" && /^e-(label|start|end|tempo)$/.test(t.id)) S.sheet.f[t.id.slice(2)] = t.value;
   else if (t.id === "metvol") { MET.cfg.vol = Number(t.value); metSave(); }
 });
 document.addEventListener("change", ev => {
