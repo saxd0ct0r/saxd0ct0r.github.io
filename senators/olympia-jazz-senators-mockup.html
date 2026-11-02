@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Olympia Jazz Senators — Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e1424;--bg2:#141c33;--card:#1a2340;--ink:#f1ece1;--mute:#a9b1c9;--brass:#d6a84a;--brass2:#f0cf86;--line:#2b3658}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.55}
+.banner{background:var(--brass);color:#1a1405;text-align:center;font-size:.85rem;font-weight:600;padding:.5rem 1rem;letter-spacing:.03em}
+nav{position:sticky;top:0;z-index:10;background:rgba(14,20,36,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:.25rem 1.4rem;align-items:center;justify-content:space-between;padding:.8rem 1.5rem}
+nav .logo{font-family:'Playfair Display',serif;font-weight:800;font-size:1.15rem;color:var(--brass2)}
+nav ul{display:flex;gap:1.2rem;list-style:none;flex-wrap:wrap}
+nav a{color:var(--mute);text-decoration:none;font-size:.9rem}
+nav a:hover{color:var(--brass2)}
+.hero{text-align:center;padding:5.5rem 1.5rem 4.5rem;background:radial-gradient(ellipse at 50% 0%,#24305a 0%,var(--bg) 65%)}
+.hero .eyebrow{color:var(--brass);letter-spacing:.3em;text-transform:uppercase;font-size:.8rem;font-weight:600}
+.hero h1{font-family:'Playfair Display',serif;font-size:clamp(2.6rem,7vw,5rem);font-weight:800;line-height:1.05;margin:.7rem 0 1rem}
+.hero h1 span{color:var(--brass2)}
+.hero p{max-width:640px;margin:0 auto 2rem;color:var(--mute);font-size:1.1rem}
+.btn{display:inline-block;background:var(--brass);color:#1a1405;padding:.75rem 1.6rem;border-radius:999px;font-weight:600;text-decoration:none;margin:.25rem}
+.btn.ghost{background:transparent;color:var(--brass2);border:1px solid var(--brass)}
+section{padding:4rem 1.5rem;max-width:1100px;margin:0 auto}
+section h2{font-family:'Playfair Display',serif;font-size:2rem;margin-bottom:.3rem}
+section .sub{color:var(--mute);margin-bottom:2rem}
+section h2::after{content:"";display:block;width:56px;height:3px;background:var(--brass);margin-top:.6rem;border-radius:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1.2rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-4px);border-color:var(--brass)}
+.portrait{aspect-ratio:4/3;background:linear-gradient(160deg,#2a3665,#18203d);display:flex;align-items:center;justify-content:center;position:relative}
+.portrait svg{width:62%;height:auto}
+.portrait .tag{position:absolute;top:.6rem;left:.6rem;background:rgba(14,20,36,.75);border:1px solid var(--line);color:var(--mute);font-size:.68rem;padding:.15rem .55rem;border-radius:999px}
+.info{padding:1rem 1.1rem 1.2rem}
+.chair{color:var(--brass);font-size:.75rem;text-transform:uppercase;letter-spacing:.14em;font-weight:600}
+.name{font-family:'Playfair Display',serif;font-size:1.35rem;margin:.15rem 0 .4rem}
+.bio{color:var(--mute);font-size:.9rem}
+.director{display:grid;grid-template-columns:1fr 1.4fr;gap:2rem;align-items:center;background:var(--bg2);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.director .portrait{aspect-ratio:auto;height:100%;min-height:280px}
+.director .info{padding:2rem}
+.director .name{font-size:2rem}
+@media(max-width:700px){.director{grid-template-columns:1fr}}
+.note{background:var(--bg2);border:1px dashed var(--brass);border-radius:14px;padding:1.2rem 1.4rem;color:var(--mute);font-size:.92rem}
+.note strong{color:var(--brass2)}
+footer{text-align:center;color:var(--mute);font-size:.85rem;padding:3rem 1.5rem;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+<div class="banner">DESIGN MOCKUP — placeholder content for discussion with Ben McDonald. Not the live site.</div>
+
+<nav>
+  <div class="logo">Olympia Jazz Senators</div>
+  <ul>
+    <li><a href="#director">Director</a></li>
+    <li><a href="#saxes">Saxes</a></li>
+    <li><a href="#trombones">Trombones</a></li>
+    <li><a href="#trumpets">Trumpets</a></li>
+    <li><a href="#rhythm">Rhythm</a></li>
+    <li><a href="#notes">Next steps</a></li>
+  </ul>
+</nav>
+
+<header class="hero">
+  <div class="eyebrow">Olympia, Washington · Big Band Jazz</div>
+  <h1>Meet the <span>Band</span></h1>
+  <p>Every section, every chair, every player. Tonight's lineup features a remarkably consistent personnel list.</p>
+  <a class="btn" href="#saxes">Meet the sections</a>
+  <a class="btn ghost" href="#notes">About this mockup</a>
+</header>
+
+<section id="director">
+  <h2>Director</h2>
+  <p class="sub">Leading the ensemble from the podium.</p>
+  <div class="director" id="dir"></div>
+</section>
+
+<section id="saxes"><h2>Saxophones</h2><p class="sub">Five chairs, one reed section.</p><div class="grid" id="g-saxes"></div></section>
+<section id="trombones"><h2>Trombones</h2><p class="sub">Four chairs, all slide, no valves.</p><div class="grid" id="g-trombones"></div></section>
+<section id="trumpets"><h2>Trumpets</h2><p class="sub">Four chairs, plenty of high notes.</p><div class="grid" id="g-trumpets"></div></section>
+<section id="rhythm"><h2>Rhythm Section</h2><p class="sub">The engine room.</p><div class="grid" id="g-rhythm"></div></section>
+
+<section id="notes">
+  <div class="note">
+    <strong>About this mockup.</strong> Portraits are illustrated placeholders and bios are filler text — swap in real photos, names, and bios for the production site. Natural next steps: concert calendar, audio/video player, rehearsal and booking info, a sponsor strip, and a members-only area for charts and schedules.
+  </div>
+</section>
+
+<footer>© Olympia Jazz Senators — design mockup · Built for discussion, not for publication</footer>
+
+<script>
+const person = "Michael Brecker";
+const sections = {
+  saxes: [
+    ["Alto Saxophone 1","Lead alto. Sets phrasing and sound for the whole section."],
+    ["Alto Saxophone 2","Second alto. Blends underneath the lead, doubles on flute in the real world."],
+    ["Tenor Saxophone 1","Tenor chair with a solo spot in most charts."],
+    ["Tenor Saxophone 2","Second tenor. Often trades choruses with the first."],
+    ["Baritone Saxophone","The foundation of the reed section."]
+  ],
+  trombones: [
+    ["Trombone 1","Lead trombone."],
+    ["Trombone 2","Inner voice of the section."],
+    ["Trombone 3","Inner voice, solid ensemble player."],
+    ["Bass Trombone","Anchors the bottom of the horn lines."]
+  ],
+  trumpets: [
+    ["Trumpet 1","Lead trumpet. Placeholder bio goes here."],
+    ["Trumpet 2","Second trumpet, often takes jazz solos."],
+    ["Trumpet 3","Third trumpet. Placeholder bio goes here."],
+    ["Trumpet 4","Fourth trumpet. Placeholder bio goes here."]
+  ],
+  rhythm: [
+    ["Piano","Comping, voicings, and solos."],
+    ["Guitar","Rhythm guitar and the occasional solo."],
+    ["Bass","Walking lines and the pulse of the band."],
+    ["Drums","Time, fills, and setups for the horn hits."]
+  ]
+};
+function silhouette(){
+  return `<svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="42" r="22" fill="#d6a84a" opacity=".85"/><path d="M16 112c4-30 22-44 44-44s40 14 44 44z" fill="#d6a84a" opacity=".85"/></svg>`;
+}
+function card([chair,bio]){
+  return `<article class="card"><div class="portrait">${silhouette()}<span class="tag">Photo placeholder</span></div><div class="info"><div class="chair">${chair}</div><div class="name">${person}</div><p class="bio">${bio}</p></div></article>`;
+}
+for(const [k,list] of Object.entries(sections)){
+  document.getElementById("g-"+k).innerHTML = list.map(card).join("");
+}
+document.getElementById("dir").innerHTML =
+  `<div class="portrait">${silhouette()}<span class="tag">Photo placeholder</span></div>
+   <div class="info"><div class="chair">Director — reporting to Ben McDonald (placeholder)</div><div class="name">${person}</div>
+   <p class="bio">Directs rehearsals and performances, selects repertoire, and keeps the band on the same page. Replace this paragraph with the real director bio, credentials, and a short statement about the band's mission.</p></div>`;
+</script>
+</body>
+</html>
