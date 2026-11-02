@@ -2148,7 +2148,57 @@ function setNodeInstruments(node, list) {
   return clean;
 }
 
+// ---------------------------------------------------------------- intake: open pieces, slots and the waiting list
+// A piece is "open" until every one of its sections has been practised and graded once. Open pieces take slots.
+// The limit is guidance: slots === 0 means no limit, and the app lets the player go over it after a confirmation.
+const DEFAULT_INTAKE_SLOTS = 5;
+function isOpenPiece(piece) { return core.flattenTree(piece.root).some(n => n.fsrs === null); }
+function intakeStatus(pieces, slots) {
+  const open = pieces.filter(isOpenPiece);
+  const limit = Number.isInteger(slots) && slots >= 0 ? slots : DEFAULT_INTAKE_SLOTS;
+  return { limit, open: open.length, free: limit === 0 ? Infinity : Math.max(0, limit - open.length), over: limit !== 0 && open.length > limit, openLabels: open.map(p => p.label) };
+}
+// A waiting-list entry is { name, source } (a bare idea) plus, once it is set up, start, end, goalTempo (or null) and instruments.
+function wishReady(w) { return Number.isInteger(w.start) && Number.isInteger(w.end) && w.start >= 1 && w.end >= w.start; }
+function makeWish({ name, start = null, end = null, goalTempo = null, instruments = [], source = "added in the app", addedOn = null }) {
+  const label = String(name || "").trim();
+  if (!label) throw new Error("Give the piece a title.");
+  const w = { name: label, source };
+  if (start !== null || end !== null) {
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start) throw new Error("Measures must be whole numbers, with the last at or after the first.");
+    w.start = start; w.end = end;
+  }
+  if (goalTempo !== null) { if (!Number.isFinite(goalTempo) || goalTempo <= 0) throw new Error("Tempo must be a positive number, or left empty."); w.goalTempo = goalTempo; }
+  const inst = core.normalizeInstruments(instruments);
+  if (inst.length) w.instruments = inst;
+  if (addedOn) w.addedOn = addedOn;
+  return w;
+}
+// Which waiting piece to load next. Only set-up entries qualify. Those that fit the instruments out today come first;
+// among them, the one that has waited longest (list order is arrival order).
+function recommendWish(wishlist, pieces, { instruments = [] } = {}) {
+  const want = core.normalizeInstruments(instruments);
+  const fits = w => !want.length || !(w.instruments && w.instruments.length) || w.instruments.some(x => want.some(y => y.toLowerCase() === x.toLowerCase()));
+  const ready = wishlist.map((w, i) => ({ w, i })).filter(e => wishReady(e.w) && !pieces.some(p => p.label === e.w.name));
+  if (!ready.length) return null;
+  const pick = ready.find(e => fits(e.w));
+  if (!pick) return { index: -1, reason: "none-match" };
+  return { index: pick.i, reason: want.length && pick.w.instruments && pick.w.instruments.length ? "fits-instruments" : "waited-longest" };
+}
+// Turns a ready entry into a real piece (the caller adds it to its list) and removes it from the waiting list.
+function admitWish(wishlist, index, pieces) {
+  const w = wishlist[index];
+  if (!w) throw new Error("That entry is not on the waiting list.");
+  if (!wishReady(w)) throw new Error(`"${w.name}" needs a first and last measure before it can be loaded.`);
+  if (pieces.some(p => p.label === w.name)) throw new Error(`There is already a piece called "${w.name}".`);
+  const root = core.makeNode({ label: w.name, start: w.start, end: w.end, parentId: null });
+  const piece = makePiece({ label: w.name, root, goalTempo: w.goalTempo === undefined ? null : w.goalTempo, instruments: w.instruments || [] });
+  wishlist.splice(index, 1);
+  return piece;
+}
+
 module.exports = {
+  DEFAULT_INTAKE_SLOTS, isOpenPiece, intakeStatus, wishReady, makeWish, recommendWish, admitWish,
   setGoalTempo, editPiece, setPieceInstruments, setNodeInstruments,
   FORMAT_VERSION, PIECE_KINDS, PLACEHOLDER_END,
   makePiece, setUnitPages, setTempoAnchors, getUnitTable, getTempoMap,
@@ -2874,7 +2924,7 @@ __mods["./sip-store"] = function (module, exports, require) {
 "use strict";
 
 const { serializePiece, deserializePiece } = require("./sip-piece");
-const { flattenTree, assertValidRolloverHours, DEFAULT_ROLLOVER_HOURS } = require("./sip-core");
+const { flattenTree, assertValidRolloverHours, DEFAULT_ROLLOVER_HOURS, normalizeInstruments } = require("./sip-core");
 const { SESSION_VERSION } = require("./sip-session");
 
 const WORKSPACE_VERSION = 1;
@@ -2980,7 +3030,7 @@ function createStore(adapter, { backupDays = 14 } = {}) {
       formatVersion: WORKSPACE_VERSION,
       savedAt,
       pieceOrder: order,
-      settings: { rolloverHours: settings.rolloverHours },
+      settings: settings.intakeSlots === undefined ? { rolloverHours: settings.rolloverHours } : { rolloverHours: settings.rolloverHours, intakeSlots: settings.intakeSlots },
       wishlist,
       ui: {
         piece: ui && ui.piece && keyOf.has(ui.piece) ? keyOf.get(ui.piece) : null,
@@ -3064,6 +3114,12 @@ function createStore(adapter, { backupDays = 14 } = {}) {
       catch (err) { warnings.push(`The saved day-rollover setting was unusable (${err.message}); using ${DEFAULT_ROLLOVER_HOURS}.`); }
     }
 
+    let intakeSlots;
+    if (ws && ws.settings.intakeSlots !== undefined) {
+      if (Number.isInteger(ws.settings.intakeSlots) && ws.settings.intakeSlots >= 0 && ws.settings.intakeSlots <= 99) intakeSlots = ws.settings.intakeSlots;
+      else warnings.push("The saved open-pieces limit was unusable; the default applies.");
+    }
+
     // 5. the pieces
     keyOf.clear();
     lastWritten.clear();
@@ -3116,7 +3172,14 @@ function createStore(adapter, { backupDays = 14 } = {}) {
     if (ws) {
       const good = ws.wishlist.filter(w => w && typeof w.name === "string" && typeof w.source === "string");
       if (good.length !== ws.wishlist.length) warnings.push(`${ws.wishlist.length - good.length} unreadable wishlist entr${ws.wishlist.length - good.length === 1 ? "y was" : "ies were"} dropped.`);
-      wishlist = good.map(w => ({ name: w.name, source: w.source }));
+      wishlist = good.map(w => {
+        const out = { name: w.name, source: w.source };
+        if (Number.isInteger(w.start) && Number.isInteger(w.end) && w.start >= 1 && w.end >= w.start) { out.start = w.start; out.end = w.end; }
+        if (typeof w.goalTempo === "number" && Number.isFinite(w.goalTempo) && w.goalTempo > 0) out.goalTempo = w.goalTempo;
+        if (Array.isArray(w.instruments)) { const inst = normalizeInstruments(w.instruments.filter(x => typeof x === "string")); if (inst.length) out.instruments = inst; }
+        if (typeof w.addedOn === "string") out.addedOn = w.addedOn;
+        return out;
+      });
     }
 
     let current = null;
@@ -3137,7 +3200,7 @@ function createStore(adapter, { backupDays = 14 } = {}) {
 
     // 7. is workspace.json already exactly what a save would write?
     loaded = true;
-    const settings = { rolloverHours };
+    const settings = intakeSlots === undefined ? { rolloverHours } : { rolloverHours, intakeSlots };
     const probe = { pieces, settings, wishlist, ui: current ? { piece: current.piece, nodeId: current.node.id } : null, session };
     lastWorkspaceCanon = ws && JSON.stringify({ ...ws, savedAt: EPOCH_ISO }) === canonicalWorkspace(probe) ? canonicalWorkspace(probe) : null;
 
@@ -3525,6 +3588,29 @@ function metStrip(piece, t) {
     <div class="chips beats" role="group" aria-label="Beats per accent">${[1, 2, 3, 4].map(n => `<button data-act="met-pattern" data-n="${n}" aria-pressed="${pat === n}" aria-label="${n === 1 ? "Every click the same" : "Accent every " + n + " beats"}">${n}</button>`).join("")}</div></div>`;
 }
 
+/* ----------------------------------------------------------------- backup reminder */
+// "Taken out" means saved as a file or copied: making the text alone does not protect anything.
+const BACKUP_DAYS = 7;
+function backupInfo() { try { const c = JSON.parse(localStorage.getItem("sip-backup") || "{}"); return { at: typeof c.at === "number" ? c.at : null, snooze: typeof c.snooze === "number" ? c.snooze : 0 }; } catch (e) { return { at: null, snooze: 0 }; } }
+function backupSet(patch) { try { localStorage.setItem("sip-backup", JSON.stringify({ ...backupInfo(), ...patch })); } catch (e) { /* per-device convenience only */ } }
+const backupDone = () => backupSet({ at: Date.now(), snooze: 0 });
+function hasHistory() { return S.pieces.some(p => core.flattenTree(p.root).some(n => n.reviewLog.length > 0 || n.fsrs !== null)); }
+function backupAgo() {
+  const b = backupInfo(); if (b.at === null) return null;
+  return Math.floor((Date.now() - b.at) / 86400000);
+}
+function backupLine() {
+  const d = backupAgo();
+  return d === null ? "No backup has been taken from this device yet." : d === 0 ? "Last backup: today." : `Last backup: ${d} day${d === 1 ? "" : "s"} ago.`;
+}
+function backupNudge() {
+  if (!hasHistory()) return "";
+  const b = backupInfo(), d = backupAgo();
+  if (Date.now() < b.snooze) return "";
+  if (d !== null && d < BACKUP_DAYS) return "";
+  return `<div class="banner"><span class="grow">${d === null ? "You have not backed up this device yet." : `Your last backup was ${d} days ago.`} Your history lives only on this device.</span><button class="btn small primary" data-act="backup-now">Back up</button><button class="btn small" data-act="backup-later">Later</button></div>`;
+}
+
 /* ----------------------------------------------------------------- render */
 const ICON = {
   practice: '<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
@@ -3580,8 +3666,9 @@ function startCard() {
   if (S.pieces.length === 0) return `<section class="card"><h1>Welcome</h1><p class="muted" style="margin:0">SIP breaks a piece down to the exact spots that need work, and schedules each one so your short practice sessions go where they matter. Add a piece to begin. Everything stays on this device.</p><button class="btn primary" data-act="view" data-v="pieces">Add a piece</button></section>`;
   const q = queueNow();
   const due = q.filter(e => e.status === "due" || e.status === "retry").length, fresh = q.filter(e => e.status === "new").length, back = q.filter(e => e.status === "interrupted").length;
-  return `<section class="card"><div class="eyebrow">Today</div><h1>Ready to practise</h1>
+  return `${backupNudge()}<section class="card"><div class="eyebrow">Today</div><h1>Ready to practise</h1>
     <div class="row">${back ? `<span class="tag retry">${back} to resume</span>` : ""}<span class="tag due">${due} due</span><span class="tag new">${fresh} new</span></div>
+    ${startIntake()}
     ${knownInstruments().length ? `<div><div class="eyebrow" style="margin-bottom:8px">Instruments out today</div>${instChips(pickedNow(), "start")}<div class="small muted" style="margin-top:6px">${pickedNow().length ? "Untagged work shows too." : "None chosen, so everything shows."}</div></div>` : ""}
     <div><div class="eyebrow" style="margin-bottom:8px">How long?</div><div class="chips" role="group" aria-label="Session length">${[10, 15, 25, 40].map(m => `<button data-act="mins" data-m="${m}" aria-pressed="${S.minutes === m}">${m}</button>`).join("")}<span class="muted" style="align-self:center">minutes</span></div></div>
     <button class="btn primary" style="min-height:64px;font-size:1.2rem" data-act="start" ${q.length ? "" : "disabled"}>${q.length ? "Start session" : (hiddenCount() > 0 ? "Nothing due for these instruments" : "Nothing due today")}</button>
@@ -3694,16 +3781,68 @@ function viewQueue() {
 }
 
 /* ---------- pieces ---------- */
+/* ---------- intake: open pieces, slots, waiting list ---------- */
+const slotsNow = () => Number.isInteger(S.settings.intakeSlots) ? S.settings.intakeSlots : pc.DEFAULT_INTAKE_SLOTS;
+const intake = () => pc.intakeStatus(S.pieces, slotsNow());
+function intakeText(st) {
+  if (st.limit === 0) return `Open pieces: ${st.open} (no limit set)`;
+  return `Open pieces: ${st.open} of ${st.limit} · ${st.over ? "over by " + (st.open - st.limit) : st.free === 1 ? "1 slot free" : st.free + " slots free"}`;
+}
+function startIntake() {
+  if (S.pieces.length === 0 && S.wishlist.length === 0) return "";
+  const st = intake(), w = S.wishlist.length, ready = S.wishlist.filter(pc.wishReady).length;
+  return `<button class="btn ghost" style="justify-content:space-between;text-align:left" data-act="view" data-v="pieces"><span><b>${intakeText(st)}</b>${w ? `<span class="muted"> · ${w} waiting${ready ? ` (${ready} ready)` : ""}</span>` : ""}</span><span class="muted">Pieces ›</span></button>`;
+}
+function intakeCard() {
+  const st = intake(), rec = pc.recommendWish(S.wishlist, S.pieces, { instruments: pickedNow() });
+  let h = `<section class="card"><h2>Open pieces</h2>
+    <p style="margin:0"><b class="num">${intakeText(st)}</b></p>
+    <p class="small muted" style="margin:0">A piece is open until every section has been practised once. Keeping only a few open at a time means each new piece starts promptly and no section is left waiting. The limit is a guide; you can load past it.</p>
+    <div class="row"><span class="small muted grow">Limit (0 for none)</span><button class="btn small" data-act="slots-adj" data-d="-1" aria-label="Fewer slots">−</button><b class="num" style="min-width:2ch;text-align:center">${slotsNow()}</b><button class="btn small" data-act="slots-adj" data-d="1" aria-label="More slots">+</button></div></section>`;
+  h += `<section class="card"><h2>Waiting to load${S.wishlist.length ? ` (${S.wishlist.length})` : ""}</h2>`;
+  if (!S.wishlist.length) h += `<p class="muted" style="margin:0">Nothing waiting. Fill in the form below and choose "Add to waiting list" to line a piece up for later.</p>`;
+  else {
+    if (rec && rec.index >= 0) {
+      const w = S.wishlist[rec.index];
+      h += `<div class="banner"><span class="grow">Recommended next: ${esc(w.name)}<span class="small muted" style="display:block;font-weight:400">${rec.reason === "fits-instruments" ? "Fits the instruments out today." : "Waiting longest."} ${st.free === 0 ? "No slot is free yet." : ""}</span></span></div>`;
+    } else if (rec && rec.index === -1) h += `<div class="banner"><span class="grow">Nothing waiting fits the instruments chosen today.</span></div>`;
+    else h += `<div class="banner"><span class="grow">Add a first and last measure to a waiting piece to make it ready.</span></div>`;
+    h += `<div class="list">` + S.wishlist.map((w, i) => `<div class="item"><div class="body"><div class="t">${esc(w.name)}${rec && rec.index === i ? ` <span class="tag ok">recommended</span>` : ""}</div><div class="s">${pc.wishReady(w) ? `<span class="num">${w.start}–${w.end}${w.goalTempo ? " · ♩ " + w.goalTempo : ""}</span>` : `<span class="tag due">needs a range</span>`}${(w.instruments || []).map(x => `<span class="tag new">${esc(x)}</span>`).join("")}<span class="muted">${esc(w.source)}</span></div></div>
+      ${pc.wishReady(w) ? `<button class="btn small primary" data-act="wish-load" data-i="${i}">Load</button>` : ""}<button class="btn small ghost" data-act="wish-edit" data-i="${i}">${pc.wishReady(w) ? "Edit" : "Set up"}</button><button class="btn small danger" data-act="wish-remove" data-i="${i}" aria-label="Remove ${esc(w.name)}">×</button></div>`).join("") + `</div>`;
+  }
+  return h + `</section>`;
+}
+function wishSheet(sh) {
+  const f = sh.f;
+  return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="Waiting piece" data-stop="1"><h2>${esc(f.name)}</h2>
+    <div class="row"><label class="field grow" for="w-start">First measure<input id="w-start" type="number" inputmode="numeric" min="1" value="${esc(f.start)}"></label>
+    <label class="field grow" for="w-end">Last measure<input id="w-end" type="number" inputmode="numeric" min="1" value="${esc(f.end)}"></label></div>
+    <label class="field" for="w-tempo">Marked tempo<small>♩ per minute, optional</small><input id="w-tempo" type="number" inputmode="numeric" min="1" value="${esc(f.tempo)}"></label>
+    ${sh.err ? `<div class="banner red"><span class="grow">${esc(sh.err)}</span></div>` : ""}
+    <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
+}
+function saveWish(sh) {
+  try {
+    const old = S.wishlist[sh.i], f = sh.f;
+    const a = Number(f.start), b = Number(f.end), g = String(f.tempo).trim() === "" ? null : Number(f.tempo);
+    const w = pc.makeWish({ name: old.name, start: a, end: b, goalTempo: g, instruments: old.instruments || [], source: old.source, addedOn: old.addedOn || null });
+    S.wishlist[sh.i] = w; S.sheet = null; persist(); render(); toast("Saved.");
+  } catch (e) { sh.err = e.message; render(); }
+}
+function loadWish(i) {
+  const p = pc.admitWish(S.wishlist, i, S.pieces);
+  S.pieces.push(p); persist(); render(); toast(`Loaded ${p.label}.`);
+}
 function viewPieces() {
   const f = S.form;
-  let h = `<section class="card"><h2>Add a piece</h2>
+  let h = intakeCard() + `<section class="card"><h2>Add a piece</h2>
     <label class="field" for="f-label">Title<input id="f-label" type="text" value="${esc(f.label)}" autocomplete="off" placeholder="e.g. Gaston"></label>
     <div class="row"><label class="field grow" for="f-start">First measure<input id="f-start" type="number" inputmode="numeric" min="1" value="${esc(f.start)}"></label>
     <label class="field grow" for="f-end">Last measure<input id="f-end" type="number" inputmode="numeric" min="1" value="${esc(f.end)}"></label>
     <label class="field grow" for="f-tempo">Marked tempo<small>♩ per minute, optional</small><input id="f-tempo" type="number" inputmode="numeric" min="1" value="${esc(f.tempo)}"></label></div>
     <div><div class="eyebrow" style="margin-bottom:8px">Instruments <span class="muted" style="text-transform:none;letter-spacing:0">(optional)</span></div>${instChips(S.form.inst, "form")}${instAdder("form")}</div>
     ${S.formError ? `<div class="banner red"><span class="grow">${esc(S.formError)}</span></div>` : ""}
-    <div class="row"><button class="btn primary grow" data-act="addpiece">Add piece</button>${S.pieces.length === 0 ? `<button class="btn ghost" data-act="example">Try an example</button>` : ""}</div></section>`;
+    <div class="row"><button class="btn primary grow" data-act="addpiece">Add piece</button><button class="btn grow" data-act="wish-add">Add to waiting list</button>${S.pieces.length === 0 ? `<button class="btn ghost" data-act="example">Try an example</button>` : ""}</div></section>`;
   S.pieces.forEach((p, pi) => {
     const nodes = []; const walk = (n, d) => { nodes.push([n, d]); n.children.forEach(c => walk(c, d + 1)); }; walk(p.root, 0);
     h += `<section class="card"><div class="row"><div class="grow"><h2>${esc(p.label)}</h2><div class="small muted num">${rng(p.root)}${p.goalTempo ? " · ♩ " + p.goalTempo : ""}</div><div class="small" style="margin-top:4px">${p.instruments.length ? p.instruments.map(x => `<span class="tag new">${esc(x)}</span>`).join(" ") : `<span class="muted">No instrument set</span>`}</div></div><button class="btn small ghost" data-act="piece-edit" data-pi="${pi}">Edit</button><button class="btn small ghost" data-act="inst-edit" data-pi="${pi}" data-id="${p.root.id}">Instruments</button><button class="btn small danger" data-act="removepiece" data-i="${pi}">Remove</button></div>
@@ -3732,13 +3871,14 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 function viewData() {
   return `<section class="card"><h2>Click volume</h2><label class="field" for="metvol">Metronome<input id="metvol" type="range" min="0.1" max="1" step="0.05" value="${MET.cfg.vol}" aria-label="Metronome volume"></label><p class="small muted" style="margin:0">This is the app's own level. The device volume still applies.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-8</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-10</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
     <div class="row"><button class="btn small" data-act="persistent">Ask the browser to keep it</button><span class="small muted" id="persistmsg"></span></div></section>
   <section class="card"><h2>Back up or move</h2>
     <p class="muted" style="margin:0">Make a backup before changing devices or clearing browser data. Import replaces what is here; the old pieces are kept in a removed folder inside the app.</p>
+    <p style="margin:0"><b>${backupLine()}</b></p>
     <div class="row"><button class="btn" data-act="export">Make backup</button></div>
     ${S.exportText ? `<pre class="out" id="exportout">${esc(S.exportText.slice(0, 600))}${S.exportText.length > 600 ? "\n…" : ""}</pre><div class="row"><button class="btn small" data-act="download">Save as file</button><button class="btn small" data-act="copy">Copy</button><span class="small muted">${Math.round(S.exportText.length / 1024)} KB</span></div>` : ""}
     <label class="field" for="importbox">Restore<small>Choose a backup file, or paste its text here.</small><input id="importfile" type="file" accept=".json,application/json,.txt"><textarea id="importbox" rows="3" placeholder="Paste backup text">${esc(S.importText)}</textarea></label>
@@ -3809,6 +3949,7 @@ function saveEdit(sh) {
 function sheetHtml() {
   const sh = S.sheet;
   if (sh.kind === "edit") return editSheet(sh);
+  if (sh.kind === "wish") return wishSheet(sh);
   if (sh.kind === "note") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="Note" data-stop="1"><h2>Watch for</h2>
     <label class="field" for="n-text">${esc(sh.sub)}<small>Shown each time you practise this section. Leave it empty to clear it.</small><textarea id="n-text" rows="3" maxlength="160" placeholder="e.g. ring finger not covering the tone hole">${esc(sh.text)}</textarea></label>
     <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
@@ -3822,7 +3963,7 @@ function sheetHtml() {
     <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button>${sh.skip ? `<button class="btn grow" data-act="sheet-skip">${esc(sh.skip)}</button>` : ""}<button class="btn primary grow" data-act="sheet-ok" id="sheetok">${esc(sh.cta)}</button></div></div></div>`;
 }
 function setSheetValue(v) {
-  const sh = S.sheet; if (!sh || sh.kind === "confirm" || sh.kind === "inst" || sh.kind === "edit" || sh.kind === "note") return;
+  const sh = S.sheet; if (!sh || sh.kind === "confirm" || sh.kind === "inst" || sh.kind === "edit" || sh.kind === "wish" || sh.kind === "note") return;
   sh.value = Math.min(sh.hi, Math.max(sh.lo, Math.round(v)));
   const bv = $("bigval"), rg = $("sheetrange"); if (bv) bv.textContent = `m. ${sh.value}`; if (rg) rg.value = sh.value;
 }
@@ -3882,6 +4023,7 @@ function onAct(act, el) {
     case "sheet-ok": {
       const sh = S.sheet;
       if (sh.kind === "edit") { saveEdit(sh); break; }
+      if (sh.kind === "wish") { saveWish(sh); break; }
       S.sheet = null;
       if (sh.kind === "note") { if (S.cur) { S.cur.node.hotspotNote = sh.text.trim().slice(0, 160); persist(); toast(sh.text.trim() ? "Note saved." : "Note cleared."); } render(); break; }
       if (sh.kind === "fail") answer(false, sh.value);
@@ -3937,6 +4079,31 @@ function onAct(act, el) {
       try { const p = addPiece(S.form.label, S.form.start, S.form.end, S.form.tempo, S.form.inst); S.form = { label: "", start: "1", end: "", tempo: "", inst: S.form.inst }; S.formError = ""; toast(`Added ${p.label}.`); persist(); }
       catch (e) { S.formError = e.message; }
       render(); break;
+    case "wish-add":
+      try {
+        const g = String(S.form.tempo).trim() === "" ? null : Number(S.form.tempo), hasRange = String(S.form.end).trim() !== "";
+        if (S.wishlist.some(w => w.name === S.form.label.trim()) || S.pieces.some(p => p.label === S.form.label.trim())) throw new Error(`There is already a piece called "${S.form.label.trim()}".`);
+        const w = pc.makeWish({ name: S.form.label, start: hasRange ? Number(S.form.start) : null, end: hasRange ? Number(S.form.end) : null, goalTempo: g, instruments: S.form.inst, addedOn: new Date().toISOString().slice(0, 10) });
+        S.wishlist.push(w); S.form = { label: "", start: "1", end: "", tempo: "", inst: S.form.inst }; S.formError = ""; toast(`${w.name} is waiting.`); persist();
+      } catch (e) { S.formError = e.message; }
+      render(); break;
+    case "slots-adj": S.settings.intakeSlots = Math.max(0, Math.min(99, slotsNow() + Number(el.dataset.d))); persist(); render(); break;
+    case "wish-edit": {
+      const i = Number(el.dataset.i), w = S.wishlist[i];
+      S.sheet = { kind: "wish", i, err: "", f: { name: w.name, start: w.start === undefined ? "1" : String(w.start), end: w.end === undefined ? "" : String(w.end), tempo: w.goalTempo ? String(w.goalTempo) : "" } };
+      render(); break;
+    }
+    case "wish-remove": {
+      const i = Number(el.dataset.i), w = S.wishlist[i];
+      S.sheet = { kind: "confirm", title: `Remove ${w.name} from the list?`, body: "It is only removed from the waiting list. You can add it again later.", cta: "Remove", run: () => { S.wishlist.splice(i, 1); persist(); render(); toast("Removed."); } };
+      render(); break;
+    }
+    case "wish-load": {
+      const i = Number(el.dataset.i), st = intake();
+      if (st.free === 0) { S.sheet = { kind: "confirm", title: "All slots are in use", body: `${intakeText(st)}. Loading another piece now means it competes with ${st.open} others that still have sections to start. Load it anyway?`, cta: "Load anyway", run: () => { try { loadWish(i); } catch (e) { toast(e.message); } } }; render(); break; }
+      try { loadWish(i); } catch (e) { toast(e.message); }
+      break;
+    }
     case "example": {
       try { addPiece("Example Etude", 1, 48, 96); S.formError = ""; persist(); toast("Added an example piece."); } catch (e) { S.formError = e.message; }
       render(); break;
@@ -3948,12 +4115,14 @@ function onAct(act, el) {
       render(); break;
     }
     case "export": buildBackup().then(t => { S.exportText = t; render(); }).catch(e => toast(e.message)); break;
-    case "download": downloadText(S.exportText); break;
-    case "copy": copyText(S.exportText); break;
+    case "download": downloadText(S.exportText); backupDone(); render(); break;
+    case "copy": copyText(S.exportText); backupDone(); render(); break;
+    case "backup-now": S.view = "data"; S.sheet = null; render(); window.scrollTo(0, 0); buildBackup().then(t => { S.exportText = t; render(); }).catch(e => toast(e.message)); break;
+    case "backup-later": backupSet({ snooze: Date.now() + 86400000 }); render(); break;
     case "import": {
       const text = $("importbox").value; S.importText = text;
       if (!text.trim()) { S.importMsg = "Choose a file or paste the backup text first."; render(); break; }
-      S.sheet = { kind: "confirm", title: "Replace everything here?", body: "This swaps the pieces and history on this device for the ones in the backup.", cta: "Restore", run: () => restoreBackup(text).then(() => { S.importMsg = "Restored."; S.importText = ""; render(); }).catch(e => { S.importMsg = e.message; render(); }) };
+      S.sheet = { kind: "confirm", title: "Replace everything here?", body: "This swaps the pieces and history on this device for the ones in the backup.", cta: "Restore", run: () => restoreBackup(text).then(() => { backupDone(); S.importMsg = "Restored."; S.importText = ""; render(); }).catch(e => { S.importMsg = e.message; render(); }) };
       render(); break;
     }
     case "theme": try { localStorage.setItem("sip-theme", el.dataset.t); } catch (e) { /* optional */ } applyTheme(); render(); break;
@@ -3988,6 +4157,7 @@ document.addEventListener("input", ev => {
   else if (t.id === "f-start") S.form.start = t.value;
   else if (t.id === "f-end") S.form.end = t.value;
   else if (t.id === "f-tempo") S.form.tempo = t.value;
+  else if (S.sheet && S.sheet.kind === "wish" && /^w-(start|end|tempo)$/.test(t.id)) S.sheet.f[t.id.slice(2)] = t.value;
   else if (t.id === "importbox") S.importText = t.value;
   else if (t.id === "n-text" && S.sheet && S.sheet.kind === "note") S.sheet.text = t.value;
   else if (S.sheet && S.sheet.kind === "edit" && /^e-(label|start|end|tempo)$/.test(t.id)) S.sheet.f[t.id.slice(2)] = t.value;
