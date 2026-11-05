@@ -3740,7 +3740,7 @@ function render() {
 /* ---------- practice ---------- */
 function viewPractice() {
   if (S.endedSession) return summaryCard();
-  if (!S.session) return startCard();
+  if (!S.session) return newsBanner() + startCard();
   let h = overtimeBanner();
   if (S.result) return h + resultCard();
   if (!S.cur) return h + idleCard();
@@ -3754,6 +3754,61 @@ function overtimeBanner() {
   if (S.session.phase === "winding_down") return `<div class="banner"><span class="grow">Wrapping up. Finish the attempt in front of you, or set it aside.</span></div>`;
   if (!c.timeIsUp) return "";
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
+}
+/* ---------- first-run guide and "What's new" ---------- */
+const APP_VERSION = "sip-app-18";
+// Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
+const CHANGELOG = [
+  { v: "sip-app-18", items: ["Pieces can have a tempo map: in Edit piece, type a line for each tempo change (measure, tempo, optional beats per bar) or paste anchors from the command line. The step percentage applies to every section."] },
+  { v: "sip-app-17", items: ["A short guide to how a session works (Data tab, How it works), and this What's new note."] },
+  { v: "sip-app-16", items: ["Practise on a piece starts straight on it, with that piece's instruments."] },
+  { v: "sip-app-15", items: ["Undo last answer, after a Pass or a Fail.", "A Pass that comes much too fast asks \"Played clean?\" first."] },
+  { v: "sip-app-14", items: ["Change the instruments out while a session is running.", "A piece you add mid-session joins it."] },
+  { v: "sip-app-13", items: ["The click stops when it is time to grade.", "Subdivide the click by 2 or 3 for slow passages, saved per section."] },
+  { v: "sip-app-12", items: ["Long notes no longer push the screen off on small phones."] },
+  { v: "sip-app-11", items: ["Send feedback, from the Data tab."] },
+  { v: "sip-app-10", items: ["A limit on open pieces and a waiting list, with a suggestion for what to load next."] }
+];
+const seenGet = () => { try { return JSON.parse(localStorage.getItem("sip-seen") || "null"); } catch (e) { return null; } };
+const seenSet = v => { try { localStorage.setItem("sip-seen", JSON.stringify(v)); } catch (e) {} };
+const newsSince = ver => {   // entries newer than the version the player last saw (at most the latest four)
+  const i = CHANGELOG.findIndex(e => e.v === ver);
+  return (i < 0 ? CHANGELOG : CHANGELOG.slice(0, i)).slice(0, 4);
+};
+// First launch with nothing in the app: the guide. A returning player (pieces already here, nothing remembered):
+// What's new. After that, What's new whenever the version moved on.
+function firstRun() {
+  const seen = seenGet();
+  if (!seen) {
+    seenSet({ guide: true, ver: APP_VERSION });
+    if (S.pieces.length === 0) S.sheet = { kind: "guide" };
+    else S.news = newsSince(null);
+  } else if (seen.ver !== APP_VERSION) {
+    S.news = newsSince(seen.ver);
+    seenSet({ guide: seen.guide === true, ver: APP_VERSION });
+  }
+  if (S.news && !S.news.length) S.news = null;
+}
+const newsList = entries => entries.map(e => `<div><div class="eyebrow">${esc(e.v)}</div><ul style="margin:4px 0 0;padding-left:1.2em">${e.items.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`).join("");
+function newsBanner() {
+  if (!S.news) return "";
+  return `<section class="card"><div class="row"><h2 class="grow">What's new</h2><button class="btn small ghost" data-act="news-dismiss">Got it</button></div>${newsList(S.news)}</section>`;
+}
+function newsSheet() {
+  return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="What's new" data-stop="1" style="max-height:88vh;overflow:auto"><h2>What's new</h2>${newsList(CHANGELOG.slice(0, 5))}<button class="btn primary" data-act="sheet-cancel" style="min-height:56px">Got it</button></div></div>`;
+}
+function guideSheet() {
+  const step = (n, t, b) => `<div class="row" style="align-items:flex-start;gap:12px;flex-wrap:nowrap"><b class="num" style="min-width:1.4em;flex:none">${n}</b><div style="flex:1;min-width:0"><b>${t}</b><div class="small muted">${b}</div></div></div>`;
+  return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="How it works" data-stop="1" style="max-height:88vh;overflow:auto"><h2>How a practice session works</h2>
+    ${step(1, "Add a piece", "Give its title, its first and last measure, and its marked tempo. Say which instrument it is for if you play more than one.")}
+    ${step(2, "Start a session", "Choose how long you have. SIP offers what is due for review first, then what is new. It shows a tempo as a percentage of the marked tempo, and the measure to start from.")}
+    ${step(3, "Play from that measure to the end", "Tap Click if you want a metronome at that tempo. Tap Pass if it was clean. Tap Fail if it broke, then tell SIP which measure.")}
+    ${step(4, "SIP narrows in", "Each answer moves the tempo and the starting point until it finds the fastest tempo you play clean, and the measure that breaks. A trouble spot becomes its own small section, so you practise only what needs it.")}
+    ${step(5, "Grade it", "When the search settles you grade how it went: Again, Hard, Good or Easy. SIP schedules the next look, sooner for harder work.")}
+    ${step(6, "Mistakes are fine", "Undo takes back the last answer. Set aside saves a section to come back to. Add a note to remind yourself what to watch for.")}
+    ${step(7, "Keep a backup", "Your practice lives in this browser on this device. Back it up from the Data tab, and never clear this site's data.")}
+    <div class="small muted">You can read this again from the Data tab, under How it works. Questions and ideas go to the feedback button there.</div>
+    <button class="btn primary" data-act="sheet-cancel" style="min-height:56px">Got it</button></div></div>`;
 }
 function startCard() {
   if (S.pieces.length === 0) return `<section class="card"><h1>Welcome</h1><p class="muted" style="margin:0">SIP breaks a piece down to the exact spots that need work, and schedules each one so your short practice sessions go where they matter. Add a piece to begin. Everything stays on this device.</p><button class="btn primary" data-act="view" data-v="pieces">Add a piece</button></section>`;
@@ -3968,15 +4023,16 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-16\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-18\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
-  return `<section class="card"><h2>Send feedback</h2><p class="muted" style="margin:0">Something broken, confusing, or missing? Write to ${FEEDBACK_TO}. The button opens an email draft with the app version and device type filled in. You can read and change it before sending. No practice data is included.</p><a class="btn primary" style="text-decoration:none;text-align:center" href="${feedbackHref()}">Write feedback</a></section>
+  return `<section class="card"><h2>Help</h2><div class="row"><button class="btn grow" data-act="guide-open">How it works</button><button class="btn grow" data-act="news-open">What's new</button></div></section>
+  <section class="card"><h2>Send feedback</h2><p class="muted" style="margin:0">Something broken, confusing, or missing? Write to ${FEEDBACK_TO}. The button opens an email draft with the app version and device type filled in. You can read and change it before sending. No practice data is included.</p><a class="btn primary" style="text-decoration:none;text-align:center" href="${feedbackHref()}">Write feedback</a></section>
   <section class="card"><h2>Click volume</h2><label class="field" for="metvol">Metronome<input id="metvol" type="range" min="0.1" max="1" step="0.05" value="${MET.cfg.vol}" aria-label="Metronome volume"></label><p class="small muted" style="margin:0">This is the app's own level. The device volume still applies.</p>
     <div class="row"><button class="btn small" data-act="met-keep" aria-pressed="${MET.cfg.keepOnGrade}">${MET.cfg.keepOnGrade ? "Click stays on when grading" : "Click stops when grading"}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-16</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-18</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -4025,11 +4081,32 @@ function editSheet(sh) {
     <label class="field" for="e-label">Title<input id="e-label" type="text" value="${esc(f.label)}" autocomplete="off"></label>
     <div class="row"><label class="field grow" for="e-start">First ${unit}<input id="e-start" type="number" inputmode="numeric" min="1" value="${esc(f.start)}"></label>
     <label class="field grow" for="e-end">Last ${unit}<input id="e-end" type="number" inputmode="numeric" min="1" value="${esc(f.end)}"></label></div>
-    ${sh.hasMap ? `<p class="small muted" style="margin:0">The tempo comes from this piece's tempo map, so it is not edited here.</p>`
+    ${sh.hasMap ? `<p class="small muted" style="margin:0">The marked tempo comes from the tempo map below.</p>`
       : `<label class="field" for="e-tempo">Marked tempo<small>♩ per minute; leave empty for none</small><input id="e-tempo" type="number" inputmode="numeric" min="1" value="${esc(f.tempo)}"></label>`}
+    <label class="field" for="e-map">Tempo map<small>${p.kind === "unmetered" ? "Paste the JSON anchors from the command line." : "One line per change: measure, tempo, and optionally beats per bar (for example 17 80 3). Or paste JSON anchors. Leave empty for none."}</small><textarea id="e-map" rows="4" spellcheck="false" autocapitalize="off" style="font-family:ui-monospace,monospace">${esc(f.map)}</textarea></label>
     ${sh.err ? `<div class="banner red"><span class="grow">${esc(sh.err)}</span></div>` : ""}
     <p class="small muted" style="margin:0">Sections and history are kept. Changing the first or last ${unit} stretches the sections on that edge.</p>
     <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
+}
+/* Tempo maps typed as lines ("17 80 3" = from measure 17, 80 per minute, 3 beats a bar) or pasted as JSON anchors. */
+function mapToText(p) {
+  const a = p.tempoAnchors;
+  if (!a) return "";
+  const simple = a.every(x => Number.isInteger(x.ordinal) && typeof x.tempo === "number" && x.rampTo === undefined && x.label === undefined && (!x.meter || (Object.keys(x.meter).length === 1 && x.meter.beatsPerBar)) && Object.keys(x).every(k => ["ordinal", "tempo", "meter"].includes(k)));
+  if (p.kind === "unmetered" || !simple) return JSON.stringify(a, null, 1);
+  return a.map(x => `${x.ordinal} ${x.tempo}${x.meter ? " " + x.meter.beatsPerBar : ""}`).join("\n");
+}
+function parseMapText(text) {
+  const t = text.trim();
+  if (t === "") return null;
+  if (t[0] === "[") { try { return JSON.parse(t); } catch (e) { throw new Error("The tempo map could not be read as JSON."); } }
+  return t.split(/\n/).map(l => l.trim()).filter(Boolean).map((l, i) => {
+    const w = l.split(/[\s,:;]+/).filter(Boolean).map(Number);
+    if (w.length < 2 || w.length > 3 || w.some(n => !Number.isFinite(n))) throw new Error(`Line ${i + 1} ("${l}") should be: measure, tempo, and optionally beats per bar.`);
+    const a = { ordinal: w[0], tempo: w[1] };
+    if (w.length === 3) a.meter = { beatsPerBar: w[2] };
+    return a;
+  });
 }
 function saveEdit(sh) {
   const p = S.pieces[sh.pi], f = sh.f;
@@ -4040,12 +4117,17 @@ function saveEdit(sh) {
     const a = Number(f.start), b = Number(f.end);
     if (!Number.isInteger(a) || !Number.isInteger(b) || a < 1 || b < a) throw new Error("Measures must be whole numbers, with the last at or after the first.");
     const change = { label, start: a, end: b };
-    if (!sh.hasMap) {
+    const anchors = parseMapText(f.map);
+    if (anchors === null) {
       if (String(f.tempo).trim() === "") change.goalTempo = null;
       else { const g = Number(f.tempo); if (!Number.isFinite(g) || g <= 0) throw new Error("Tempo must be a positive number, or left empty."); change.goalTempo = g; }
+    } else {
+      const trial = pc.deserializePiece(JSON.parse(JSON.stringify(pc.serializePiece(p))), { preserveIds: true }).piece;
+      try { pc.setTempoAnchors(trial, anchors); } catch (e) { throw new Error("Tempo map: " + e.message); }
     }
     const old = p.label;
     const warnings = pc.editPiece(p, change);
+    if (anchors === null) p.tempoAnchors = null; else pc.setTempoAnchors(p, anchors);
     if (old !== p.label && MET.cfg.patterns[old] !== undefined) { MET.cfg.patterns[p.label] = MET.cfg.patterns[old]; delete MET.cfg.patterns[old]; metSave(); }
     S.sheet = null; persist(); render();
     toast(warnings.length ? "Saved. " + warnings[0] : "Saved.");
@@ -4055,6 +4137,8 @@ function sheetHtml() {
   const sh = S.sheet;
   if (sh.kind === "edit") return editSheet(sh);
   if (sh.kind === "wish") return wishSheet(sh);
+  if (sh.kind === "guide") return guideSheet();
+  if (sh.kind === "news") return newsSheet();
   if (sh.kind === "note") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="Note" data-stop="1"><h2>Watch for</h2>
     <label class="field" for="n-text">${esc(sh.sub)}<small>Shown each time you practise this section. Leave it empty to clear it.</small><textarea id="n-text" rows="3" maxlength="160" placeholder="e.g. ring finger not covering the tone hole">${esc(sh.text)}</textarea></label>
     <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
@@ -4092,6 +4176,9 @@ function onAct(act, el) {
       for (const p of S.pieces) { const n = core.flattenTree(p.root).find(x => x.id === id); if (n) { pick(p, n); break; } }
       break;
     }
+    case "news-dismiss": S.news = null; render(); break;
+    case "guide-open": S.sheet = { kind: "guide" }; render(); break;
+    case "news-open": S.sheet = { kind: "news" }; render(); break;
     case "practise-piece": practisePiece(Number(el.dataset.pi)); break;
     case "pass": tryPass(); break;
     case "undo": undoAnswer(); break;
@@ -4124,7 +4211,7 @@ function onAct(act, el) {
     case "piece-edit": {
       if (live()) { toast("Finish the session before editing a piece."); break; }
       const pi = Number(el.dataset.pi), p = S.pieces[pi];
-      S.sheet = { kind: "edit", pi, err: "", hasMap: !!pc.getTempoMap(p), f: { label: p.label, start: String(p.root.start), end: String(p.root.end), tempo: p.goalTempo === null ? "" : String(p.goalTempo) } };
+      S.sheet = { kind: "edit", pi, err: "", hasMap: !!pc.getTempoMap(p), f: { map: mapToText(p), label: p.label, start: String(p.root.start), end: String(p.root.end), tempo: p.goalTempo === null ? "" : String(p.goalTempo) } };
       render(); break;
     }
     case "sheet-ok": {
@@ -4274,7 +4361,7 @@ document.addEventListener("input", ev => {
   else if (S.sheet && S.sheet.kind === "wish" && /^w-(start|end|tempo)$/.test(t.id)) S.sheet.f[t.id.slice(2)] = t.value;
   else if (t.id === "importbox") S.importText = t.value;
   else if (t.id === "n-text" && S.sheet && S.sheet.kind === "note") S.sheet.text = t.value;
-  else if (S.sheet && S.sheet.kind === "edit" && /^e-(label|start|end|tempo)$/.test(t.id)) S.sheet.f[t.id.slice(2)] = t.value;
+  else if (S.sheet && S.sheet.kind === "edit" && /^e-(label|start|end|tempo|map)$/.test(t.id)) S.sheet.f[t.id.slice(2)] = t.value;
   else if (t.id === "metvol") { MET.cfg.vol = Number(t.value); metSave(); }
 });
 document.addEventListener("change", ev => {
@@ -4322,6 +4409,7 @@ async function loadAll() {
   }
   loaded.warnings.forEach(w => toast(w));
   S.ready = true;
+  firstRun();
   render();
   if (S.cur) { ensureTrial(); render(); }
   persist();
