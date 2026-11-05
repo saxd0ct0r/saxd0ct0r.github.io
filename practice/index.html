@@ -1597,7 +1597,18 @@ function assertValidGoalTempo(goalTempo) {
   }
 }
 
-function makePiece({ label, root, kind = "metered", goalTempo = null, unitPages = null, tempoAnchors = null, instruments = [] }) {
+// A piece's permanent identity. It is made once, travels with the piece through saves, backups and copies, and is what
+// lets two devices tell "the same piece" from "two pieces with the same name" when their data is merged.
+const UID_RE = /^[A-Za-z0-9_-]{12,64}$/;
+function newUid() {
+  const bytes = new Uint8Array(12);
+  if (globalThis.crypto && typeof globalThis.crypto.getRandomValues === "function") globalThis.crypto.getRandomValues(bytes);
+  else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function makePiece({ label, root, kind = "metered", goalTempo = null, unitPages = null, tempoAnchors = null, instruments = [], uid = null }) {
+  if (uid !== null && !(typeof uid === "string" && UID_RE.test(uid))) throw new Error("A piece's uid must be 12 to 64 letters, digits, - or _.");
   if (typeof label !== "string" || label.trim() === "") throw new Error("A piece needs a non-empty label.");
   if (!PIECE_KINDS.includes(kind)) throw new Error(`Unknown piece kind "${kind}" — use ${PIECE_KINDS.join(" or ")}.`);
   if (!root || typeof root !== "object") throw new Error("A piece needs a root node.");
@@ -1605,7 +1616,7 @@ function makePiece({ label, root, kind = "metered", goalTempo = null, unitPages 
   if (kind === "unmetered" && unitPages === null) throw new Error("An unmetered piece needs unitPages.");
   if (kind === "metered" && unitPages !== null) throw new Error("A metered piece can't have unitPages (its ordinals are measure numbers).");
 
-  const piece = { label, kind, goalTempo, root, unitPages: null, tempoAnchors: null, instruments: core.normalizeInstruments(instruments) };
+  const piece = { uid: uid === null ? newUid() : uid, label, kind, goalTempo, root, unitPages: null, tempoAnchors: null, instruments: core.normalizeInstruments(instruments) };
   if (unitPages !== null) setUnitPages(piece, unitPages);
   if (tempoAnchors !== null) setTempoAnchors(piece, tempoAnchors);
   return piece;
@@ -1987,6 +1998,7 @@ function serializeNode(node) {
 function serializePiece(piece, { now = new Date() } = {}) {
   return {
     formatVersion: FORMAT_VERSION,
+    uid: piece.uid,
     label: piece.label,
     kind: piece.kind,
     goalTempo: piece.goalTempo,
@@ -2019,6 +2031,7 @@ function validatePieceData(data) {
   const isInt = v => Number.isInteger(v);
 
   if (typeof data.label !== "string" || data.label.trim() === "") bad("label", "must be a non-empty string");
+  if (data.uid !== undefined && !(typeof data.uid === "string" && UID_RE.test(data.uid))) bad("uid", "must be 12 to 64 letters, digits, - or _ when present");
   if (version === 2) {
     if (!PIECE_KINDS.includes(data.kind)) bad("kind", `must be ${PIECE_KINDS.join(" or ")}`);
     if (data.kind === "unmetered" && !Array.isArray(data.unitPages)) bad("unitPages", "required (an array) for an unmetered piece");
@@ -2177,7 +2190,8 @@ function deserializePiece(data, { startingId = 1, dayConfig = {}, preserveIds = 
     goalTempo: data.goalTempo,
     unitPages: version === 2 ? data.unitPages : null,
     tempoAnchors: version === 2 ? data.tempoAnchors : null,
-    instruments: data.instruments
+    instruments: data.instruments,
+    uid: typeof data.uid === "string" ? data.uid : null    // files written before uids existed get a fresh one, kept from the next save on
   });
   return { piece, nextFreeId: counter.next };
 }
@@ -2284,7 +2298,7 @@ function admitWish(wishlist, index, pieces) {
 module.exports = {
   setNodeSubdivision, subdivisionOf, DEFAULT_INTAKE_SLOTS, isOpenPiece, intakeStatus, wishReady, makeWish, recommendWish, admitWish,
   setGoalTempo, editPiece, setPieceInstruments, setNodeInstruments,
-  FORMAT_VERSION, PIECE_KINDS, PLACEHOLDER_END,
+  FORMAT_VERSION, PIECE_KINDS, PLACEHOLDER_END, newUid,
   makePiece, setUnitPages, setTempoAnchors, getUnitTable, getTempoMap,
   tempoSpan, describeTempo, clickPlan, pieceDurationSeconds, formatDuration,
   setRootEnd, setRootStart, renamePiece,
@@ -3912,9 +3926,10 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-22";
+const APP_VERSION = "sip-app-23";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-23", items: ["Groundwork for syncing devices: every piece now carries a permanent id, saved with it and kept in backups. Nothing changes on screen."] },
   { v: "sip-app-22", items: ["Scheduling now uses the current FSRS-6 memory model, checked against the reference library. A retry on the same day now counts: Again shortens the next interval, Easy lengthens it, and Good or Hard leave it where it was. Dates already set are kept; new grades use the new model."] },
   { v: "sip-app-21", items: ["With a tempo map the accent numbers are hidden: the map's bars decide the accents, so a chosen pattern can no longer clash with them."] },
   { v: "sip-app-20", items: ["With a tempo map the click accents the first beat of every bar, so a change from 4 beats to 3 can be heard.", "It starts with a count-in bar (a different, rounder tone, with the count on screen; switch it off on the Data tab). The screen shows the bar, beat and tempo as you hear them.", "Pause remembers the bar you were in and picks up there; \"◀ Bar\" and \"Bar ▶\" move the pick-up point, and ⟲ goes back to the start of the section."] },
@@ -4183,7 +4198,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-22\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-23\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -4195,7 +4210,7 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-22</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-23</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
