@@ -3364,7 +3364,7 @@ async function makeAdapter() {
 const S = {
   ready: false, store: null, adapter: null, durable: true,
   pieces: [], settings: { rolloverHours: 4 }, wishlist: [],
-  session: null, sessionPieces: [], endedSession: null, asideLog: [],
+  session: null, sessionPieces: [], endedSession: null, asideLog: [], undo: null, shownKey: null, shownAt: 0,
   cur: null, result: null, skip: new Set(),
   view: "practice", sheet: null, minutes: 15,
   form: { label: "", start: "1", end: "", tempo: "", inst: [] }, formError: "", picked: loadPicked(),
@@ -3459,30 +3459,49 @@ function liveChips() {
 }
 const hiddenNote = n => n > 0 ? `<div class="small muted">${n} more waiting for other instruments.</div>` : "";
 
-function startSession(minutes) {
+function startSession(minutes, { instruments, first } = {}) {
   if (S.pieces.length === 0) { toast("Add a piece first."); return; }
-  S.session = sess.startSession({ now: now(), minutes, studyDay: dayStr(), pieces: S.pieces, softEnd: true, instruments: pickedNow() });
+  S.session = sess.startSession({ now: now(), minutes, studyDay: dayStr(), pieces: S.pieces, softEnd: true, instruments: instruments || pickedNow() });
   S.sessionPieces = S.pieces.slice();
   S.endedSession = null; S.skip = new Set(); S.asideLog = []; S.result = null; S.cur = null;
   requestWake();
-  pickNext();
+  pickNext(first);
+}
+// "Practise this piece": go straight to it. With no session running, one starts for this piece's instruments (the
+// start screen's choice is left alone); with one running, its instruments are offered if they are not included.
+function practisePiece(pi) {
+  const piece = S.pieces[pi];
+  if (!piece) return;
+  if (live() && !active()) { toast("The session is wrapping up."); return; }
+  if (!live()) {
+    if (sess.buildQueue([piece], dayStr()).length === 0) { toast(`Nothing in ${piece.label} is due today.`); return; }
+    startSession(S.minutes, { instruments: piece.instruments.slice(), first: piece });
+    return;
+  }
+  if (sess.sessionQueue(S.session, S.sessionPieces, { now: now() }).some(e => e.piece === piece)) { pickNext(piece); return; }
+  if (sess.buildQueue([piece], dayStr(), { excludeIds: S.session.gradedNodeIds }).length === 0) { toast(`Nothing in ${piece.label} is waiting.`); return; }
+  const want = S.session.instruments, add = piece.instruments.filter(x => !want.some(y => y.toLowerCase() === x.toLowerCase()));
+  S.sheet = { kind: "confirm", safe: true, title: `Include ${add.join(" + ") || "everything"} in this session?`, body: `${piece.label} is hidden by this session's instruments (${want.join(" + ")}).`, cta: "Include and go", run: () => { sess.setSessionInstruments(S.session, add.length ? [...want, ...add] : []); pickNext(piece); } };
+  render();
 }
 function queueNow() {
   if (live()) return sess.sessionQueue(S.session, S.sessionPieces, { now: now() });
   return sess.buildQueue(S.pieces, dayStr(), { instruments: pickedNow() });
 }
-function pickNext() {
+function pickNext(preferPiece) {
   S.result = null;
   if (!active()) { S.cur = null; persist(); render(); return; }
   const q = queueNow().filter(e => !S.skip.has(e.node.id));
   if (q.length === 0) { S.cur = null; persist(); render(); return; }
-  pick(q[0].piece, q[0].node);
+  const e = (preferPiece && q.find(x => x.piece === preferPiece)) || q[0];
+  pick(e.piece, e.node);
 }
 function pick(piece, node) {
   if (S.cur && S.cur.node !== node && S.cur.node.search && S.cur.node.search.trialInProgress) core.pauseSearch(S.cur.node.search);
   const r = sess.startNodeWork(S.session, S.sessionPieces, node, { now: now() });
   reportEvents(r.events);
   if (r.refused) { toast(r.refused); persist(); render(); return; }
+  if (S.undo && S.undo.id !== node.id) S.undo = null;
   S.cur = { piece, node }; S.result = null; S.view = "practice";
   persist(); render(); window.scrollTo(0, 0);
 }
@@ -3491,20 +3510,50 @@ function ensureTrial() {
   const s = S.cur.node.search;
   if (s && !core.isSearchConverged(s) && !s.trialInProgress && active()) core.nextTrial(s);
 }
+/* ---------- undo, and a check on a Pass that came too fast ---------- */
+const cloneData = x => (typeof structuredClone === "function" ? structuredClone(x) : JSON.parse(JSON.stringify(x)));
+const canUndo = () => !!(S.undo && S.cur && S.cur.node.id === S.undo.id && S.cur.node.search);
+function undoAnswer() {
+  if (!canUndo()) return;
+  S.cur.node.search = S.undo.search; S.undo = null; S.sheet = null;
+  toast("Undone. Back to the attempt."); persist(); render(); window.scrollTo(0, 0);
+}
+// Called as each attempt appears on screen, so a Pass can be compared with how long playing the passage takes.
+function trialClock() {
+  const key = S.cur && S.cur.node.search && !S.result ? S.cur.node.id + ":" + S.cur.node.search.history.length : null;
+  if (key !== S.shownKey) { S.shownKey = key; S.shownAt = key ? Date.now() : 0; }
+}
+// Playing m. loc..end once takes at least this many seconds (counting 3 beats a measure at the least, and half of that
+// to be generous). Passing sooner than that is almost certainly a mis-tap, e.g. for the click button beside it.
+function quickPassSeconds() {
+  const { piece, node } = S.cur, s = node.search, t = tempoFor(piece, node, s.currentStep);
+  const measures = node.end - s.currentStartLocation + 1, bpm = t ? t.first : 90;
+  return { need: Math.max(1.5, 0.5 * measures * 3 * 60 / bpm), full: measures * 3 * 60 / bpm, measures, bpm };
+}
+function tryPass() {
+  if (!S.cur || !S.shownAt) { answer(true); return; }
+  const took = (Date.now() - S.shownAt) / 1000, q = quickPassSeconds();
+  if (took >= q.need) { answer(true); return; }
+  const { node } = S.cur;
+  S.sheet = { kind: "confirm", safe: true, title: "That was quick. Played clean?", body: `You answered after ${Math.max(1, Math.round(took))} second${Math.max(1, Math.round(took)) === 1 ? "" : "s"}. Playing mm. ${S.cur.node.search.currentStartLocation}–${node.end} takes about ${Math.round(q.full)} seconds at ♩ ${Math.round(q.bpm)}. Pass counts as having played it clean. Count it?`, cta: "Yes, I played it", run: () => answer(true) };
+  render();
+}
 function answer(passed, loc) {
   if (!S.cur) return;
   const { node } = S.cur;
+  S.undo = S.session.phase === "winding_down" || !node.search ? null : { id: node.id, search: cloneData(node.search) };
   const r = sess.recordTrial(S.session, S.sessionPieces, node, { now: now(), passed, failureLocation: passed ? null : loc });
   reportEvents(r.events);
-  if (r.refused) { toast(r.refused); render(); return; }
+  if (r.refused) { S.undo = null; toast(r.refused); render(); return; }
   if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) { /* optional */ } }
-  if (r.outcome === "deferred") { S.result = { kind: "saved", node }; S.cur = null; }
-  else if (r.outcome === "auto_graded") { S.result = { kind: "autograded", node, piece: pieceOf(node) }; S.cur = null; }
+  if (r.outcome === "deferred") { S.result = { kind: "saved", node }; S.cur = null; S.undo = null; }
+  else if (r.outcome === "auto_graded") { S.result = { kind: "autograded", node, piece: pieceOf(node) }; S.cur = null; S.undo = null; }
   else ensureTrial();
   afterSessionChange();
 }
 function grade(g) {
   const { piece, node } = S.cur;
+  if (!node.search) { toast("Play it first. There is nothing to grade yet."); return; }
   const hadSplit = node.children.length;
   const note = ($("why") ? $("why").value : "").trim();
   const r = sess.gradeNode(S.session, S.sessionPieces, node, g, { now: now() });
@@ -3514,6 +3563,7 @@ function grade(g) {
     const hs = r.decomposedChildren.find(c => c.kind === "hotspot");
     if (hs) hs.hotspotNote = note;
   }
+  S.undo = null;
   S.result = { kind: "graded", grade: g, entry: r.reviewEntry, children: r.decomposedChildren, retryAt: r.retryAt, node, piece, step: node.step, hadSplit };
   S.cur = null;
   afterSessionChange();
@@ -3531,7 +3581,7 @@ function setAside(bookmark) {
     S.asideLog.push({ label: node.label, bookmark: bookmark === undefined ? null : bookmark });
     S.result = { kind: "aside", node, bookmark };
   }
-  S.cur = null;
+  S.undo = null; S.cur = null;
   afterSessionChange();
 }
 function amend(loc) {
@@ -3683,6 +3733,7 @@ function render() {
   const v = { practice: viewPractice, queue: viewQueue, pieces: viewPieces, data: viewData }[S.view];
   $("main").innerHTML = v();
   $("overlay").innerHTML = S.sheet ? sheetHtml() : "";
+  trialClock();
   metSync();
 }
 
@@ -3750,6 +3801,7 @@ function workCard() {
     </div>
     <div class="footrow">
       ${chips ? `<div class="ladder" aria-label="Trials so far">${chips}</div>` : '<span class="grow" style="flex:1"></span>'}
+      ${canUndo() ? `<button class="btn small ghost" data-act="undo" aria-label="Undo last answer">Undo</button>` : ""}
       ${canAmend ? `<button class="btn small ghost" data-act="amend">Fix last failure</button>` : ""}
       ${note ? "" : `<button class="btn small ghost" data-act="note-edit">Add note</button>`}
       <button class="btn small ghost" data-act="aside">${grace ? "Save for next time" : "Set aside"}</button>
@@ -3767,6 +3819,7 @@ function gradeCard() {
   const cmp = first ? "" : `Last time ${fmtStep(node.step)}, now ${fmtStep(s.passStep)} (${delta === 0 ? "no change" : fmtStep(delta) + " steps"}).`;
   const hs = s.hotspotCandidate;
   return `<section class="card">
+    ${canUndo() ? `<div class="banner"><span class="grow">Not what you meant?</span><button class="btn small" data-act="undo">Undo last answer</button></div>` : ""}
     <div class="where"><div class="piece">${esc(piece.label)}</div><div class="node">${esc(roleOf(piece, node))}</div><div class="range">${rng(node)}</div></div>
     <div class="tempo"><div class="label">${found ? "It holds up to" : "Clean at the top of the range"}</div><div class="adjust ${s.passStep < 0 ? "neg" : ""}">${fmtPct(s.passStep)}</div>${t ? `<div class="result">♩ ${Math.round(t.first)}</div>` : ""}</div>
     ${found && !single(node) ? `<div class="startat"><span class="muted">Trouble spot</span><b>m. ${hs}</b></div>` : ""}
@@ -3774,7 +3827,7 @@ function gradeCard() {
     ${willSplit ? `<label class="field" for="why">Why does it break there?<small>Optional. It stays with the hotspot as a reminder.</small><input type="text" id="why" maxlength="100" placeholder="e.g. ring finger not covering the tone hole" autocomplete="off"></label>` : ""}
     <div class="eyebrow">How did it go?</div>
     <div class="grades">${[1, 2, 3, 4].map(g => `<button data-act="grade" data-g="${g}" class="${g === sug ? "suggested" : ""}">${g === sug ? '<span class="sug">Suggested</span>' : ""}${GRADE_NAME[g]}<small>${GRADE_HINT[g]}</small></button>`).join("")}</div>
-    <div class="row"><button class="btn small ghost" data-act="amend">Fix last failure</button>${willSplit ? "" : `<button class="btn small ghost" data-act="note-edit">${node.hotspotNote ? "Edit note" : "Add note"}</button>`}</div>
+    <div class="row">${found ? `<button class="btn small ghost" data-act="amend">Fix last failure</button>` : ""}${willSplit ? "" : `<button class="btn small ghost" data-act="note-edit">${node.hotspotNote ? "Edit note" : "Add note"}</button>`}</div>
   </section>`;
 }
 const single = n => n.start === n.end;
@@ -3887,7 +3940,8 @@ function viewPieces() {
     <div class="row"><button class="btn primary grow" data-act="addpiece">Add piece</button><button class="btn grow" data-act="wish-add">Add to waiting list</button>${S.pieces.length === 0 ? `<button class="btn ghost" data-act="example">Try an example</button>` : ""}</div></section>`;
   S.pieces.forEach((p, pi) => {
     const nodes = []; const walk = (n, d) => { nodes.push([n, d]); n.children.forEach(c => walk(c, d + 1)); }; walk(p.root, 0);
-    h += `<section class="card"><div class="row"><div class="grow"><h2>${esc(p.label)}</h2><div class="small muted num">${rng(p.root)}${p.goalTempo ? " · ♩ " + p.goalTempo : ""}</div><div class="small" style="margin-top:4px">${p.instruments.length ? p.instruments.map(x => `<span class="tag new">${esc(x)}</span>`).join(" ") : `<span class="muted">No instrument set</span>`}</div></div><button class="btn small ghost" data-act="piece-edit" data-pi="${pi}">Edit</button><button class="btn small ghost" data-act="inst-edit" data-pi="${pi}" data-id="${p.root.id}">Instruments</button><button class="btn small danger" data-act="removepiece" data-i="${pi}">Remove</button></div>
+    h += `<section class="card"><div class="row"><div class="grow"><h2>${esc(p.label)}</h2><div class="small muted num">${rng(p.root)}${p.goalTempo ? " · ♩ " + p.goalTempo : ""}</div><div class="small" style="margin-top:4px">${p.instruments.length ? p.instruments.map(x => `<span class="tag new">${esc(x)}</span>`).join(" ") : `<span class="muted">No instrument set</span>`}</div></div></div>
+      <div class="row" style="flex-wrap:wrap"><button class="btn small primary" data-act="practise-piece" data-pi="${pi}">Practise</button><button class="btn small ghost" data-act="piece-edit" data-pi="${pi}">Edit</button><button class="btn small ghost" data-act="inst-edit" data-pi="${pi}" data-id="${p.root.id}">Instruments</button><button class="btn small danger" data-act="removepiece" data-i="${pi}">Remove</button></div>
       <div class="list tree">${nodes.map(([n, d]) => {
         const t = tempoFor(p, n, n.step);
         const st = n.fsrs ? (core.dateOnly(n.fsrs.due) <= dayDate() ? `<span class="tag due">due</span>` : `<span class="tag ok">${fmtDate(core.dateOnly(n.fsrs.due))}</span>`) : `<span class="tag new">new</span>`;
@@ -3914,7 +3968,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-14\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-16\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -3922,7 +3976,7 @@ function viewData() {
   <section class="card"><h2>Click volume</h2><label class="field" for="metvol">Metronome<input id="metvol" type="range" min="0.1" max="1" step="0.05" value="${MET.cfg.vol}" aria-label="Metronome volume"></label><p class="small muted" style="margin:0">This is the app's own level. The device volume still applies.</p>
     <div class="row"><button class="btn small" data-act="met-keep" aria-pressed="${MET.cfg.keepOnGrade}">${MET.cfg.keepOnGrade ? "Click stays on when grading" : "Click stops when grading"}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-14</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-16</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -4038,7 +4092,9 @@ function onAct(act, el) {
       for (const p of S.pieces) { const n = core.flattenTree(p.root).find(x => x.id === id); if (n) { pick(p, n); break; } }
       break;
     }
-    case "pass": answer(true); break;
+    case "practise-piece": practisePiece(Number(el.dataset.pi)); break;
+    case "pass": tryPass(); break;
+    case "undo": undoAnswer(); break;
     case "fail": openFail(); break;
     case "grade": grade(Number(el.dataset.g)); break;
     case "amend": {
@@ -4237,6 +4293,7 @@ document.addEventListener("keydown", ev => {
   const s = S.cur.node.search;
   if (s && !S.result && !core.isSearchConverged(s)) { if (k === "p") onAct("pass"); else if (k === "f") onAct("fail"); }
   if (S.result && k === "n") onAct("next");
+  if (k === "u") onAct("undo");
 });
 
 /* ------------------------------------------------------------------ clock */
