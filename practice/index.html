@@ -1678,6 +1678,33 @@ function describeTempo(piece, fromOrdinal, toOrdinal, step = 0) {
   return null;
 }
 
+// The click plan for [fromOrdinal, toOrdinal] at a step: one entry per beat, each with the tempo to
+// click at THAT beat. The tempo is read at the beat's own position inside its bar (measure + beat/beatsPerBar),
+// so a held change lands exactly on the first beat of its measure and a ramp gets a slightly different length
+// for every beat, with no jump at barlines. The step applies to every beat, as it does to the marked tempo.
+// Metered pieces only (an unmetered unit is not a beat). A bar's beat count comes from the latest anchor at or
+// before it that carries a meter; its optional pattern gives each beat's state (accent / ordinary / silent).
+// Returns {ok:true, beats:[{measure, beat, bpm, state}]} or {ok:false, reason} and never invents a number.
+const CLICK_PLAN_MAX_BARS = 2000;
+function clickPlan(piece, fromOrdinal, toOrdinal, step = 0) {
+  const map = getTempoMap(piece);
+  if (!map) return { ok: false, reason: "no-map" };
+  if (piece.kind === "unmetered") return { ok: false, reason: "unmetered" };
+  if (toOrdinal >= PLACEHOLDER_END) return { ok: false, reason: "no-end" };
+  if (toOrdinal < fromOrdinal) throw new Error(`Range end (${toOrdinal}) is before its start (${fromOrdinal}).`);
+  if (toOrdinal - fromOrdinal + 1 > CLICK_PLAN_MAX_BARS) return { ok: false, reason: "too-long" };
+  const beats = [];
+  for (let m = fromOrdinal; m <= toOrdinal; m++) {
+    let meter = null;
+    for (const a of map) { if (a.ordinal <= m && a.meter) meter = a.meter; }
+    if (!meter) return { ok: false, reason: "no-meter", measure: m };
+    for (let b = 0; b < meter.beatsPerBar; b++) {
+      beats.push({ measure: m, beat: b, bpm: effectiveTempo(map, m + b / meter.beatsPerBar, step), state: meter.pattern ? meter.pattern[b] : "ordinary" });
+    }
+  }
+  return { ok: true, beats };
+}
+
 // Estimated real seconds to play [fromOrdinal, toOrdinal] at a step,
 // or null when it can't be known honestly: no tempo map, a placeholder
 // end, an unmetered range past its unit table, or a metered anchor
@@ -2217,7 +2244,7 @@ module.exports = {
   setGoalTempo, editPiece, setPieceInstruments, setNodeInstruments,
   FORMAT_VERSION, PIECE_KINDS, PLACEHOLDER_END,
   makePiece, setUnitPages, setTempoAnchors, getUnitTable, getTempoMap,
-  tempoSpan, describeTempo, pieceDurationSeconds, formatDuration,
+  tempoSpan, describeTempo, clickPlan, pieceDurationSeconds, formatDuration,
   setRootEnd, setRootStart, renamePiece,
   serializePiece, validatePieceData, deserializePiece
 };
@@ -3618,7 +3645,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 // (a little ahead of time), so it stays steady however busy the page is. The tempo is read at each beat,
 // so a change after a Pass or Fail takes effect on the next click without stopping.
 const MET = { ctx: null, on: false, bpm: 0, beat: 0, next: 0, timer: null, target: null, shown: false, hold: null,
-  cfg: (() => { try { const c = JSON.parse(localStorage.getItem("sip-met") || "{}"); return { patterns: c.patterns || {}, vol: typeof c.vol === "number" ? c.vol : 0.8, keepOnGrade: c.keepOnGrade === true }; } catch (e) { return { patterns: {}, vol: 0.8, keepOnGrade: false }; } })() };
+  cfg: (() => { try { const c = JSON.parse(localStorage.getItem("sip-met") || "{}"); return { patterns: c.patterns || {}, vol: typeof c.vol === "number" ? c.vol : 0.8, keepOnGrade: c.keepOnGrade === true, quiet: c.quiet === true, drop: [0, 1, 2].includes(c.drop) ? c.drop : 0 }; } catch (e) { return { patterns: {}, vol: 0.8, keepOnGrade: false, quiet: false, drop: 0 }; } })() };
 function metSave() { try { localStorage.setItem("sip-met", JSON.stringify(MET.cfg)); } catch (e) { /* per-device convenience only */ } }
 const metPattern = piece => [1, 2, 3, 4].includes(MET.cfg.patterns[piece.label]) ? MET.cfg.patterns[piece.label] : 1;
 function metClick(t, accent, soft) {
@@ -3627,13 +3654,21 @@ function metClick(t, accent, soft) {
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime((soft ? 0.28 : accent ? 0.9 : 0.55) * v, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
   o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.06);
 }
+const MET_DROP = [0, 0.2, 0.4];   // chance that a beat is left out, for "Drop beats at random" (never the first beat, never two in a row)
 function metTick() {
   const c = MET.ctx; if (!MET.on || !c || !MET.bpm) return;
-  const pat = MET.pattern || 1, sub = MET.sub || 1;       // MET.beat counts clicks; a beat is `sub` clicks (the first is the beat itself)
+  const pat = MET.pattern || 1, sub = MET.sub || 1, plan = MET.plan;   // MET.beat counts clicks; a beat is `sub` clicks (the first is the beat itself)
   while (MET.next < c.currentTime + 0.15) {
     const beat = Math.floor(MET.beat / sub), within = MET.beat % sub;
-    if (MET.next >= c.currentTime - 0.05) metClick(Math.max(MET.next, c.currentTime), within === 0 && pat > 1 && beat % pat === 0, within > 0);
-    MET.beat++; MET.next += 60 / MET.bpm / sub;
+    const pb = plan ? plan[beat % plan.length] : null;                    // with a tempo map, each beat has its own tempo (and maybe a state from the map's meter)
+    if (within === 0) {
+      let accent = pat > 1 && (pb ? pb.beat === 0 : beat % pat === 0) || (pb && pb.state === "accent");
+      let play = !(pb && pb.state === "silent") && !(MET.cfg.quiet && pat > 1 && !accent);
+      if (play && MET.cfg.drop && MET.beat > 0 && !MET.dropped && Math.random() < MET_DROP[MET.cfg.drop]) { play = false; MET.dropped = true; } else MET.dropped = false;
+      MET.beatPlay = play; MET.beatAccent = accent;
+    }
+    if (MET.beatPlay && MET.next >= c.currentTime - 0.05) metClick(Math.max(MET.next, c.currentTime), within === 0 && MET.beatAccent, within > 0);
+    MET.beat++; MET.next += 60 / (pb ? pb.bpm : MET.bpm) / sub;
   }
 }
 // iPhones mute Web Audio when the ringer switch is off, unless the page is also "playing media": a silent looping clip does that.
@@ -3649,11 +3684,11 @@ function metKeepAudible() {
     const pr = MET.silent.play(); if (pr && pr.catch) pr.catch(() => {});
   } catch (e) { /* optional */ }
 }
-function metStart(bpm, pattern, sub) {
+function metStart(bpm, pattern, sub, plan, key) {
   if (!MET.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) { toast("This browser cannot play a click."); return; } MET.ctx = new AC(); }
   if (MET.ctx.state === "suspended") MET.ctx.resume();
   metKeepAudible();
-  MET.bpm = bpm; MET.pattern = pattern; MET.sub = sub || 1; MET.beat = 0; MET.next = MET.ctx.currentTime + 0.08; MET.on = true;
+  MET.bpm = bpm; MET.pattern = pattern; MET.sub = sub || 1; MET.beat = 0; MET.plan = plan || null; MET.curKey = key || ""; MET.dropped = false; MET.next = MET.ctx.currentTime + 0.08; MET.on = true;
   clearInterval(MET.timer); MET.timer = setInterval(metTick, 25); metTick();
 }
 function metStop() {
@@ -3665,19 +3700,31 @@ function metSync() {
   if (!MET.on) return;
   if (!live()) { metStop(); return; }
   if (!MET.shown) { if (!MET.cfg.keepOnGrade) metStop(); return; }   // result / grade screens: the tempo is settled, so the click stops unless the player asked to keep it
-  if (typeof MET.target !== "number") { metStop(); return; }
-  MET.bpm = MET.target;
-  if (MET.pattern !== MET.piecePattern || MET.sub !== MET.nodeSub) { MET.pattern = MET.piecePattern; MET.sub = MET.nodeSub; MET.beat = 0; }
+  const plan = MET.nextPlan;
+  if (!plan && typeof MET.target !== "number") { metStop(); return; }
+  MET.bpm = plan ? plan[0].bpm : MET.target;
+  const key = plan ? MET.planKey : "";
+  if (MET.pattern !== MET.piecePattern || MET.sub !== MET.nodeSub || MET.curKey !== key) { MET.pattern = MET.piecePattern; MET.sub = MET.nodeSub; MET.plan = plan; MET.curKey = key; MET.beat = 0; MET.dropped = false; }
 }
-function metStrip(piece, node, t) {
+function metStrip(piece, node, t, step, loc) {
   const pat = metPattern(piece), sub = pc.subdivisionOf(node);
   MET.shown = true; MET.piecePattern = pat; MET.nodeSub = sub;
   MET.target = !t ? null : (t.varies ? "varies" : t.first);
+  let plan = null, planNote = "";
+  MET.nextPlan = null; MET.planKey = "";
+  if (t && t.varies) {
+    const from = typeof loc === "number" && loc >= node.start && loc <= node.end ? loc : node.start;
+    const r = pc.clickPlan(piece, from, node.end, step);
+    if (r.ok) {
+      plan = r.beats; MET.nextPlan = plan; MET.planKey = JSON.stringify([piece.label, from, node.end, step, piece.tempoAnchors]);
+      planNote = `<div class="small muted" style="margin:2px 0 0">The click follows the tempo map from m. ${from}.</div>`;
+    } else if (r.reason === "no-meter") planNote = "needs-meter";
+  }
   if (MET.target === null) return `<div class="met"><span class="muted small grow">No tempo is set for this piece, so there is nothing to click.</span></div>`;
-  if (MET.target === "varies") return `<div class="met"><span class="muted small grow">The tempo changes inside this passage, so the click is off. Use your own metronome here.</span></div>`;
+  if (MET.target === "varies" && !plan) return `<div class="met"><span class="muted small grow">The tempo changes inside this passage, so the click is off. ${planNote ? "To click through the changes, add beats per bar to the tempo map (the third number on a line, in Edit piece)." : "Use your own metronome here."}</span></div>`;
   return `<div class="met"><button class="btn small ${MET.on ? "primary" : ""}" data-act="met-toggle" aria-pressed="${MET.on}" style="min-width:88px;padding-inline:10px">${MET.on ? "■ Click off" : "▶ Click"}</button>
     <button class="btn small" data-act="met-sub" aria-label="Clicks per beat for this section: ${sub === 1 ? "one" : sub}. Tap to change." style="min-width:64px;padding-inline:8px">${sub === 1 ? "Sub off" : "Sub " + sub}</button>
-    <div class="chips beats" role="group" aria-label="Beats per accent">${[1, 2, 3, 4].map(n => `<button data-act="met-pattern" data-n="${n}" aria-pressed="${pat === n}" aria-label="${n === 1 ? "Every click the same" : "Accent every " + n + " beats"}">${n}</button>`).join("")}</div></div>`;
+    <div class="chips beats" role="group" aria-label="Beats per accent">${[1, 2, 3, 4].map(n => `<button data-act="met-pattern" data-n="${n}" aria-pressed="${pat === n}" aria-label="${n === 1 ? "Every click the same" : "Accent every " + n + " beats"}">${n}</button>`).join("")}</div></div>${planNote}`;
 }
 
 /* ----------------------------------------------------------------- backup reminder */
@@ -3756,9 +3803,10 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-18";
+const APP_VERSION = "sip-app-19";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-19", items: ["The click now follows a tempo map: it changes tempo at the right bar, and ramps change a little on every beat (the map needs beats per bar, the third number on a line in Edit piece).", "New click settings on the Data tab: only accented beats sound (pick an accent pattern on the work screen), and drop beats at random to train your inner pulse."] },
   { v: "sip-app-18", items: ["Pieces can have a tempo map: in Edit piece, type a line for each tempo change (measure, tempo, optional beats per bar) or paste anchors from the command line. The step percentage applies to every section."] },
   { v: "sip-app-17", items: ["A short guide to how a session works (Data tab, How it works), and this What's new note."] },
   { v: "sip-app-16", items: ["Practise on a piece starts straight on it, with that piece's instruments."] },
@@ -3847,7 +3895,7 @@ function workCard() {
       <div class="pct ${step >= 0 ? "pos" : ""}">${fmtPct(step)}</div>
       ${t ? `<div class="calc"><small>plays at</small>♩ ${Math.round(t.first)}</div>` : ""}
     </div>
-    ${metStrip(piece, node, t)}
+    ${metStrip(piece, node, t, step, loc)}
     <div class="startat tight"><span class="muted">Start at</span><b>m. ${loc}</b></div>
     ${note ? `<button class="note tight notebtn" data-act="note-edit" aria-label="Edit the note"><span><b>Watch for:</b> ${esc(note)}</span><span class="small muted">Edit</span></button>` : ""}
     <div class="answers tight">
@@ -4023,7 +4071,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-18\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-19\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -4031,8 +4079,10 @@ function viewData() {
   <section class="card"><h2>Send feedback</h2><p class="muted" style="margin:0">Something broken, confusing, or missing? Write to ${FEEDBACK_TO}. The button opens an email draft with the app version and device type filled in. You can read and change it before sending. No practice data is included.</p><a class="btn primary" style="text-decoration:none;text-align:center" href="${feedbackHref()}">Write feedback</a></section>
   <section class="card"><h2>Click volume</h2><label class="field" for="metvol">Metronome<input id="metvol" type="range" min="0.1" max="1" step="0.05" value="${MET.cfg.vol}" aria-label="Metronome volume"></label><p class="small muted" style="margin:0">This is the app's own level. The device volume still applies.</p>
     <div class="row"><button class="btn small" data-act="met-keep" aria-pressed="${MET.cfg.keepOnGrade}">${MET.cfg.keepOnGrade ? "Click stays on when grading" : "Click stops when grading"}</button></div>
-    <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-18</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+    <div class="row" style="flex-wrap:wrap"><button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
+    <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
+    <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-19</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -4240,6 +4290,7 @@ function onAct(act, el) {
     }
     case "met-toggle": {
       if (MET.on) { metStop(); render(); break; }
+      if (MET.nextPlan) { metStart(MET.nextPlan[0].bpm, MET.piecePattern, MET.nodeSub, MET.nextPlan, MET.planKey); render(); break; }
       if (typeof MET.target !== "number") break;
       metStart(MET.target, MET.piecePattern, MET.nodeSub); render(); break;
     }
@@ -4248,6 +4299,8 @@ function onAct(act, el) {
       const n = S.cur.node, next = { 1: 2, 2: 3, 3: 1 }[pc.subdivisionOf(n)];
       pc.setNodeSubdivision(n, next); persist(); render(); break;
     }
+    case "met-quiet": MET.cfg.quiet = !MET.cfg.quiet; metSave(); render(); break;
+    case "met-drop": MET.cfg.drop = (MET.cfg.drop + 1) % 3; metSave(); render(); break;
     case "met-keep": MET.cfg.keepOnGrade = !MET.cfg.keepOnGrade; metSave(); render(); break;
     case "met-pattern": {
       if (!S.cur) break;
@@ -4427,7 +4480,7 @@ async function loadAll() {
       navigator.serviceWorker.addEventListener("controllerchange", () => { if (!had) return; if (live()) toast("A new version is ready. It loads the next time you open the app."); else location.reload(); });
     }
   } catch (e) { /* optional */ }
-  window.__sip = { S, core, sess, pc, sto, MET }; // for tests
+  window.__sip = { S, core, sess, pc, sto, MET, render, persist }; // for tests
 })();
 </script>
 
