@@ -3386,11 +3386,233 @@ module.exports = {
 };
 
 };
+__mods["./sip-merge"] = function (module, exports, require) {
+// sip-merge.js
+// Merging two copies of a player's practice (say the tablet's and the phone's) without losing a review.
+// Pure: it takes loaded pieces and returns new ones; it touches no storage and no network, so it can be tested
+// to death and used by any way of moving the data (a backup file today, a cloud folder later).
+//
+// The rules, in order of importance:
+//   1. No review is ever dropped. Two copies of a node's review log are compared entry by entry; the part they
+//      share is kept, and what only one side has is added. If one log simply extends the other (the usual case
+//      when moving from one device to the next), that longer log and its memory state are taken as they are.
+//      Only when BOTH sides added reviews after the shared part are the new reviews put in date order and
+//      replayed through the memory model, starting from the shared part. Nothing before that point is touched.
+//   2. A piece is the same piece when it has the same uid. Its trees are merged node by node, matched by position in
+//      the tree (not by id), but only if they agree wherever they overlap (same range, same hotspot). A node split on one device and not the other
+//      merges (the split is kept). Two different splits of the same node, or any disagreement about a range,
+//      do not merge: the other copy is kept as a separate piece, flagged, and nothing is deleted.
+//   3. The result does not depend on which side is which, apart from the plain settings (names, tempo, notes,
+//      search state) of a node or piece, which come from the side that reviewed it last; on a tie the side named
+//      by `prefer` wins.
+//
+// Known limit: a piece removed on one device comes back from the other. Removal needs tombstones to merge; later.
+
+"use strict";
+
+const core = require("./sip-core");
+const pc = require("./sip-piece");
+
+class MergeConflict extends Error {}
+const conflict = msg => { throw new MergeConflict(msg); };
+
+const dayNum = d => d.getTime();
+
+const clonePiece = piece => pc.deserializePiece(pc.serializePiece(piece, { now: new Date(0) }), { preserveIds: true }).piece;
+
+function lastReviewOf(node) {
+  let last = -Infinity;
+  for (const e of node.reviewLog) last = Math.max(last, dayNum(e.reviewDate));
+  if (node.fsrs) last = Math.max(last, dayNum(node.fsrs.lastReview));
+  return last;
+}
+const flattenIds = n => [n.id].concat(...n.children.map(flattenIds));
+const newestInTree = node => Math.max(lastReviewOf(node), ...node.children.map(newestInTree));
+const totalReviews = node => node.reviewLog.length + node.children.reduce((n, c) => n + totalReviews(c), 0);
+
+// Review logs --------------------------------------------------------------------------------------------------
+// A review is identified by its day, its grade and how many earlier reviews of that day had the same grade (so two
+// Agains on one day are two reviews). The numbers inside an entry are not part of its identity: they are worked out
+// from what came before, and change when a review is replayed after others.
+function identify(log) {
+  const seen = new Map();
+  return log.map(entry => {
+    const base = `${dayNum(entry.reviewDate)}:${entry.grade}`, k = seen.get(base) || 0;
+    seen.set(base, k + 1);
+    return { entry, id: `${base}:${k}` };
+  });
+}
+const idsOf = items => items.map(i => i.id);
+function isSubsequence(x, y) {
+  let j = 0;
+  for (const item of y) if (j < x.length && x[j].id === item.id) j++;
+  return j === x.length;
+}
+
+// One list of reviews out of two, with no review dropped and the same answer whichever side is "local".
+// By day: if one side's reviews that day contain the other's in order, that side's list is taken; otherwise the two
+// are joined in a fixed order (by content), so neither side gets priority.
+function unionOrder(A, B) {
+  const byDay = log => { const m = new Map(); log.forEach(i => { const d = i.id.split(":")[0]; (m.get(d) || m.set(d, []).get(d)).push(i); }); return m; };
+  const da = byDay(A), db = byDay(B);
+  const days = [...new Set([...da.keys(), ...db.keys()])].sort((x, y) => Number(x) - Number(y));
+  const out = [];
+  for (const d of days) {
+    const x = da.get(d) || [], y = db.get(d) || [];
+    if (isSubsequence(x, y)) out.push(...y);
+    else if (isSubsequence(y, x)) out.push(...x);
+    else {
+      const [first, second] = idsOf(x).join() <= idsOf(y).join() ? [x, y] : [y, x];
+      const have = new Set(idsOf(first));
+      out.push(...first, ...second.filter(i => !have.has(i.id)));
+    }
+  }
+  return out;
+}
+const commonPrefix = (M, S) => { let i = 0; while (i < M.length && i < S.length && M[i].id === S[i].id) i++; return i; };
+
+// The state of a node after the first `p` reviews of side `side` (whose identified log is `items`).
+function stateAfter(node, items, p) {
+  if (p === 0) return null;
+  if (p === items.length) return { ...node.fsrs };
+  const e = items[p - 1].entry;
+  const log = node.reviewLog;
+  return {
+    stability: e.newStability, difficulty: e.newDifficulty, due: e.due, lastReview: e.reviewDate,
+    reps: Math.max(0, node.fsrs.reps - log.length) + p,
+    lapses: Math.max(0, node.fsrs.lapses - log.filter(x => x.grade === 1).length) + items.slice(0, p).filter(i => i.entry.grade === 1).length
+  };
+}
+
+function mergeLogs(a, b, owner) {
+  const A = identify(a.reviewLog), B = identify(b.reviewLog);
+  const M = unionOrder(A, B);
+  const pa = commonPrefix(M, A), pb = commonPrefix(M, B);
+  if (pa === M.length && pa === A.length) return { log: a.reviewLog, fsrs: a.fsrs };       // a already holds every review
+  if (pb === M.length && pb === B.length) return { log: b.reviewLog, fsrs: b.fsrs };
+  // Reviews that neither side has in this order: replay them, starting from the longest stretch both agree on.
+  const [side, items, p] = pa >= pb ? [a, A, pa] : [b, B, pb];
+  const from = new Map(); [...A, ...B].forEach(i => { if (!from.has(i.id)) from.set(i.id, i.entry); });
+  const rest = M.slice(p).map(i => from.get(i.id));
+  if (p === 0 && rest[0].priorStability != null) conflict("the two histories do not share a start");
+  const tmp = { id: owner.id, fsrs: stateAfter(side, items, p), reviewLog: [] };
+  try { for (const e of rest) core.reviewNode(tmp, e.grade, e.reviewDate); }
+  catch (err) { conflict(`the histories could not be replayed together (${err.message})`); }
+  return { log: items.slice(0, p).map(i => i.entry).concat(tmp.reviewLog), fsrs: tmp.fsrs };
+}
+
+// Nodes --------------------------------------------------------------------------------------------------------
+// Two copies of a node are matched by where they sit in the tree (the root, then the child with the same rank:
+// first part, hotspot, second part), never by id. Ids are only good within one workspace: the store renumbers a
+// piece whose ids collide with another piece's on load, so the same piece can carry different ids on two devices.
+// The merged piece keeps this side's ids; a part that only the other side has is given new ones.
+const AGREE = ["start", "end", "kind", "decomposeRank"];
+
+function relabel(node, parentId, alloc) {
+  node.id = alloc(); node.parentId = parentId;
+  node.reviewLog = node.reviewLog.map(e => ({ ...e, nodeId: node.id }));
+  node.children.forEach(c => relabel(c, node.id, alloc));
+  return node;
+}
+const ranksOf = n => n.children.map(c => String(c.decomposeRank)).sort().join(",");
+
+function mergeNode(a, b, prefer, alloc) {
+  const bad = AGREE.find(f => a[f] !== b[f]);
+  if (bad) conflict(`"${a.label}" disagrees about its ${bad}: ${a[bad]} here, ${b[bad]} there`);
+  const la = lastReviewOf(a), lb = lastReviewOf(b);
+  const owner = la > lb ? a : lb > la ? b : prefer === "remote" ? b : a;   // a is always the local side
+  const { log, fsrs } = mergeLogs(a, b, owner);
+  const m = owner;                                                           // owner is a clone, so it can be changed
+  m.id = a.id; m.parentId = a.parentId;
+  m.reviewLog = log.map(e => ({ ...e, nodeId: m.id }));
+  m.fsrs = fsrs ? { ...fsrs } : null;
+
+  let kids;
+  if (a.children.length === 0 && b.children.length > 0) {                  // only the other side split it: take its parts and its hotspot
+    kids = b.children.map(c => relabel(c, m.id, alloc)); m.hotspot = b.hotspot; m.hotspotNote = b.hotspotNote;
+  } else if (b.children.length === 0 && a.children.length > 0) { kids = a.children; m.hotspot = a.hotspot; m.hotspotNote = a.hotspotNote; }
+  else if (a.children.length === 0) kids = [];
+  else {
+    if (a.hotspot !== b.hotspot) conflict(`"${a.label}" disagrees about its hotspot: ${a.hotspot} here, ${b.hotspot} there`);
+    if (ranksOf(a) !== ranksOf(b)) conflict(`"${a.label}" was split differently on the two copies`);
+    const ofB = new Map(b.children.map(c => [c.decomposeRank, c]));
+    kids = a.children.map(c => mergeNode(c, ofB.get(c.decomposeRank), prefer, alloc));
+  }
+  m.children = kids;
+  kids.forEach(k => { k.parentId = m.id; });
+  return m;
+}
+
+// Pieces -------------------------------------------------------------------------------------------------------
+// Returns { ok: true, piece, report } or { ok: false, reason }. `local` and `remote` are not changed.
+function mergePieces(local, remote, { prefer = "local" } = {}) {
+  if (prefer !== "local" && prefer !== "remote") throw new Error('prefer must be "local" or "remote".');
+  try {
+    if (local.uid !== remote.uid) conflict("these are not the same piece (different uids)");
+    if (local.kind !== remote.kind) conflict("one copy is metered and the other unmetered");
+    if (JSON.stringify(local.unitPages) !== JSON.stringify(remote.unitPages)) conflict("the two copies have different unit tables");
+    const a = clonePiece(local), b = clonePiece(remote);
+    const ids = flattenIds(a.root).concat(flattenIds(b.root));
+    let next = Math.max(0, ...ids) + 1;
+    const root = mergeNode(a.root, b.root, prefer, () => next++);
+    // piece-level settings follow whichever copy was reviewed last (a tie goes to `prefer`)
+    const na = newestInTree(local.root), nb = newestInTree(remote.root);
+    const src = na > nb ? local : nb > na ? remote : prefer === "remote" ? remote : local;
+    const merged = pc.deserializePiece(pc.serializePiece({ ...clonePiece(src), root, uid: local.uid }, { now: new Date(0) }), { preserveIds: true }).piece;
+    const total = totalReviews(merged.root);
+    return { ok: true, piece: merged, report: { addedToLocal: total - totalReviews(local.root), addedToRemote: total - totalReviews(remote.root) } };
+  } catch (e) {
+    if (e instanceof MergeConflict) return { ok: false, reason: e.message };
+    throw e;
+  }
+}
+
+// Workspaces ---------------------------------------------------------------------------------------------------
+// Each side is { pieces, wishlist, settings }. Returns the merged { pieces, wishlist, settings } and a report.
+// A running session is not merged here: it names nodes, so the caller keeps one side's and drops the other's.
+function mergeWorkspaces(local, remote, { prefer = "local" } = {}) {
+  const report = { merged: [], copied: [], conflicts: [], wishlistAdded: 0 };
+  const remoteByUid = new Map(remote.pieces.map(p => [p.uid, p]));
+  const localUids = new Set(local.pieces.map(p => p.uid));
+  const clashed = [];
+  const pieces = local.pieces.map(lp => {
+    const rp = remoteByUid.get(lp.uid);
+    if (!rp) return lp;
+    const r = mergePieces(lp, rp, { prefer });
+    if (r.ok) { report.merged.push({ uid: lp.uid, label: r.piece.label, ...r.report }); return r.piece; }
+    report.conflicts.push({ label: lp.label, reason: r.reason });
+    clashed.push(rp);
+    return lp;
+  });
+  const extra = [];
+  for (const rp of remote.pieces) if (!localUids.has(rp.uid)) { extra.push(clonePiece(rp)); report.copied.push(rp.label); }
+  // A piece that could not be merged: the other copy is kept beside it, under a name that says where it came from.
+  // The name and uid are the same every time, so repeating the merge does not add a third copy.
+  for (const rp of clashed) {
+    const copy = pc.deserializePiece({ ...pc.serializePiece(rp, { now: new Date(0) }), uid: `${rp.uid}-other`.slice(0, 64), label: `${rp.label} (other device)` }, { preserveIds: true }).piece;
+    const at = pieces.findIndex(p => p.uid === copy.uid);
+    if (at < 0) { extra.push(copy); continue; }
+    const r = mergePieces(pieces[at], copy, { prefer });
+    if (r.ok) pieces[at] = r.piece; else report.conflicts.push({ label: copy.label, reason: r.reason });
+  }
+  const seen = new Set(local.wishlist.map(w => w.name.trim().toLowerCase()));
+  const wishlist = local.wishlist.map(w => ({ ...w }));
+  for (const w of remote.wishlist) {
+    const k = w.name.trim().toLowerCase();
+    if (!seen.has(k)) { seen.add(k); wishlist.push({ ...w }); report.wishlistAdded++; }
+  }
+  const settings = prefer === "local" ? { ...remote.settings, ...local.settings } : { ...local.settings, ...remote.settings };
+  return { pieces: pieces.concat(extra), wishlist, settings, report };
+}
+
+module.exports = { mergePieces, mergeWorkspaces };
+
+};
 
 </script>
 <script>
 "use strict";
-const core = __req("./sip-core"), pc = __req("./sip-piece"), sess = __req("./sip-session"), sto = __req("./sip-store");
+const core = __req("./sip-core"), pc = __req("./sip-piece"), sess = __req("./sip-session"), sto = __req("./sip-store"), mrg = __req("./sip-merge");
 const { GRADE } = core;
 const GRADE_NAME = { 1: "Again", 2: "Hard", 3: "Good", 4: "Easy" };
 const GRADE_HINT = { 1: "needs another look soon", 2: "got through, but barely", 3: "solid, as expected", 4: "ready to perform" };
@@ -3926,9 +4148,10 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-23";
+const APP_VERSION = "sip-app-24";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-24", items: ["Data tab: \"Merge into this device\". Choose or paste a backup from another device and it adds what is new (reviews made on either device are kept, new pieces, the waiting list) without replacing anything. You see what will change first."] },
   { v: "sip-app-23", items: ["Groundwork for syncing devices: every piece now carries a permanent id, saved with it and kept in backups. Nothing changes on screen."] },
   { v: "sip-app-22", items: ["Scheduling now uses the current FSRS-6 memory model, checked against the reference library. A retry on the same day now counts: Again shortens the next interval, Easy lengthens it, and Good or Hard leave it where it was. Dates already set are kept; new grades use the new model."] },
   { v: "sip-app-21", items: ["With a tempo map the accent numbers are hidden: the map's bars decide the accents, so a chosen pattern can no longer clash with them."] },
@@ -4198,7 +4421,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-23\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-24\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -4210,18 +4433,18 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-23</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-24</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
     <div class="row"><button class="btn small" data-act="persistent">Ask the browser to keep it</button><span class="small muted" id="persistmsg"></span></div></section>
   <section class="card"><h2>Back up or move</h2>
-    <p class="muted" style="margin:0">Make a backup before changing devices or clearing browser data. Import replaces what is here; the old pieces are kept in a removed folder inside the app.</p>
+    <p class="muted" style="margin:0">Make a backup before changing devices or clearing browser data. Restore replaces what is here (the old pieces are kept in a removed folder inside the app). Merge keeps what is here and adds what the backup has: reviews made on either device are kept.</p>
     <p style="margin:0"><b>${backupLine()}</b></p>
     <div class="row"><button class="btn" data-act="export">Make backup</button></div>
     ${S.exportText ? `<pre class="out" id="exportout">${esc(S.exportText.slice(0, 600))}${S.exportText.length > 600 ? "\n…" : ""}</pre><div class="row"><button class="btn small" data-act="download">Save as file</button><button class="btn small" data-act="copy">Copy</button><span class="small muted">${Math.round(S.exportText.length / 1024)} KB</span></div>` : ""}
     <label class="field" for="importbox">Restore<small>Choose a backup file, or paste its text here.</small><input id="importfile" type="file" accept=".json,application/json,.txt"><textarea id="importbox" rows="3" placeholder="Paste backup text">${esc(S.importText)}</textarea></label>
-    <div class="row"><button class="btn" data-act="import">Restore from backup</button></div>
+    <div class="row"><button class="btn primary" data-act="merge">Merge into this device</button><button class="btn" data-act="import">Restore from backup</button></div>
     ${S.importMsg ? `<div class="small">${esc(S.importMsg)}</div>` : ""}</section>
   <section class="card"><h2>Look</h2><div class="chips" role="group" aria-label="Theme">${["system", "light", "dark"].map(t => `<button data-act="theme" data-t="${t}" aria-pressed="${themePref() === t}">${t}</button>`).join("")}</div>
     <div class="small muted">Keyboard: <span class="kbd">P</span> pass, <span class="kbd">F</span> fail, <span class="kbd">N</span> next.</div></section>
@@ -4239,17 +4462,49 @@ async function buildBackup() {
   const ws = await ad.get(sto.WORKSPACE_KEY); if (ws !== null) files[sto.WORKSPACE_KEY] = ws;
   return JSON.stringify({ format: "sip-backup", version: 1, savedAt: new Date().toISOString(), files }, null, 1);
 }
-async function restoreBackup(text) {
+function parseBackup(text) {
   let data;
   try { data = JSON.parse(text); } catch (e) { throw new Error("That is not a backup file (it could not be read)."); }
   if (!data || data.format !== "sip-backup" || typeof data.files !== "object" || data.files === null) throw new Error("That is not a SIP backup file.");
   const keys = Object.keys(data.files);
   keys.forEach(k => { sto.assertValidKey(k); if (!(k === sto.WORKSPACE_KEY || /^pieces\/[A-Za-z0-9._-]+\.json$/.test(k)) || typeof data.files[k] !== "string") throw new Error(`Unexpected entry in the backup: ${k}`); });
   if (!keys.includes(sto.WORKSPACE_KEY)) throw new Error("The backup has no workspace.json.");
+  return data.files;
+}
+async function restoreBackup(text) {
+  const files = parseBackup(text), keys = Object.keys(files);
   const ad = S.adapter, stamp = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14);
   for (const k of await ad.list("pieces/")) { const old = await ad.get(k); if (old !== null) await ad.put(`removed/${dayStr()}/${stamp}-${k.slice(7)}`, old); await ad.delete(k); }
-  for (const k of keys) await ad.put(k, data.files[k]);
+  for (const k of keys) await ad.put(k, files[k]);
   await loadAll();
+}
+
+/* Merge a backup into what is here (sip-merge.js): reviews on either side are kept; nothing here is thrown away.
+   The backup is read through a throw-away in-memory store, so it goes through exactly the checks a real load does. */
+const fixedCanon = piece => JSON.stringify(pc.serializePiece(piece, { now: new Date(0) }));
+async function planMerge(text) {
+  const files = parseBackup(text);
+  const mem = sto.createMemoryAdapter();
+  for (const k of Object.keys(files)) await mem.put(k, files[k]);
+  const remote = await sto.createStore(mem).load({ now: new Date() });
+  const r = mrg.mergeWorkspaces({ pieces: S.pieces, wishlist: S.wishlist, settings: S.settings }, { pieces: remote.pieces, wishlist: remote.wishlist, settings: remote.settings }, { prefer: "local" });
+  const lines = [];
+  r.report.merged.forEach(m => { const bits = []; if (m.addedToLocal) bits.push(`${m.addedToLocal} review${m.addedToLocal === 1 ? "" : "s"} added here`); if (bits.length) lines.push(`${m.label}: ${bits.join(", ")}`); });
+  const changed = r.pieces.map((np, i) => { const old = S.pieces.find(x => x.uid === np.uid); return old && fixedCanon(old) === fixedCanon(np) ? old : np; });
+  const structural = r.pieces.filter(np => { const old = S.pieces.find(x => x.uid === np.uid); return old && fixedCanon(old) !== fixedCanon(np) && !r.report.merged.some(m => m.uid === np.uid && m.addedToLocal); });
+  structural.forEach(np => lines.push(`${np.label}: sections or settings brought up to date`));
+  r.report.copied.forEach(l => lines.push(`New piece: ${l}`));
+  r.report.conflicts.forEach(c => lines.push(`${c.label} could not be combined (${c.reason}). The other copy is kept as its own piece, so nothing is lost.`));
+  if (r.report.wishlistAdded) lines.push(`Waiting list: ${r.report.wishlistAdded} added`);
+  const same = changed.length === S.pieces.length && changed.every((p, i) => p === S.pieces[i]) && !r.report.wishlistAdded;
+  return { result: r, pieces: changed, lines, same, warnings: remote.warnings };
+}
+async function applyMerge(plan) {
+  S.pieces = plan.pieces;
+  S.wishlist = plan.result.wishlist;
+  S.settings = plan.result.settings;
+  await persist();
+  await loadAll();      // reload from storage: the store renumbers any ids that now collide
 }
 
 /* ------------------------------------------------------------------ sheet */
@@ -4321,7 +4576,7 @@ function sheetHtml() {
     <label class="field" for="n-text">${esc(sh.sub)}<small>Shown each time you practise this section. Leave it empty to clear it.</small><textarea id="n-text" rows="3" maxlength="160" placeholder="e.g. ring finger not covering the tone hole">${esc(sh.text)}</textarea></label>
     <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
   if (sh.kind === "inst") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted small" style="margin:-8px 0 0">${esc(sh.sub)}</p>${instChips(sh.value, "sheet")}${instAdder("sheet")}<div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
-  if (sh.kind === "confirm") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted" style="margin:0">${esc(sh.body)}</p><div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn ${sh.safe ? "primary" : "danger"} grow" data-act="sheet-ok">${esc(sh.cta)}</button></div></div></div>`;
+  if (sh.kind === "confirm") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted" style="margin:0">${esc(sh.body)}</p>${sh.lines && sh.lines.length ? `<ul class="small" style="margin:0;padding-left:18px">${sh.lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>` : ""}<div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn ${sh.safe ? "primary" : "danger"} grow" data-act="sheet-ok">${esc(sh.cta)}</button></div></div></div>`;
   return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1">
     <h2>${esc(sh.title)}</h2>${sh.sub ? `<div class="muted small" style="margin-top:-8px">${esc(sh.sub)}</div>` : ""}
     <div class="bigval" id="bigval">m. ${sh.value}</div>
@@ -4511,6 +4766,17 @@ function onAct(act, el) {
       if (!text.trim()) { S.importMsg = "Choose a file or paste the backup text first."; render(); break; }
       S.sheet = { kind: "confirm", title: "Replace everything here?", body: "This swaps the pieces and history on this device for the ones in the backup.", cta: "Restore", run: () => restoreBackup(text).then(() => { backupDone(); S.importMsg = "Restored."; S.importText = ""; render(); }).catch(e => { S.importMsg = e.message; render(); }) };
       render(); break;
+    }
+    case "merge": {
+      const text = $("importbox").value; S.importText = text;
+      if (!text.trim()) { S.importMsg = "Choose a file or paste the backup text first."; render(); break; }
+      if (live() || S.cur) { S.importMsg = "Finish or end the practice session first, then merge."; render(); break; }
+      planMerge(text).then(plan => {
+        if (plan.same) { S.importMsg = "Nothing new in that backup: this device already has everything in it."; render(); return; }
+        S.sheet = { kind: "confirm", safe: true, title: "Merge this backup?", body: "Nothing here is removed. Reviews from both are kept, and the replaced piece files go to the app's removed folder.", lines: plan.lines, cta: "Merge", run: () => applyMerge(plan).then(() => { S.importMsg = "Merged."; S.importText = ""; render(); }).catch(e => { S.importMsg = e.message; render(); }) };
+        render();
+      }).catch(e => { S.importMsg = e.message; render(); });
+      break;
     }
     case "theme": try { localStorage.setItem("sip-theme", el.dataset.t); } catch (e) { /* optional */ } applyTheme(); render(); break;
     case "persistent":
