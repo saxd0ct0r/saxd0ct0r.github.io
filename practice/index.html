@@ -2715,6 +2715,15 @@ function sessionQueue(session, pieces, { now } = {}) {
 }
 
 
+// Changes which instruments are on the stand while a session runs. Work that the old choice hid and the new one shows
+// joins the queue after what was already waiting (the queue's "unknown" rule); work the new choice hides drops out.
+// An empty list means everything. Returns the cleaned list.
+function setSessionInstruments(session, instruments) {
+  if (session.phase === "ended") throw new Error("The session is over.");
+  session.instruments = core.normalizeInstruments(instruments);
+  return session.instruments;
+}
+
 // How much work is waiting that this session's instrument choice is hiding.
 // The queue screen says so ("3 more for other instruments") so nothing seems lost.
 function hiddenByInstruments(session, pieces) {
@@ -2907,7 +2916,7 @@ function sessionSummary(session) {
 module.exports = {
   SESSION_VERSION, DEFAULT_SESSION_MINUTES, RETRY_MINUTES,
   startSession, sessionClock, tickSession, extendSession, endSessionNow, settleSession,
-  buildQueue, sessionQueue, hiddenByInstruments,
+  buildQueue, sessionQueue, hiddenByInstruments, setSessionInstruments,
   startNodeWork, recordTrial, gradeNode, deferNode,
   sessionSummary
 };
@@ -3432,6 +3441,22 @@ function hiddenCount() {
   if (live()) return sess.hiddenByInstruments(S.session, S.sessionPieces);
   return sess.buildQueue(S.pieces, dayStr()).length - sess.buildQueue(S.pieces, dayStr(), { instruments: pickedNow() }).length;
 }
+// A piece added or loaded while a session is running joins that session. If the session is limited to other
+// instruments, offer to include this piece's, since the usual reason to add a piece now is to play it now.
+function joinLiveSession(piece) {
+  if (!live()) return;
+  if (!S.sessionPieces.includes(piece)) S.sessionPieces.push(piece);
+  const want = S.session.instruments;
+  if (want.length && piece.instruments.length && !core.matchesInstruments(piece, piece.root, want)) {
+    const add = piece.instruments.filter(x => !want.some(y => y.toLowerCase() === x.toLowerCase()));
+    S.sheet = { kind: "confirm", safe: true, title: `Include ${add.join(" + ")} in this session?`, body: `This session is set to ${want.join(" + ")}, so ${piece.label} is hidden until ${add.join(" + ")} is included. Untagged work still shows.`, cta: "Include", run: () => { sess.setSessionInstruments(S.session, [...want, ...add]); persist(); render(); toast("Included."); } };
+  }
+}
+function liveChips() {
+  if (!live() || knownInstruments().length < 2) return "";
+  const n = S.session.instruments.length;
+  return `<div><div class="eyebrow" style="margin-bottom:8px">Instruments out this session</div>${instChips(S.session.instruments, "live")}<div class="small muted" style="margin-top:6px">${n ? "Untagged work shows too." : "None chosen, so everything shows."}</div>${hiddenNote(hiddenCount())}</div>`;
+}
 const hiddenNote = n => n > 0 ? `<div class="small muted">${n} more waiting for other instruments.</div>` : "";
 
 function startSession(minutes) {
@@ -3694,8 +3719,8 @@ function startCard() {
 }
 function idleCard() {
   const q = queueNow().filter(e => !S.skip.has(e.node.id));
-  if (q.length === 0) return `<section class="card"><h2>Queue is clear</h2><p class="muted" style="margin:0">Nothing else is waiting right now. Finish the session to see what you covered.</p><button class="btn primary" data-act="end">Finish session</button></section>`;
-  return `<section class="card"><div class="eyebrow">Next</div><div class="where"><div class="piece">${esc(q[0].piece.label)}</div><div class="node">${esc(roleOf(q[0].piece, q[0].node))}</div><div class="range">${rng(q[0].node)}</div></div><button class="btn primary" style="min-height:64px;font-size:1.2rem" data-act="next">Start</button><button class="btn ghost" data-act="end">Finish session</button></section>`;
+  if (q.length === 0) return `<section class="card"><h2>Queue is clear</h2><p class="muted" style="margin:0">Nothing else is waiting right now. Finish the session to see what you covered.</p>${liveChips()}<button class="btn primary" data-act="end">Finish session</button></section>`;
+  return `<section class="card"><div class="eyebrow">Next</div><div class="where"><div class="piece">${esc(q[0].piece.label)}</div><div class="node">${esc(roleOf(q[0].piece, q[0].node))}</div><div class="range">${rng(q[0].node)}</div></div>${liveChips()}<button class="btn primary" style="min-height:64px;font-size:1.2rem" data-act="next">Start</button><button class="btn ghost" data-act="end">Finish session</button></section>`;
 }
 function workCard() {
   ensureTrial();
@@ -3755,7 +3780,7 @@ function gradeCard() {
 const single = n => n.start === n.end;
 function resultCard() {
   const r = S.result;
-  const next = `<div class="row"><button class="btn primary grow" style="min-height:60px" data-act="next">Next</button><button class="btn ghost" data-act="end">Finish</button></div>`;
+  const next = `${liveChips()}<div class="row"><button class="btn primary grow" style="min-height:60px" data-act="next">Next</button><button class="btn ghost" data-act="end">Finish</button></div>`;
   if (r.kind === "graded") {
     const days = r.entry.interval;
     const parts = r.children ? `<div class="small muted">Now split into ${r.children.length} parts that come up on their own:</div><div class="row">${r.children.map(c => `<span class="tag ${c.kind === "hotspot" ? "due" : "new"}">${esc(roleOf(r.piece, c))} · ${rng(c)}</span>`).join("")}</div>` : "";
@@ -3783,9 +3808,9 @@ function summaryCard() {
 function viewQueue() {
   const q = queueNow();
   if (S.pieces.length === 0) return `<section class="card"><h2>Queue</h2><div class="empty">Add a piece and its sections will line up here.</div></section>`;
-  if (q.length === 0) return `<section class="card"><h2>Queue</h2><div class="empty">Nothing is due ${hiddenCount() > 0 ? "for these instruments" : "today"}.</div>${hiddenNote(hiddenCount())}</section>`;
+  if (q.length === 0) return `<section class="card"><h2>Queue</h2><div class="empty">Nothing is due ${hiddenCount() > 0 ? "for these instruments" : "today"}.</div>${live() ? liveChips() : hiddenNote(hiddenCount())}</section>`;
   const canPick = active();
-  return `<section class="card"><div class="row"><h2 class="grow">Queue</h2><span class="muted small">${q.length} waiting</span></div>${hiddenNote(hiddenCount())}
+  return `<section class="card"><div class="row"><h2 class="grow">Queue</h2><span class="muted small">${q.length} waiting</span></div>${live() ? liveChips() : hiddenNote(hiddenCount())}
     <div class="list">${q.map((e, i) => {
       const tag = e.status === "interrupted" ? `<span class="tag retry">resume${e.bookmark !== null ? " @ m. " + e.bookmark : ""}</span>`
         : e.status === "retry" ? `<span class="tag retry">${e.waitMs > 0 ? "retry in " + Math.ceil(e.waitMs / 60000) + " min" : "retry now"}</span>`
@@ -3848,7 +3873,7 @@ function saveWish(sh) {
 }
 function loadWish(i) {
   const p = pc.admitWish(S.wishlist, i, S.pieces);
-  S.pieces.push(p); persist(); render(); toast(`Loaded ${p.label}.`);
+  S.pieces.push(p); joinLiveSession(p); persist(); render(); toast(`Loaded ${p.label}.`);
 }
 function viewPieces() {
   const f = S.form;
@@ -3882,13 +3907,14 @@ function addPiece(label, start, end, tempo, inst) {
   const root = core.makeNode({ label: L, start: a, end: b, parentId: null });
   const piece = pc.makePiece({ label: L, root, goalTempo: goal, instruments: inst });
   S.pieces.push(piece);
+  joinLiveSession(piece);
   return piece;
 }
 
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-13\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-14\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -3896,7 +3922,7 @@ function viewData() {
   <section class="card"><h2>Click volume</h2><label class="field" for="metvol">Metronome<input id="metvol" type="range" min="0.1" max="1" step="0.05" value="${MET.cfg.vol}" aria-label="Metronome volume"></label><p class="small muted" style="margin:0">This is the app's own level. The device volume still applies.</p>
     <div class="row"><button class="btn small" data-act="met-keep" aria-pressed="${MET.cfg.keepOnGrade}">${MET.cfg.keepOnGrade ? "Click stays on when grading" : "Click stops when grading"}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-13</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-14</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -3979,7 +4005,7 @@ function sheetHtml() {
     <label class="field" for="n-text">${esc(sh.sub)}<small>Shown each time you practise this section. Leave it empty to clear it.</small><textarea id="n-text" rows="3" maxlength="160" placeholder="e.g. ring finger not covering the tone hole">${esc(sh.text)}</textarea></label>
     <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
   if (sh.kind === "inst") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted small" style="margin:-8px 0 0">${esc(sh.sub)}</p>${instChips(sh.value, "sheet")}${instAdder("sheet")}<div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
-  if (sh.kind === "confirm") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted" style="margin:0">${esc(sh.body)}</p><div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn danger grow" data-act="sheet-ok">${esc(sh.cta)}</button></div></div></div>`;
+  if (sh.kind === "confirm") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted" style="margin:0">${esc(sh.body)}</p><div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn ${sh.safe ? "primary" : "danger"} grow" data-act="sheet-ok">${esc(sh.cta)}</button></div></div></div>`;
   return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1">
     <h2>${esc(sh.title)}</h2>${sh.sub ? `<div class="muted small" style="margin-top:-8px">${esc(sh.sub)}</div>` : ""}
     <div class="bigval" id="bigval">m. ${sh.value}</div>
@@ -4087,6 +4113,7 @@ function onAct(act, el) {
     case "inst-toggle": {
       const sc = el.dataset.scope, name = el.dataset.name;
       if (sc === "start") { S.picked = toggleName(pickedNow(), name); savePicked(); }
+      else if (sc === "live") { if (live()) { sess.setSessionInstruments(S.session, toggleName(S.session.instruments, name)); persist(); } }
       else if (sc === "form") S.form.inst = toggleName(S.form.inst, name);
       else if (S.sheet && S.sheet.kind === "inst") S.sheet.value = toggleName(S.sheet.value, name);
       render(); break;
