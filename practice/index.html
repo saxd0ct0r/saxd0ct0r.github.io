@@ -3684,7 +3684,7 @@ const S = {
   cur: null, result: null, skip: new Set(),
   view: "practice", sheet: null, minutes: 15,
   form: { label: "", start: "1", end: "", tempo: "", inst: [] }, formError: "", picked: loadPicked(),
-  saveError: null, exportText: "", importText: "", importMsg: "", asideNote: ""
+  saveError: null, exportText: "", importText: "", importMsg: "", asideNote: "", syncMsg: "", syncBusy: false
 };
 const dayDate = () => core.studyDayOf(new Date(), S.settings);
 const dayStr = () => dayDate().toISOString().slice(0, 10);
@@ -4159,9 +4159,10 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-25";
+const APP_VERSION = "sip-app-26";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-26", items: ["Data tab: \"Sync with Google Drive\". One tap merges what is on your Drive into this device and saves the combined copy back, using a hidden app folder in your own Drive. Enter the Google client ID once on each device."] },
   { v: "sip-app-25", items: ["Quick repeat taps no longer zoom the screen (pinch to zoom still works). A piece section you set aside on one device is still waiting to resume after you merge that device's backup into another."] },
   { v: "sip-app-24", items: ["Data tab: \"Merge into this device\". Choose or paste a backup from another device and it adds what is new (reviews made on either device are kept, new pieces, the waiting list) without replacing anything. You see what will change first."] },
   { v: "sip-app-23", items: ["Groundwork for syncing devices: every piece now carries a permanent id, saved with it and kept in backups. Nothing changes on screen."] },
@@ -4433,7 +4434,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-25\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-26\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -4445,7 +4446,7 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-25</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-26</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -4458,6 +4459,11 @@ function viewData() {
     <label class="field" for="importbox">Restore<small>Choose a backup file, or paste its text here.</small><input id="importfile" type="file" accept=".json,application/json,.txt"><textarea id="importbox" rows="3" placeholder="Paste backup text">${esc(S.importText)}</textarea></label>
     <div class="row"><button class="btn primary" data-act="merge">Merge into this device</button><button class="btn" data-act="import">Restore from backup</button></div>
     ${S.importMsg ? `<div class="small">${esc(S.importMsg)}</div>` : ""}</section>
+  <section class="card"><h2>Sync with Google Drive</h2>
+    <p class="muted" style="margin:0">Keeps one copy of your practice in a hidden app folder in your own Google Drive. Sync now adds what is on Drive to this device (reviews from both are kept), then saves the combined copy back. Do it before you start on another device and when you finish.</p>
+    <label class="field" for="driveid">Google client ID<small>Entered once on each device.</small><input id="driveid" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(driveClientId())}" placeholder="…apps.googleusercontent.com"></label>
+    <div class="row"><button class="btn primary" data-act="sync" ${S.syncBusy ? "disabled" : ""}>${S.syncBusy ? "Syncing…" : "Sync now"}</button><span class="small muted">${esc(driveLastLine())}</span></div>
+    ${S.syncMsg ? `<div class="small" id="syncmsg">${esc(S.syncMsg)}</div>` : ""}</section>
   <section class="card"><h2>Look</h2><div class="chips" role="group" aria-label="Theme">${["system", "light", "dark"].map(t => `<button data-act="theme" data-t="${t}" aria-pressed="${themePref() === t}">${t}</button>`).join("")}</div>
     <div class="small muted">Keyboard: <span class="kbd">P</span> pass, <span class="kbd">F</span> fail, <span class="kbd">N</span> next.</div></section>
   <section class="card flat"><h3>Tip for the music stand</h3><p class="muted small" style="margin:0">Put SIP in split screen next to your score and metronome. The practice screen is one column, so a narrow panel works. Add it to the home screen to open it full screen, and it keeps working offline.</p></section>`;
@@ -4517,6 +4523,62 @@ async function applyMerge(plan) {
   S.settings = plan.result.settings;
   await persist();
   await loadAll();      // reload from storage: the store renumbers any ids that now collide
+}
+
+
+/* ---------------------------------------------------------------- Google Drive sync
+   One file, sip-sync.json, in the hidden app folder (scope drive.appdata) holds a normal backup. Sync = read it, merge it
+   into this device (nothing here is removed), then write the combined copy back. If two devices write at once the later
+   write wins on Drive, but each device still has its own copy, so the next sync brings the missing reviews back. */
+const DRIVE_FILE = "sip-sync.json", DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
+const lsGet = k => { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* optional */ } };
+const driveClientId = () => lsGet("sip-drive-cid");
+function driveLastLine() { const t = lsGet("sip-drive-last"); return t ? "Last synced " + new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Not synced yet"; }
+const DRIVE = {                         // replaced in tests
+  tok: null, exp: 0, tc: null,
+  loadScript() {
+    if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
+    return new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = "https://accounts.google.com/gsi/client"; sc.onload = () => ok(); sc.onerror = () => no(new Error("Could not reach Google sign-in. Check the connection.")); document.head.appendChild(sc); });
+  },
+  async token() {                       // must start from a tap: the sign-in pop-up needs one
+    if (this.tok && Date.now() < this.exp - 60000) return this.tok;
+    await this.loadScript();
+    const cid = driveClientId(); if (!cid) throw new Error("Enter the Google client ID first.");
+    return new Promise((ok, no) => {
+      this.tc = google.accounts.oauth2.initTokenClient({ client_id: cid, scope: DRIVE_SCOPE,
+        callback: r => { if (r.error) return no(new Error("Google sign-in did not finish (" + r.error + ")")); this.tok = r.access_token; this.exp = Date.now() + (+r.expires_in || 3600) * 1000; lsSet("sip-drive-in", "1"); ok(this.tok); },
+        error_callback: e => no(new Error("Google sign-in did not finish" + (e && e.type ? " (" + e.type + ")" : ""))) });
+      this.tc.requestAccessToken({ prompt: lsGet("sip-drive-in") ? "" : "consent" });
+    });
+  },
+  async api(url, opt = {}) { const r = await fetch(url, { ...opt, headers: { Authorization: "Bearer " + this.tok, ...(opt.headers || {}) } }); if (!r.ok) throw new Error("Google Drive said " + r.status); return r; },
+  async list() { const r = await this.api(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${encodeURIComponent(`name='${DRIVE_FILE}' and trashed=false`)}&orderBy=modifiedTime desc&fields=files(id,modifiedTime)`); return (await r.json()).files; },
+  async read(id) { return (await this.api(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`)).text(); },
+  async write(id, text) {
+    const b = "sipb" + Date.now(), meta = id ? {} : { name: DRIVE_FILE, parents: ["appDataFolder"] };
+    const body = `--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${text}\r\n--${b}--`;
+    const url = id ? `https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=multipart&fields=id` : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id";
+    await this.api(url, { method: id ? "PATCH" : "POST", headers: { "Content-Type": "multipart/related; boundary=" + b }, body });
+  }
+};
+async function syncNow() {
+  if (S.syncBusy) return;
+  if (live() || S.cur) { S.syncMsg = "Finish or end the practice session first, then sync."; render(); return; }
+  S.syncBusy = true; S.syncMsg = ""; render();
+  try {
+    await DRIVE.token();
+    const files = await DRIVE.list(); let added = 0, pieces = 0, wish = 0;
+    for (const f of files) {                       // normally one; several only if two devices created it at once
+      const plan = await planMerge(await DRIVE.read(f.id));
+      if (!plan.same) { added += plan.result.report.merged.reduce((n, m) => n + m.addedToLocal, 0); pieces += plan.result.report.copied.length; wish += plan.result.report.wishlistAdded; await applyMerge(plan); }
+    }
+    await DRIVE.write(files.length ? files[0].id : null, await buildBackup());
+    lsSet("sip-drive-last", new Date().toISOString());
+    const bits = []; if (added) bits.push(`${added} review${added === 1 ? "" : "s"} added here`); if (pieces) bits.push(`${pieces} new piece${pieces === 1 ? "" : "s"}`); if (wish) bits.push(`${wish} on the waiting list`);
+    S.syncMsg = "Synced. " + (bits.length ? bits.join(", ") + "." : "Nothing new from Drive; your copy is saved there.");
+  } catch (e) { S.syncMsg = "Sync did not finish: " + e.message + " Nothing was lost."; }
+  S.syncBusy = false; render();
 }
 
 /* ------------------------------------------------------------------ sheet */
@@ -4790,6 +4852,7 @@ function onAct(act, el) {
       }).catch(e => { S.importMsg = e.message; render(); });
       break;
     }
+    case "sync": syncNow(); break;
     case "theme": try { localStorage.setItem("sip-theme", el.dataset.t); } catch (e) { /* optional */ } applyTheme(); render(); break;
     case "persistent":
       (navigator.storage && navigator.storage.persist ? navigator.storage.persist() : Promise.resolve(false)).then(ok => { const m = $("persistmsg"); if (m) m.textContent = ok ? "Done. The browser will keep it." : "The browser did not agree. Back up now and then."; });
@@ -4829,6 +4892,7 @@ document.addEventListener("input", ev => {
   else if (t.id === "metvol") { MET.cfg.vol = Number(t.value); metSave(); }
 });
 document.addEventListener("change", ev => {
+  if (ev.target.id === "driveid") { lsSet("sip-drive-cid", ev.target.value.trim()); return; }
   if (ev.target.id === "importfile" && ev.target.files && ev.target.files[0]) {
     const rd = new FileReader();
     rd.onload = () => { S.importText = String(rd.result); render(); };
@@ -4891,7 +4955,7 @@ async function loadAll() {
       navigator.serviceWorker.addEventListener("controllerchange", () => { if (!had) return; if (live()) toast("A new version is ready. It loads the next time you open the app."); else location.reload(); });
     }
   } catch (e) { /* optional */ }
-  window.__sip = { S, core, sess, pc, sto, MET, render, persist }; // for tests
+  window.__sip = { S, core, sess, pc, sto, MET, render, persist, DRIVE }; // for tests
 })();
 </script>
 
