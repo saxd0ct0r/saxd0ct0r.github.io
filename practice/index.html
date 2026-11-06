@@ -32,6 +32,10 @@
   --fail-soft: #f6dcd6;
   --warn: #9a5b00;
   --warn-soft: #f6e6c6;
+  --orange: #b5500a;
+  --bar-amber: #e6b012;
+  --bar-orange: #e0620f;
+  --orange-soft: #f8dcc4;
   --font-ui: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --radius: 14px;
@@ -41,7 +45,7 @@
   :root:not([data-theme="light"]) {
     --bg: #101513; --surface: #182120; --surface-2: #212c29; --fg: #e8eeea; --muted: #97a59e; --line: #2b3834;
     --accent: #52c2b3; --accent-fg: #06201c; --accent-soft: #17332f;
-    --pass: #5fd08a; --pass-soft: #163423; --fail: #ff8a74; --fail-soft: #3b1d17; --warn: #f0b04a; --warn-soft: #36290f;
+    --pass: #5fd08a; --pass-soft: #163423; --fail: #ff8a74; --fail-soft: #3b1d17; --warn: #f0b04a; --warn-soft: #36290f; --orange: #f08a4a; --orange-soft: #3d2312; --bar-amber: #f0c63a; --bar-orange: #f0782a;
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
     color-scheme: dark;
   }
@@ -49,7 +53,7 @@
 :root[data-theme="dark"] {
   --bg: #101513; --surface: #182120; --surface-2: #212c29; --fg: #e8eeea; --muted: #97a59e; --line: #2b3834;
   --accent: #52c2b3; --accent-fg: #06201c; --accent-soft: #17332f;
-  --pass: #5fd08a; --pass-soft: #163423; --fail: #ff8a74; --fail-soft: #3b1d17; --warn: #f0b04a; --warn-soft: #36290f;
+  --pass: #5fd08a; --pass-soft: #163423; --fail: #ff8a74; --fail-soft: #3b1d17; --warn: #f0b04a; --warn-soft: #36290f; --orange: #f08a4a; --orange-soft: #3d2312; --bar-amber: #f0c63a; --bar-orange: #f0782a;
   --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
   color-scheme: dark;
 }
@@ -156,6 +160,16 @@ label.field small { font-weight: 400; color: var(--muted); }
 .tag.due { background: var(--warn-soft); color: var(--warn); }
 .tag.retry { background: var(--fail-soft); color: var(--fail); }
 .tag.ok { background: var(--pass-soft); color: var(--pass); }
+.tag.t-green { background: var(--pass-soft); color: var(--pass); }
+.tag.t-amber { background: var(--warn-soft); color: var(--warn); }
+.tag.t-orange { background: var(--orange-soft); color: var(--orange); }
+.tag.t-red { background: var(--fail-soft); color: var(--fail); }
+.tag.t-untried { background: var(--surface-2); color: var(--muted); }
+.rbar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--surface-2); margin: 8px 0 4px; }
+.rbar span { display: block; height: 100%; }
+.rbar .t-green { background: var(--pass); } .rbar .t-amber { background: var(--bar-amber); } .rbar .t-orange { background: var(--bar-orange); } .rbar .t-red { background: var(--fail); } .rbar .t-untried { background: var(--line); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .82rem; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
 .tree .item { padding-left: calc(var(--depth, 0) * 18px); }
 
 /* sheet */
@@ -3081,6 +3095,8 @@ __mods["./sip-event"] = function (module, exports, require) {
 
 "use strict";
 
+const core = require("./sip-core");
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULTS = { readyDays: 14, programRunDays: 7, target: 0.9 };
 const MAX_DAYS = 365;
@@ -3173,7 +3189,48 @@ function syncPieceEvents(events, pieces, day) {
   }
 }
 
-module.exports = { DEFAULTS, normalizeEvent, anchorOf, timeline, phaseOn, readyBy, daysUntil, addDaysStr, eventsFromPieces, syncPieceEvents, newUid };
+// ---------------------------------------------------------------- readiness (the dashboard)
+// Tempo relative to the goal is the main signal, in steps (16 steps = an octave of tempo, so +4 is about 19% above goal):
+//   green  +4 or more     reserve capacity, performance-ready
+//   amber  -1 to +3       close
+//   orange -4 to -2       behind
+//   red    -5 or less     far off
+// A section that has never been worked on has no step yet and is "untried", which ranks below red.
+// The second signal is memory: how likely the section is to be remembered on the ready-by date, from its review state.
+const TIERS = ["untried", "red", "orange", "amber", "green"];                       // worst first
+const TIER_LABEL = { green: "Ready", amber: "Close", orange: "Behind", red: "Far off", untried: "Not tried" };
+function tierOfStep(step) { return step >= 4 ? "green" : step >= -1 ? "amber" : step >= -4 ? "orange" : "red"; }
+const leavesOf = node => node.children.length === 0 ? [node] : node.children.flatMap(leavesOf);
+const worseTier = (a, b) => TIERS.indexOf(a) <= TIERS.indexOf(b) ? a : b;
+
+// How ready each piece of the event, and the program as a whole, is on `day`. Only the finest sections (leaves) count,
+// weighted by their measures, so a one-bar hotspot does not weigh as much as a long section.
+function readiness(ev, pieces, day) {
+  const today = String(day).slice(0, 10), by = readyBy(ev), target = by > today ? by : today;     // memory is judged on the ready-by date, or today once it has passed
+  const empty = () => ({ green: 0, amber: 0, orange: 0, red: 0, untried: 0 });
+  const total = empty(); let totalMeasures = 0;
+  const rows = [];
+  for (const uid of ev.setList) {
+    const piece = pieces.find(p => p.uid === uid); if (!piece) continue;
+    const counts = empty(), sections = empty(); let measures = 0, worst = null, lowest = null, atRisk = 0, tier = "green";
+    for (const n of leavesOf(piece.root)) {
+      const len = n.end - n.start + 1, t = n.fsrs === null ? "untried" : tierOfStep(n.step);
+      counts[t] += len; sections[t]++; measures += len; total[t] += len; totalMeasures += len; tier = worseTier(tier, t);
+      if (!worst || TIERS.indexOf(t) < TIERS.indexOf(worst.tier) || (t === worst.tier && n.step < worst.step)) worst = { id: n.id, start: n.start, end: n.end, step: n.step, tier: t };
+      if (n.fsrs !== null) {
+        const r = core.retrievability(Math.max(0, core.daysBetween(n.fsrs.lastReview, new Date(target + "T00:00:00Z"))), n.fsrs.stability);
+        if (lowest === null || r < lowest) lowest = r;
+        if (r < ev.target) atRisk++;
+      }
+    }
+    rows.push({ uid, label: piece.label, tier, counts, sections, measures, worst, memory: { lowest, atRisk } });
+  }
+  rows.sort((a, b) => TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier) || a.label.localeCompare(b.label));
+  const program = { counts: total, measures: totalMeasures, readyShare: totalMeasures ? total.green / totalMeasures : 0, tier: rows.reduce((t, r) => worseTier(t, r.tier), "green"), missing: ev.setList.length - rows.length };
+  return { day: today, readyBy: by, daysToReadyBy: daysBetween(today, by), phase: phaseOn(ev, today), memoryDate: target, pieces: rows, program };
+}
+
+module.exports = { TIERS, TIER_LABEL, tierOfStep, readiness, DEFAULTS, normalizeEvent, anchorOf, timeline, phaseOn, readyBy, daysUntil, addDaysStr, eventsFromPieces, syncPieceEvents, newUid };
 
 };
 __mods["./sip-store"] = function (module, exports, require) {
@@ -3853,26 +3910,47 @@ const now = () => Date.now();
 
 /* ---------------------------------------------------------------- storage */
 function idbAdapter(dbName) {
+  /* The connection is kept open between calls, but a phone's browser may close it behind our back (the app was in the
+     background, memory ran short: "The database connection is closing"). So a closed connection is forgotten as soon
+     as it says so, and a call that fails because of one is tried again on a fresh connection. */
   let dbp = null;
   const open = () => dbp || (dbp = new Promise((res, rej) => {
     const rq = indexedDB.open(dbName, 1);
     rq.onupgradeneeded = () => rq.result.createObjectStore("files");
-    rq.onsuccess = () => res(rq.result);
-    rq.onerror = () => rej(rq.error);
+    rq.onsuccess = () => {
+      const db = rq.result;
+      db.onclose = () => { if (dbp && dbp.__db === db) dbp = null; };
+      db.onversionchange = () => { db.close(); if (dbp && dbp.__db === db) dbp = null; };
+      if (dbp) dbp.__db = db;
+      res(db);
+    };
+    rq.onerror = () => { dbp = null; rej(rq.error); };
+    rq.onblocked = () => { dbp = null; rej(new Error("storage is busy in another tab")); };
   }));
-  const run = async (mode, fn) => {
+  const closedError = e => e && (e.name === "InvalidStateError" || e.name === "TransactionInactiveError" || /closing|closed/i.test(String(e.message)));
+  const once = async (mode, fn) => {
     const db = await open();
     return new Promise((res, rej) => {
-      const tx = db.transaction("files", mode);
-      let out;
-      try { out = fn(tx.objectStore("files")); } catch (e) { rej(e); return; }
+      let tx, out;
+      try { tx = db.transaction("files", mode); out = fn(tx.objectStore("files")); } catch (e) { rej(e); return; }
       tx.oncomplete = () => res(out && "result" in out ? out.result : undefined);
       tx.onerror = () => rej(tx.error);
       tx.onabort = () => rej(tx.error || new Error("storage write was aborted"));
     });
   };
+  const run = async (mode, fn) => {
+    for (let attempt = 0; ; attempt++) {
+      try { return await once(mode, fn); }
+      catch (e) {
+        if (attempt >= 2 || !closedError(e)) throw e;
+        const old = dbp; dbp = null;                          // forget the dead connection and open a new one
+        try { const d = old && await old; if (d) d.close(); } catch (x) { /* already gone */ }
+      }
+    }
+  };
   return {
     describe: () => "this device (IndexedDB)",
+    async dropConnectionForTest() { const d = await open(); d.close(); },   // what a phone browser sometimes does by itself
     async get(key) { sto.assertValidKey(key); const v = await run("readonly", s => s.get(key)); return typeof v === "string" ? v : null; },
     async put(key, text) { sto.assertValidKey(key); if (typeof text !== "string") throw new Error("put needs text"); await run("readwrite", s => s.put(text, key)); },
     async delete(key) { sto.assertValidKey(key); await run("readwrite", s => s.delete(key)); },
@@ -3904,7 +3982,7 @@ const S = {
   cur: null, result: null, skip: new Set(),
   view: "practice", sheet: null, minutes: 15,
   form: { label: "", start: "1", end: "", tempo: "", inst: [] }, formError: "", picked: loadPicked(),
-  saveError: null, exportText: "", importText: "", importMsg: "", asideNote: "", syncMsg: "", syncBusy: false
+  saveError: null, exportText: "", importText: "", importMsg: "", asideNote: "", syncMsg: "", syncBusy: false, readyUid: null
 };
 const dayDate = () => core.studyDayOf(new Date(), S.settings);
 const dayStr = () => dayDate().toISOString().slice(0, 10);
@@ -4342,7 +4420,7 @@ const ICON = {
 };
 function paintTabs() {
   const items = [["practice", "Practice"], ["queue", "Queue"], ["pieces", "Pieces"], ["data", "Data"]];
-  $("tabs").innerHTML = items.map(([k, l]) => `<button data-act="view" data-v="${k}" aria-current="${S.view === k}">${ICON[k]}<span>${l}</span></button>`).join("");
+  $("tabs").innerHTML = items.map(([k, l]) => `<button data-act="view" data-v="${k}" aria-current="${S.view === k || (k === "pieces" && S.view === "readiness")}">${ICON[k]}<span>${l}</span></button>`).join("");
 }
 function timerChip() {
   if (!S.session) return "";
@@ -4360,7 +4438,7 @@ function render() {
   if (!S.ready) return;
   MET.shown = false;
   paintTabs(); paintTop();
-  const v = { practice: viewPractice, queue: viewQueue, pieces: viewPieces, data: viewData }[S.view];
+  const v = { practice: viewPractice, queue: viewQueue, pieces: viewPieces, data: viewData, readiness: viewReadiness }[S.view];
   $("main").innerHTML = v();
   $("overlay").innerHTML = S.sheet ? sheetHtml() : "";
   trialClock();
@@ -4386,9 +4464,11 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-28";
+const APP_VERSION = "sip-app-30";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-30", items: ["Readiness dashboard for a performance (the Readiness button on a performance, or on the Practice banner). Every section is coloured by how far its tempo has come: green at +4 steps or more, amber −1 to +3, orange −4 to −2, red below that, grey if not tried yet. It shows the whole program by measures, each piece worst-first with its weakest section, and how well each will be remembered on the ready-by date."] },
+  { v: "sip-app-29", items: ["Fixed \"The database connection is closing\" when making a backup or saving after the app had been in the background on a phone. The app now opens a fresh connection and tries again."] },
   { v: "sip-app-28", items: ["Performances grow into plans. A performance can have a jury date, and the plan works back from the first date that matters: learn and fix, then run-throughs of single pieces, then of the whole program. Performances now sync between devices, and removing one on a device removes it everywhere. (Dashboard and run-through practice come next.)"] },
   { v: "sip-app-28", items: ["Performances: on the Pieces tab, name a performance, set its date and choose its pieces. Until then, those pieces get their hotspot search first, then hotspots, then reviews that are due, and nothing is scheduled to come due after the date. They also stop using up intake slots."] },
   { v: "sip-app-27", items: ["Sync: a piece you remove stays removed on your other devices after syncing (unless it was practised since). The Google client ID box cleans up pasted links and spaces and warns if it looks wrong. After you practise, the Practice screen reminds you to sync."] },
@@ -4592,14 +4672,49 @@ function eventsCard() {
     <p class="muted" style="margin:0">Name a performance, give its date (and a jury date if there is one), and choose its pieces. The plan works back from the first date that matters: learn and fix, then run-throughs. Until the performance, those pieces' hotspot search comes first, then hotspots, then reviews that are due, and nothing is scheduled to come due after the date. These pieces do not use up a slot.</p>
     ${list.map((e, i) => { const left = evMod.daysUntil(e.date, today), ps = eventPieces(e), todo = ps.filter(p => p.root.fsrs === null).length, ph = evMod.phaseOn(e, today);
       return `<div class="item"><div class="body"><div class="t">${esc(e.name)} · ${esc(e.date)}</div><div class="s"><span class="tag ${left < 0 ? "" : "due"}">${daysLeftText(left)}</span>${esc(ps.map(p => p.label).join(", "))}${left >= 0 && todo ? ` · ${todo} still to search for hotspots` : ""}</div>
-      ${left >= 0 ? `<div class="s">${esc(PHASE_TEXT[ph])}${e.jury ? ` · jury ${esc(e.jury)} (${daysLeftText(evMod.daysUntil(e.jury, today))})` : ""} · ready by ${esc(evMod.readyBy(e))}</div>` : ""}</div><button class="btn small ghost" data-act="event-edit" data-i="${i}">Edit</button></div>`; }).join("")}
+      ${left >= 0 ? `<div class="s">${esc(PHASE_TEXT[ph])}${e.jury ? ` · jury ${esc(e.jury)} (${daysLeftText(evMod.daysUntil(e.jury, today))})` : ""} · ready by ${esc(evMod.readyBy(e))}</div>` : ""}</div><div class="col" style="display:flex;flex-direction:column;gap:6px"><button class="btn small" data-act="readiness" data-uid="${esc(e.uid)}">Readiness</button><button class="btn small ghost" data-act="event-edit" data-i="${i}">Edit</button></div></div>`; }).join("")}
     <div class="row"><button class="btn" data-act="event-add">Add a performance</button></div></section>`;
+}
+
+const TIER_ORDER = ["green", "amber", "orange", "red", "untried"];
+const TIER_RANGE = { green: "+4 or more", amber: "−1 to +3", orange: "−4 to −2", red: "−5 or less", untried: "no step yet" };
+const pctText = n => `${n >= 0 ? "+" : "−"}${Math.abs(Math.round(core.stepToPercent(n)))}%`;
+function tierBar(counts, total, label) {
+  if (!total) return "";
+  return `<div class="rbar" role="img" aria-label="${esc(label)}">${TIER_ORDER.filter(t => counts[t]).map(t => `<span class="t-${t}" style="width:${(counts[t] / total * 100).toFixed(2)}%"></span>`).join("")}</div>`;
+}
+function tierLegend(counts) {
+  return `<div class="legend">${TIER_ORDER.map(t => `<span><i class="rbar-${t}" style="background:var(${({ green: "--pass", amber: "--bar-amber", orange: "--bar-orange", red: "--fail", untried: "--line" })[t]})"></i>${evMod.TIER_LABEL[t]} ${counts[t]}</span>`).join("")}</div>`;
+}
+function viewReadiness() {
+  const e = (S.settings.events || []).find(x => x.uid === S.readyUid);
+  if (!e) return `<section class="card"><h2>Readiness</h2><div class="empty">That performance is not here any more.</div><button class="btn" data-act="view" data-v="pieces">Back to Pieces</button></section>`;
+  const r = evMod.readiness(e, S.pieces, dayStr()), pg = r.program, pct = Math.round(pg.readyShare * 100);
+  const byText = r.daysToReadyBy > 0 ? `ready by ${esc(r.readyBy)} (${daysLeftText(r.daysToReadyBy)})` : r.daysToReadyBy === 0 ? `ready by today` : `ready-by date was ${esc(r.readyBy)}`;
+  const head = `<section class="card"><div class="row"><button class="btn small ghost" data-act="view" data-v="pieces">‹ Pieces</button><span class="grow"></span></div>
+    <div class="eyebrow">Readiness</div><h1>${esc(e.name)}</h1>
+    <div class="small muted">Performance ${daysLeftText(evMod.daysUntil(e.date, dayStr()))}${e.jury ? ` · jury ${esc(e.jury)} (${daysLeftText(evMod.daysUntil(e.jury, dayStr()))})` : ""} · ${esc(PHASE_TEXT[r.phase])} · ${byText}</div></section>`;
+  if (!r.pieces.length) return head + `<section class="card"><div class="empty">This performance has no pieces yet. Edit it to choose some.</div></section>`;
+  const prog = `<section class="card"><h2>The whole program</h2>
+    <div class="num" style="font-size:2rem;font-weight:700" id="ready-pct">${pct}%</div><div class="small muted">of the program (by measures) is at Ready, which is tempo +4 steps or more</div>
+    ${tierBar(pg.counts, pg.measures, `Program by measures: ${TIER_ORDER.map(t => evMod.TIER_LABEL[t] + " " + pg.counts[t]).join(", ")}`)}${tierLegend(pg.counts)}
+    <div class="small muted" style="margin-top:6px">Measures in each tier. ${TIER_ORDER.slice(0, 4).map(t => `${evMod.TIER_LABEL[t]}: ${TIER_RANGE[t]}`).join(" · ")}.</div>
+    ${pg.missing ? `<div class="small muted">${pg.missing} piece${pg.missing === 1 ? "" : "s"} on the set list ${pg.missing === 1 ? "is" : "are"} no longer in the app.</div>` : ""}</section>`;
+  const rows = r.pieces.map(p => {
+    const w = p.worst, mem = p.memory;
+    const weak = w.tier === "green" ? `Every section is at Ready. Lowest: mm. ${w.start}–${w.end} at step +${w.step}` : w.tier === "untried" ? `Not tried yet: ${p.sections.untried} section${p.sections.untried === 1 ? "" : "s"}` : `Weakest: mm. ${w.start}–${w.end} at step ${w.step > 0 ? "+" : ""}${w.step} (${pctText(w.step)} of goal tempo)`;
+    const memText = mem.lowest === null ? "Memory: no review yet" : `Memory by ${esc(r.memoryDate)}: ${mem.atRisk ? `${mem.atRisk} section${mem.atRisk === 1 ? "" : "s"} below ${Math.round(e.target * 100)}%` : `all at least ${Math.round(e.target * 100)}%`}, lowest ${Math.round(mem.lowest * 100)}%`;
+    return `<section class="card" data-piece="${esc(p.label)}"><div class="row"><h2 class="grow">${esc(p.label)}</h2><span class="tag t-${p.tier}">${evMod.TIER_LABEL[p.tier]}</span></div>
+      ${tierBar(p.counts, p.measures, `${p.label} by measures: ${TIER_ORDER.map(t => evMod.TIER_LABEL[t] + " " + p.counts[t]).join(", ")}`)}
+      <div class="small">${esc(weak)}</div><div class="small muted">${memText}</div></section>`;
+  }).join("");
+  return head + prog + rows;
 }
 function eventBanner() {
   const today = dayStr(), e = eventList().find(x => evMod.daysUntil(x.date, today) >= 0);
   if (!e) return "";
   const todo = eventPieces(e).filter(p => p.root.fsrs === null).length, ph = evMod.phaseOn(e, today);
-  return `<div class="banner"><span class="grow"><b>${esc(e.name)}</b> ${daysLeftText(evMod.daysUntil(e.date, today))}. ${esc(PHASE_TEXT[ph])}; ready by ${esc(evMod.readyBy(e))}.${todo ? ` ${todo} piece${todo === 1 ? "" : "s"} still to search for hotspots, and that comes first.` : " Hotspots and reviews come first."}</span></div>`;
+  return `<div class="banner"><span class="grow"><b>${esc(e.name)}</b> ${daysLeftText(evMod.daysUntil(e.date, today))}. ${esc(PHASE_TEXT[ph])}; ready by ${esc(evMod.readyBy(e))}.${todo ? ` ${todo} piece${todo === 1 ? "" : "s"} still to search for hotspots, and that comes first.` : " Hotspots and reviews come first."}</span><button class="btn small" data-act="readiness" data-uid="${esc(e.uid)}">Readiness</button></div>`;
 }
 function eventSheet(sh) {
   const e = (() => { try { return evMod.normalizeEvent({ name: sh.name || "x", date: sh.date, jury: sh.jury, readyDays: Number(sh.ready), programRunDays: Number(sh.prog), setList: [] }); } catch (err) { return null; } })();
@@ -4729,7 +4844,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-28\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-30\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -4741,7 +4856,7 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-28</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-30</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -5159,6 +5274,7 @@ function onAct(act, el) {
     case "event-edit": { const e = eventList()[Number(el.dataset.i)]; S.sheet = { kind: "event", orig: e.uid, name: e.name, date: e.date, jury: e.jury || "", ready: String(e.readyDays), prog: String(e.programRunDays), picks: e.setList.slice(), err: "" }; render(); break; }
     case "ev-toggle": { const sh = S.sheet; eventRead(sh); const u = el.dataset.uid; sh.picks = sh.picks.includes(u) ? sh.picks.filter(x => x !== u) : sh.picks.concat(u); render(); break; }
     case "event-remove": removeEvent(S.sheet); break;
+    case "readiness": S.readyUid = el.dataset.uid; S.view = "readiness"; S.sheet = null; render(); window.scrollTo(0, 0); break;
     case "sync": syncNow(); break;
     case "sync-go": S.view = "data"; S.sheet = null; window.scrollTo(0, 0); syncNow(); break;
     case "sync-later": lsSet("sip-drive-snooze", String(Date.now() + 4 * 3600000)); render(); break;
