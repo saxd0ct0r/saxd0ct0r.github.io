@@ -17,13 +17,13 @@
 /* Layout: one column that works as a narrow panel beside sheet music (split screen), a phone, or a laptop.
    The practice screen is built to be read at arm's length: tempo and the two answer buttons dominate. */
 :root {
-  --bg: #eff1ee;        /* paper-grey with a green bias */
+  --bg: #eff1ee;        /* paper-gray with a green bias */
   --surface: #ffffff;
   --surface-2: #e6eae6;
   --fg: #19201d;
   --muted: #5a6761;
   --line: #d4dad5;
-  --accent: #0d6a62;    /* the one brand colour: deep teal */
+  --accent: #0d6a62;    /* the one brand color: deep teal */
   --accent-fg: #ffffff;
   --accent-soft: #d8ece8;
   --pass: #1b7a45;
@@ -483,7 +483,7 @@ module.exports.collectInstruments = collectInstruments;
 // hotspot node with none falls back to the note on the node it was split
 // out of, which is where the Anki importer and `decompose <n> <note>` put
 // it — so a reason recorded either place shows up where the hotspot is
-// actually practised. No new field: hotspotNote already exists on every node.
+// actually practiced. No new field: hotspotNote already exists on every node.
 function effectiveNote(root, node) {
   if (node.hotspotNote) return node.hotspotNote;
   if (node.kind === "hotspot" && node.parentId !== null) {
@@ -2266,7 +2266,7 @@ function editPiece(piece, { label, start, end, goalTempo } = {}) {
 }
 
 // Instruments (see sip-core): the list for the whole piece, or an override on one node.
-// Pass [] (or "") to clear. Returns the stored, normalised list.
+// Pass [] (or "") to clear. Returns the stored, normalized list.
 function setPieceInstruments(piece, list) {
   piece.instruments = core.normalizeInstruments(list);
   return piece.instruments;
@@ -2277,8 +2277,8 @@ function setNodeInstruments(node, list) {
   return clean;
 }
 
-// How many clicks a metronome plays per beat while this section is practised: 1 (the default, nothing stored), 2 or 3.
-// It belongs to the section alone; it is not inherited, so a slow passage can be subdivided without touching its neighbours.
+// How many clicks a metronome plays per beat while this section is practiced: 1 (the default, nothing stored), 2 or 3.
+// It belongs to the section alone; it is not inherited, so a slow passage can be subdivided without touching its neighbors.
 function setNodeSubdivision(node, n) {
   if (n === 1 || n === undefined || n === null) { delete node.subdivision; return 1; }
   if (n !== 2 && n !== 3) throw new Error("Subdivision must be 1, 2 or 3.");
@@ -2287,7 +2287,7 @@ function setNodeSubdivision(node, n) {
 const subdivisionOf = node => (node.subdivision === 2 || node.subdivision === 3 ? node.subdivision : 1);
 
 // ---------------------------------------------------------------- intake: open pieces, slots and the waiting list
-// A piece is "open" until every one of its sections has been practised and graded once. Open pieces take slots.
+// A piece is "open" until every one of its sections has been practiced and graded once. Open pieces take slots.
 // The limit is guidance: slots === 0 means no limit, and the app lets the player go over it after a confirmation.
 const DEFAULT_INTAKE_SLOTS = 5;
 function isOpenPiece(piece) { return core.flattenTree(piece.root).some(n => n.fsrs === null); }
@@ -2752,9 +2752,9 @@ function buildQueue(pieces, studyDay, { excludeIds = [], instruments = [] } = {}
   const waitingDue = [];
   const waitingNew = [];
   // Pieces being prepared for a performance that has not happened yet. Their work goes ahead of everything else, in this
-  // order: (1) the piece as a whole, never practised, so its hotspot search happens first; (2) hotspots; (3) anything
+  // order: (1) the piece as a whole, never practiced, so its hotspot search happens first; (2) hotspots; (3) anything
   // else that is due, including reviews pulled in so that nothing is left to come due after the date (a node waits no
-  // longer than the day before the performance); (4) sections never practised.
+  // longer than the day before the performance); (4) sections never practiced.
   const ev = { find: [], hot: [], due: [], fresh: [] };
   const dayStr = toDayString(studyDay);
   pieces.forEach(piece => {
@@ -2797,7 +2797,7 @@ function buildQueue(pieces, studyDay, { excludeIds = [], instruments = [] } = {}
     return dates.flatMap(d => interleave(items.filter(i => i.at === d).map(i => i.list)));
   };
   const performance = [...lane(ev.find), ...lane(ev.hot), ...lane(ev.due), ...lane(ev.fresh)];
-  // Reviews that have come due go before anything never practised, across all pieces.
+  // Reviews that have come due go before anything never practiced, across all pieces.
   return [...interrupted, ...performance, ...interleave(waitingDue), ...interleave(waitingNew)];
 }
 
@@ -4083,9 +4083,9 @@ function startSession(minutes, { instruments, first } = {}) {
   requestWake();
   pickNext(first);
 }
-// "Practise this piece": go straight to it. With no session running, one starts for this piece's instruments (the
+// "Practice this piece": go straight to it. With no session running, one starts for this piece's instruments (the
 // start screen's choice is left alone); with one running, its instruments are offered if they are not included.
-function practisePiece(pi) {
+function practicePiece(pi) {
   const piece = S.pieces[pi];
   if (!piece) return;
   if (live() && !active()) { toast("The session is wrapping up."); return; }
@@ -4223,7 +4223,7 @@ function afterSessionChange() {
   persist(); render(); window.scrollTo(0, 0);
 }
 
-/* wake lock: keep the tablet awake while practising */
+/* wake lock: keep the tablet awake while practicing */
 let wake = null;
 async function requestWake() { try { if (navigator.wakeLock && live() && document.visibilityState === "visible") wake = await navigator.wakeLock.request("screen"); } catch (e) { /* optional */ } }
 function releaseWake() { try { if (wake) wake.release(); } catch (e) { /* optional */ } wake = null; }
@@ -4403,7 +4403,7 @@ function syncNudge() {
   const last = lsGet("sip-drive-last"); if (!last || !hasHistory()) return "";        // only for devices that have synced before
   if (Date.now() < Number(lsGet("sip-drive-snooze") || 0)) return "";
   if (reviewCount() <= Number(lsGet("sip-drive-count") || 0)) return "";                // nothing new since the last sync
-  return `<div class="banner"><span class="grow">You have practised since you last synced with Drive.</span><button class="btn small primary" data-act="sync-go">Sync</button><button class="btn small" data-act="sync-later">Later</button></div>`;
+  return `<div class="banner"><span class="grow">You have practiced since you last synced with Drive.</span><button class="btn small primary" data-act="sync-go">Sync</button><button class="btn small" data-act="sync-later">Later</button></div>`;
 }
 function backupNudge() {
   if (!hasHistory()) return "";
@@ -4466,15 +4466,16 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-31";
+const APP_VERSION = "sip-app-32";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-32", items: ["Wording is American English throughout (practice, color)."] },
   { v: "sip-app-31", items: ["Fixed: on a phone the Add a performance sheet ran off the top of the screen, so the name field could not be reached. Every pop-up sheet now scrolls inside itself, and its Save and Cancel buttons stay in view."] },
-  { v: "sip-app-30", items: ["Readiness dashboard for a performance (the Readiness button on a performance, or on the Practice banner). Every section is coloured by how far its tempo has come: green at +4 steps or more, amber −1 to +3, orange −4 to −2, red below that, grey if not tried yet. It shows the whole program by measures, each piece worst-first with its weakest section, and how well each will be remembered on the ready-by date."] },
+  { v: "sip-app-30", items: ["Readiness dashboard for a performance (the Readiness button on a performance, or on the Practice banner). Every section is colored by how far its tempo has come: green at +4 steps or more, amber −1 to +3, orange −4 to −2, red below that, gray if not tried yet. It shows the whole program by measures, each piece worst-first with its weakest section, and how well each will be remembered on the ready-by date."] },
   { v: "sip-app-29", items: ["Fixed \"The database connection is closing\" when making a backup or saving after the app had been in the background on a phone. The app now opens a fresh connection and tries again."] },
   { v: "sip-app-28", items: ["Performances grow into plans. A performance can have a jury date, and the plan works back from the first date that matters: learn and fix, then run-throughs of single pieces, then of the whole program. Performances now sync between devices, and removing one on a device removes it everywhere. (Dashboard and run-through practice come next.)"] },
   { v: "sip-app-28", items: ["Performances: on the Pieces tab, name a performance, set its date and choose its pieces. Until then, those pieces get their hotspot search first, then hotspots, then reviews that are due, and nothing is scheduled to come due after the date. They also stop using up intake slots."] },
-  { v: "sip-app-27", items: ["Sync: a piece you remove stays removed on your other devices after syncing (unless it was practised since). The Google client ID box cleans up pasted links and spaces and warns if it looks wrong. After you practise, the Practice screen reminds you to sync."] },
+  { v: "sip-app-27", items: ["Sync: a piece you remove stays removed on your other devices after syncing (unless it was practiced since). The Google client ID box cleans up pasted links and spaces and warns if it looks wrong. After you practice, the Practice screen reminds you to sync."] },
   { v: "sip-app-26", items: ["Data tab: \"Sync with Google Drive\". One tap merges what is on your Drive into this device and saves the combined copy back, using a hidden app folder in your own Drive. Enter the Google client ID once on each device."] },
   { v: "sip-app-25", items: ["Quick repeat taps no longer zoom the screen (pinch to zoom still works). A piece section you set aside on one device is still waiting to resume after you merge that device's backup into another."] },
   { v: "sip-app-24", items: ["Data tab: \"Merge into this device\". Choose or paste a backup from another device and it adds what is new (reviews made on either device are kept, new pieces, the waiting list) without replacing anything. You see what will change first."] },
@@ -4485,7 +4486,7 @@ const CHANGELOG = [
   { v: "sip-app-19", items: ["The click now follows a tempo map: it changes tempo at the right bar, and ramps change a little on every beat (the map needs beats per bar, the third number on a line in Edit piece).", "New click settings on the Data tab: only accented beats sound (pick an accent pattern on the work screen), and drop beats at random to train your inner pulse."] },
   { v: "sip-app-18", items: ["Pieces can have a tempo map: in Edit piece, type a line for each tempo change (measure, tempo, optional beats per bar) or paste anchors from the command line. The step percentage applies to every section."] },
   { v: "sip-app-17", items: ["A short guide to how a session works (Data tab, How it works), and this What's new note."] },
-  { v: "sip-app-16", items: ["Practise on a piece starts straight on it, with that piece's instruments."] },
+  { v: "sip-app-16", items: ["Practice on a piece starts straight on it, with that piece's instruments."] },
   { v: "sip-app-15", items: ["Undo last answer, after a Pass or a Fail.", "A Pass that comes much too fast asks \"Played clean?\" first."] },
   { v: "sip-app-14", items: ["Change the instruments out while a session is running.", "A piece you add mid-session joins it."] },
   { v: "sip-app-13", items: ["The click stops when it is time to grade.", "Subdivide the click by 2 or 3 for slow passages, saved per section."] },
@@ -4527,7 +4528,7 @@ function guideSheet() {
     ${step(1, "Add a piece", "Give its title, its first and last measure, and its marked tempo. Say which instrument it is for if you play more than one.")}
     ${step(2, "Start a session", "Choose how long you have. SIP offers what is due for review first, then what is new. It shows a tempo as a percentage of the marked tempo, and the measure to start from.")}
     ${step(3, "Play from that measure to the end", "Tap Click if you want a metronome at that tempo. Tap Pass if it was clean. Tap Fail if it broke, then tell SIP which measure.")}
-    ${step(4, "SIP narrows in", "Each answer moves the tempo and the starting point until it finds the fastest tempo you play clean, and the measure that breaks. A trouble spot becomes its own small section, so you practise only what needs it.")}
+    ${step(4, "SIP narrows in", "Each answer moves the tempo and the starting point until it finds the fastest tempo you play clean, and the measure that breaks. A trouble spot becomes its own small section, so you practice only what needs it.")}
     ${step(5, "Grade it", "When the search settles you grade how it went: Again, Hard, Good or Easy. SIP schedules the next look, sooner for harder work.")}
     ${step(6, "Mistakes are fine", "Undo takes back the last answer. Set aside saves a section to come back to. Add a note to remind yourself what to watch for.")}
     ${step(7, "Keep a backup", "Your practice lives in this browser on this device. Back it up from the Data tab, and never clear this site's data.")}
@@ -4538,7 +4539,7 @@ function startCard() {
   if (S.pieces.length === 0) return `<section class="card"><h1>Welcome</h1><p class="muted" style="margin:0">SIP breaks a piece down to the exact spots that need work, and schedules each one so your short practice sessions go where they matter. Add a piece to begin. Everything stays on this device.</p><button class="btn primary" data-act="view" data-v="pieces">Add a piece</button></section>`;
   const q = queueNow();
   const due = q.filter(e => e.status === "due" || e.status === "retry").length, fresh = q.filter(e => e.status === "new").length, back = q.filter(e => e.status === "interrupted").length;
-  return `${syncNudge()}${backupNudge()}${eventBanner()}<section class="card"><div class="eyebrow">Today</div><h1>Ready to practise</h1>
+  return `${syncNudge()}${backupNudge()}${eventBanner()}<section class="card"><div class="eyebrow">Today</div><h1>Ready to practice</h1>
     <div class="row">${back ? `<span class="tag retry">${back} to resume</span>` : ""}<span class="tag due">${due} due</span><span class="tag new">${fresh} new</span></div>
     ${startIntake()}
     ${knownInstruments().length ? `<div><div class="eyebrow" style="margin-bottom:8px">Instruments out today</div>${instChips(pickedNow(), "start")}<div class="small muted" style="margin-top:6px">${pickedNow().length ? "Untagged work shows too." : "None chosen, so everything shows."}</div></div>` : ""}
@@ -4649,7 +4650,7 @@ function viewQueue() {
         : e.status === "new" ? `<span class="tag new">new</span>`
         : `<span class="tag due">${e.daysOverdue === 0 ? "due today" : e.daysOverdue + " d overdue"}</span>`;
       const cur = S.cur && S.cur.node === e.node;
-      return `<div class="item"><div class="body"><div class="t">${esc(e.piece.label)} · ${esc(roleOf(e.piece, e.node))}</div><div class="s"><span class="num">${rng(e.node)}</span>${tag}${e.event ? `<span class="tag">${esc(e.event.name)} · ${e.event.daysLeft} d</span>` : ""}${e.hasChildren ? '<span class="tag">whole review</span>' : ""}</div>${e.note ? `<div class="s">why: ${esc(e.note)}</div>` : ""}</div>${canPick ? `<button class="btn small ${cur ? "ghost" : ""}" data-act="pick" data-id="${e.node.id}">${cur ? "Current" : "Practise"}</button>` : ""}</div>`;
+      return `<div class="item"><div class="body"><div class="t">${esc(e.piece.label)} · ${esc(roleOf(e.piece, e.node))}</div><div class="s"><span class="num">${rng(e.node)}</span>${tag}${e.event ? `<span class="tag">${esc(e.event.name)} · ${e.event.daysLeft} d</span>` : ""}${e.hasChildren ? '<span class="tag">whole review</span>' : ""}</div>${e.note ? `<div class="s">why: ${esc(e.note)}</div>` : ""}</div>${canPick ? `<button class="btn small ${cur ? "ghost" : ""}" data-act="pick" data-id="${e.node.id}">${cur ? "Current" : "Practice"}</button>` : ""}</div>`;
     }).join("")}</div>
     ${live() ? "" : `<button class="btn primary" data-act="view" data-v="practice">Go to Practice to start</button>`}</section>`;
 }
@@ -4771,7 +4772,7 @@ function intakeCard() {
   const st = intake(), rec = pc.recommendWish(S.wishlist, S.pieces, { instruments: pickedNow() });
   let h = `<section class="card"><h2>Open pieces</h2>
     <p style="margin:0"><b class="num">${intakeText(st)}</b></p>
-    <p class="small muted" style="margin:0">A piece is open until every section has been practised once. Keeping only a few open at a time means each new piece starts promptly and no section is left waiting. The limit is a guide; you can load past it.</p>
+    <p class="small muted" style="margin:0">A piece is open until every section has been practiced once. Keeping only a few open at a time means each new piece starts promptly and no section is left waiting. The limit is a guide; you can load past it.</p>
     <div class="row"><span class="small muted grow">Limit (0 for none)</span><button class="btn small" data-act="slots-adj" data-d="-1" aria-label="Fewer slots">−</button><b class="num" style="min-width:2ch;text-align:center">${slotsNow()}</b><button class="btn small" data-act="slots-adj" data-d="1" aria-label="More slots">+</button></div></section>`;
   h += `<section class="card"><h2>Waiting to load${S.wishlist.length ? ` (${S.wishlist.length})` : ""}</h2>`;
   if (!S.wishlist.length) h += `<p class="muted" style="margin:0">Nothing waiting. Fill in the form below and choose "Add to waiting list" to line a piece up for later.</p>`;
@@ -4820,11 +4821,11 @@ function viewPieces() {
   S.pieces.forEach((p, pi) => {
     const nodes = []; const walk = (n, d) => { nodes.push([n, d]); n.children.forEach(c => walk(c, d + 1)); }; walk(p.root, 0);
     h += `<section class="card"><div class="row"><div class="grow"><h2>${esc(p.label)}</h2><div class="small muted num">${rng(p.root)}${p.goalTempo ? " · ♩ " + p.goalTempo : ""}</div><div class="small" style="margin-top:4px">${p.instruments.length ? p.instruments.map(x => `<span class="tag new">${esc(x)}</span>`).join(" ") : `<span class="muted">No instrument set</span>`}</div></div></div>
-      <div class="row" style="flex-wrap:wrap"><button class="btn small primary" data-act="practise-piece" data-pi="${pi}">Practise</button><button class="btn small ghost" data-act="piece-edit" data-pi="${pi}">Edit</button><button class="btn small ghost" data-act="inst-edit" data-pi="${pi}" data-id="${p.root.id}">Instruments</button><button class="btn small danger" data-act="removepiece" data-i="${pi}">Remove</button></div>
+      <div class="row" style="flex-wrap:wrap"><button class="btn small primary" data-act="practice-piece" data-pi="${pi}">Practice</button><button class="btn small ghost" data-act="piece-edit" data-pi="${pi}">Edit</button><button class="btn small ghost" data-act="inst-edit" data-pi="${pi}" data-id="${p.root.id}">Instruments</button><button class="btn small danger" data-act="removepiece" data-i="${pi}">Remove</button></div>
       <div class="list tree">${nodes.map(([n, d]) => {
         const t = tempoFor(p, n, n.step);
         const st = n.fsrs ? (core.dateOnly(n.fsrs.due) <= dayDate() ? `<span class="tag due">due</span>` : `<span class="tag ok">${fmtDate(core.dateOnly(n.fsrs.due))}</span>`) : `<span class="tag new">new</span>`;
-        return `<div class="item" style="--depth:${d}"><div class="body"><div class="t">${esc(roleOf(p, n))}</div><div class="s"><span class="num">${rng(n)}</span>${st}${n.instruments ? n.instruments.map(x => `<span class="tag new">${esc(x)}</span>`).join("") : ""}${n.fsrs ? `<span class="num">${fmtPct(n.step)}${t ? " · ♩ " + Math.round(t.first) : ""}</span>` : ""}</div>${n.hotspotNote ? `<div class="s">why: ${esc(n.hotspotNote)}</div>` : ""}</div>${d > 0 ? `<button class="btn small ghost" data-act="inst-edit" data-pi="${pi}" data-id="${n.id}">Tag</button>` : ""}${active() ? `<button class="btn small ghost" data-act="pick" data-id="${n.id}">Practise</button>` : ""}</div>`;
+        return `<div class="item" style="--depth:${d}"><div class="body"><div class="t">${esc(roleOf(p, n))}</div><div class="s"><span class="num">${rng(n)}</span>${st}${n.instruments ? n.instruments.map(x => `<span class="tag new">${esc(x)}</span>`).join("") : ""}${n.fsrs ? `<span class="num">${fmtPct(n.step)}${t ? " · ♩ " + Math.round(t.first) : ""}</span>` : ""}</div>${n.hotspotNote ? `<div class="s">why: ${esc(n.hotspotNote)}</div>` : ""}</div>${d > 0 ? `<button class="btn small ghost" data-act="inst-edit" data-pi="${pi}" data-id="${n.id}">Tag</button>` : ""}${active() ? `<button class="btn small ghost" data-act="pick" data-id="${n.id}">Practice</button>` : ""}</div>`;
       }).join("")}</div></section>`;
   });
   return h;
@@ -4847,7 +4848,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-31\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-32\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -4859,7 +4860,7 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-31</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-32</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -5067,7 +5068,7 @@ function sheetHtml() {
   if (sh.kind === "guide") return guideSheet();
   if (sh.kind === "news") return newsSheet();
   if (sh.kind === "note") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="Note" data-stop="1"><h2>Watch for</h2>
-    <label class="field" for="n-text">${esc(sh.sub)}<small>Shown each time you practise this section. Leave it empty to clear it.</small><textarea id="n-text" rows="3" maxlength="160" placeholder="e.g. ring finger not covering the tone hole">${esc(sh.text)}</textarea></label>
+    <label class="field" for="n-text">${esc(sh.sub)}<small>Shown each time you practice this section. Leave it empty to clear it.</small><textarea id="n-text" rows="3" maxlength="160" placeholder="e.g. ring finger not covering the tone hole">${esc(sh.text)}</textarea></label>
     <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
   if (sh.kind === "inst") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted small" style="margin:-8px 0 0">${esc(sh.sub)}</p>${instChips(sh.value, "sheet")}${instAdder("sheet")}<div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
   if (sh.kind === "confirm") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="${esc(sh.title)}" data-stop="1"><h2>${esc(sh.title)}</h2><p class="muted" style="margin:0">${esc(sh.body)}</p>${sh.lines && sh.lines.length ? `<ul class="small" style="margin:0;padding-left:18px">${sh.lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>` : ""}<div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn ${sh.safe ? "primary" : "danger"} grow" data-act="sheet-ok">${esc(sh.cta)}</button></div></div></div>`;
@@ -5106,7 +5107,7 @@ function onAct(act, el) {
     case "news-dismiss": S.news = null; render(); break;
     case "guide-open": S.sheet = { kind: "guide" }; render(); break;
     case "news-open": S.sheet = { kind: "news" }; render(); break;
-    case "practise-piece": practisePiece(Number(el.dataset.pi)); break;
+    case "practice-piece": practicePiece(Number(el.dataset.pi)); break;
     case "pass": tryPass(); break;
     case "undo": undoAnswer(); break;
     case "fail": openFail(); break;
