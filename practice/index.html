@@ -55,9 +55,11 @@
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 17px; line-height: 1.4; -webkit-tap-highlight-color: transparent; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 17px; line-height: 1.4; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body, button, input, select, textarea, label, summary, a, [data-a], [role="button"] { touch-action: manipulation; }   /* no double-tap zoom: quick repeat taps stay taps (pinch still works) */
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 50; background: var(--bg); }
 button, input, textarea { font: inherit; color: inherit; }
+input, select, textarea { font-size: max(16px, 1em); }   /* a field under 16px makes phone browsers zoom in when it is tapped */
 button { cursor: pointer; border: 0; background: none; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
@@ -3484,7 +3486,7 @@ function stateAfter(node, items, p) {
   };
 }
 
-function mergeLogs(a, b, owner) {
+function mergeLogs(a, b) {
   const A = identify(a.reviewLog), B = identify(b.reviewLog);
   const M = unionOrder(A, B);
   const pa = commonPrefix(M, A), pb = commonPrefix(M, B);
@@ -3495,7 +3497,7 @@ function mergeLogs(a, b, owner) {
   const from = new Map(); [...A, ...B].forEach(i => { if (!from.has(i.id)) from.set(i.id, i.entry); });
   const rest = M.slice(p).map(i => from.get(i.id));
   if (p === 0 && rest[0].priorStability != null) conflict("the two histories do not share a start");
-  const tmp = { id: owner.id, fsrs: stateAfter(side, items, p), reviewLog: [] };
+  const tmp = { id: a.id, fsrs: stateAfter(side, items, p), reviewLog: [] };
   try { for (const e of rest) core.reviewNode(tmp, e.grade, e.reviewDate); }
   catch (err) { conflict(`the histories could not be replayed together (${err.message})`); }
   return { log: items.slice(0, p).map(i => i.entry).concat(tmp.reviewLog), fsrs: tmp.fsrs };
@@ -3520,9 +3522,18 @@ function mergeNode(a, b, prefer, alloc) {
   const bad = AGREE.find(f => a[f] !== b[f]);
   if (bad) conflict(`"${a.label}" disagrees about its ${bad}: ${a[bad]} here, ${b[bad]} there`);
   const la = lastReviewOf(a), lb = lastReviewOf(b);
-  const owner = la > lb ? a : lb > la ? b : prefer === "remote" ? b : a;   // a is always the local side
-  const { log, fsrs } = mergeLogs(a, b, owner);
+  const first = mergeLogs(a, b);
+  // Whose plain state (search in progress, step, bookmark, "set aside to resume") the merged node takes: the copy
+  // reviewed last. When both copies hold every review, a copy that was set aside mid-search wins: a session ended
+  // before the section was graded, which leaves no review to say so, and a fresh copy must not wipe it out.
+  const fullA = first.log.length === a.reviewLog.length, fullB = first.log.length === b.reviewLog.length;
+  let owner;
+  if (la !== lb) owner = la > lb ? a : b;
+  else if (fullA && fullB && a.interrupted !== b.interrupted) owner = a.interrupted ? a : b;
+  else owner = prefer === "remote" ? b : a;                                  // a is always the local side
+  const { log, fsrs } = first;
   const m = owner;                                                           // owner is a clone, so it can be changed
+  if (log.length > owner.reviewLog.length) { m.interrupted = false; m.search = null; }   // reviewed elsewhere since: the set-aside is stale
   m.id = a.id; m.parentId = a.parentId;
   m.reviewLog = log.map(e => ({ ...e, nodeId: m.id }));
   m.fsrs = fsrs ? { ...fsrs } : null;
@@ -4148,9 +4159,10 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-24";
+const APP_VERSION = "sip-app-25";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-25", items: ["Quick repeat taps no longer zoom the screen (pinch to zoom still works). A piece section you set aside on one device is still waiting to resume after you merge that device's backup into another."] },
   { v: "sip-app-24", items: ["Data tab: \"Merge into this device\". Choose or paste a backup from another device and it adds what is new (reviews made on either device are kept, new pieces, the waiting list) without replacing anything. You see what will change first."] },
   { v: "sip-app-23", items: ["Groundwork for syncing devices: every piece now carries a permanent id, saved with it and kept in backups. Nothing changes on screen."] },
   { v: "sip-app-22", items: ["Scheduling now uses the current FSRS-6 memory model, checked against the reference library. A retry on the same day now counts: Again shortens the next interval, Easy lengthens it, and Good or Hard leave it where it was. Dates already set are kept; new grades use the new model."] },
@@ -4421,7 +4433,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-24\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-25\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -4433,7 +4445,7 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-24</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-25</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
