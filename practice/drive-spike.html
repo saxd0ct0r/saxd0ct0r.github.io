@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SIP Drive sign-in test</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1b1b1b;--line:#ccc;--ac:#1a5fb4}
+@media (prefers-color-scheme:dark){:root{--bg:#161616;--fg:#eee;--line:#444;--ac:#78aeed}}
+body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:17px/1.4 system-ui,sans-serif;-webkit-text-size-adjust:100%}
+html,body,button,input{touch-action:manipulation}
+h1{font-size:1.25rem;margin:0 0 4px} p{margin:6px 0}
+input{width:100%;box-sizing:border-box;font-size:16px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+button{font:inherit;min-height:48px;padding:8px 14px;margin:6px 6px 0 0;border-radius:10px;border:1px solid var(--ac);background:transparent;color:var(--ac)}
+button:disabled{opacity:.4}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;min-height:8em}
+.s{color:var(--ac);font-weight:600}
+</style></head><body>
+<h1>SIP Drive sign-in test</h1>
+<p>Checks that this browser can sign in to Google and use the hidden SIP app folder in your Drive. Nothing else in your Drive is touched.</p>
+<p id="mode" class="s"></p>
+<label>Google OAuth client ID<input id="cid" placeholder="123456-abc.apps.googleusercontent.com" autocomplete="off" autocapitalize="off"></label>
+<div>
+<button id="b-in">1 Sign in</button>
+<button id="b-w" disabled>2 Write test file</button>
+<button id="b-l" disabled>3 List files</button>
+<button id="b-r" disabled>4 Read it back</button>
+<button id="b-q" disabled>5 Quiet re-sign-in</button>
+<button id="b-x" disabled>6 Sign out</button>
+</div>
+<p id="tok" class="s"></p>
+<pre id="log"></pre>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+const SCOPE="https://www.googleapis.com/auth/drive.appdata", NAME="sip-spike-test.json";
+const $=id=>document.getElementById(id); let tc=null, token=null, expires=0, lastId=null;
+const log=m=>{$("log").textContent=new Date().toLocaleTimeString()+"  "+m+"\n"+$("log").textContent;};
+const standalone=(window.navigator.standalone===true)||matchMedia("(display-mode: standalone)").matches;
+$("mode").textContent="Running as: "+(standalone?"installed / home-screen app":"normal browser tab");
+try{$("cid").value=localStorage.getItem("sipspike.cid")||"";}catch(e){}
+function enable(on){["b-w","b-l","b-r","b-q","b-x"].forEach(i=>$(i).disabled=!on);}
+function tick(){ if(!token){$("tok").textContent="";return;} const s=Math.round((expires-Date.now())/1000); $("tok").textContent=s>0?"Signed in. Token valid for another "+Math.floor(s/60)+" min "+(s%60)+" s.":"Token expired. Use button 5 to sign in again quietly."; }
+setInterval(tick,1000);
+function init(){
+  const id=$("cid").value.trim(); if(!id){log("Enter the client ID first.");return false;}
+  try{localStorage.setItem("sipspike.cid",id);}catch(e){}
+  if(!window.google||!google.accounts){log("Google sign-in script has not loaded (offline or blocked).");return false;}
+  tc=google.accounts.oauth2.initTokenClient({client_id:id,scope:SCOPE,
+    callback:r=>{ if(r.error){log("Sign-in failed: "+r.error+(r.error_description?" - "+r.error_description:""));return;}
+      token=r.access_token; expires=Date.now()+(+r.expires_in||3600)*1000; enable(true); log("Signed in. Scope granted: "+r.scope+". Expires in "+r.expires_in+" s."); tick(); },
+    error_callback:e=>log("Sign-in problem: "+(e.type||"")+" "+(e.message||""))});
+  return true;
+}
+async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{Authorization:"Bearer "+token,...(opt.headers||{})}}); if(!r.ok)throw new Error(r.status+" "+await r.text()); return r;}
+$("b-in").onclick=()=>{ if(init()) tc.requestAccessToken({prompt:"consent"}); };
+$("b-q").onclick=()=>{ if(tc){log("Asking for a new token without a prompt...");tc.requestAccessToken({prompt:""});} };
+$("b-w").onclick=async()=>{ try{
+  const body={note:"SIP drive spike",device:navigator.userAgent,at:new Date().toISOString()};
+  const meta={name:NAME,parents:["appDataFolder"],mimeType:"application/json"}, b="sipb"+Date.now();
+  const mp=`--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(body)}\r\n--${b}--`;
+  const r=await api("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime",{method:"POST",headers:{"Content-Type":"multipart/related; boundary="+b},body:mp});
+  const j=await r.json(); lastId=j.id; log("Wrote "+j.name+" (id "+j.id+").");
+}catch(e){log("Write failed: "+e.message);} };
+$("b-l").onclick=async()=>{ try{
+  const r=await api("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime,size)"); const j=await r.json();
+  if(j.files.length)lastId=j.files[0].id; log("App folder holds "+j.files.length+" file(s): "+j.files.map(f=>f.name+" ("+f.modifiedTime+")").join("; "));
+}catch(e){log("List failed: "+e.message);} };
+$("b-r").onclick=async()=>{ try{ if(!lastId){log("Write or list first.");return;}
+  const r=await api("https://www.googleapis.com/drive/v3/files/"+lastId+"?alt=media"); log("Read back: "+(await r.text()));
+}catch(e){log("Read failed: "+e.message);} };
+$("b-x").onclick=()=>{ if(token){google.accounts.oauth2.revoke(token,()=>log("Access revoked."));} token=null;enable(false);tick(); };
+log("Ready. Enter the client ID, then press 1.");
+</script></body></html>
