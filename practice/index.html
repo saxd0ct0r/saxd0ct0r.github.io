@@ -174,7 +174,9 @@ label.field small { font-weight: 400; color: var(--muted); }
 
 /* sheet */
 .scrim { position: fixed; inset: 0; background: rgba(8,12,10,.5); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
-.sheet { width: 100%; max-width: 560px; background: var(--surface); border-radius: 22px 22px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; box-shadow: 0 -8px 30px rgba(0,0,0,.25); }
+.sheet { width: 100%; max-width: 560px; background: var(--surface); border-radius: 22px 22px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; box-shadow: 0 -8px 30px rgba(0,0,0,.25);
+  max-height: calc(100vh - env(safe-area-inset-top, 0px) - 12px); max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 12px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }   /* a tall sheet scrolls inside itself instead of running off the top of the screen */
+.sheet > .row:last-child { position: sticky; bottom: calc(-18px - env(safe-area-inset-bottom, 0px)); background: var(--surface); padding: 10px 0 calc(18px + env(safe-area-inset-bottom, 0px)); margin-bottom: calc(-18px - env(safe-area-inset-bottom, 0px)); }   /* the buttons stay reachable */
 .bigval { font-family: var(--font-num); font-size: 4rem; font-weight: 600; text-align: center; line-height: 1; }
 .stepper { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .stepper button { min-height: 56px; border-radius: 12px; background: var(--surface-2); font-family: var(--font-num); font-size: 1.15rem; font-weight: 600; }
@@ -4464,9 +4466,10 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-30";
+const APP_VERSION = "sip-app-31";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-31", items: ["Fixed: on a phone the Add a performance sheet ran off the top of the screen, so the name field could not be reached. Every pop-up sheet now scrolls inside itself, and its Save and Cancel buttons stay in view."] },
   { v: "sip-app-30", items: ["Readiness dashboard for a performance (the Readiness button on a performance, or on the Practice banner). Every section is coloured by how far its tempo has come: green at +4 steps or more, amber −1 to +3, orange −4 to −2, red below that, grey if not tried yet. It shows the whole program by measures, each piece worst-first with its weakest section, and how well each will be remembered on the ready-by date."] },
   { v: "sip-app-29", items: ["Fixed \"The database connection is closing\" when making a backup or saving after the app had been in the background on a phone. The app now opens a fresh connection and tries again."] },
   { v: "sip-app-28", items: ["Performances grow into plans. A performance can have a jury date, and the plan works back from the first date that matters: learn and fix, then run-throughs of single pieces, then of the whole program. Performances now sync between devices, and removing one on a device removes it everywhere. (Dashboard and run-through practice come next.)"] },
@@ -4844,7 +4847,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-30\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-31\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -4856,7 +4859,7 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-30</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-31</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
