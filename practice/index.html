@@ -3132,6 +3132,15 @@ function createStore(adapter, { backupDays = 14 } = {}) {
 
   const newKey = () => pieceKeyFor(nextKeyNumber++);
 
+  // The settings kept in workspace.json. `removed` is the record of pieces taken away on this device ({ uid, at }), so a
+  // sync does not bring them back from another device.
+  function settingsOut(settings) {
+    const out = { rolloverHours: settings.rolloverHours };
+    if (settings.intakeSlots !== undefined) out.intakeSlots = settings.intakeSlots;
+    if (Array.isArray(settings.removed) && settings.removed.length) out.removed = settings.removed.map(r => ({ uid: r.uid, at: r.at }));
+    return out;
+  }
+
   function buildWorkspace({ pieces, settings, wishlist, ui, session }, savedAt) {
     // Only pieces that actually exist in storage are listed: a listed piece with no file would be a dangling reference.
     const order = pieces.map(p => keyOf.get(p)).filter(k => k && lastWritten.has(k));
@@ -3139,7 +3148,7 @@ function createStore(adapter, { backupDays = 14 } = {}) {
       formatVersion: WORKSPACE_VERSION,
       savedAt,
       pieceOrder: order,
-      settings: settings.intakeSlots === undefined ? { rolloverHours: settings.rolloverHours } : { rolloverHours: settings.rolloverHours, intakeSlots: settings.intakeSlots },
+      settings: settingsOut(settings),
       wishlist,
       ui: {
         piece: ui && ui.piece && keyOf.has(ui.piece) ? keyOf.get(ui.piece) : null,
@@ -3310,6 +3319,10 @@ function createStore(adapter, { backupDays = 14 } = {}) {
     // 7. is workspace.json already exactly what a save would write?
     loaded = true;
     const settings = intakeSlots === undefined ? { rolloverHours } : { rolloverHours, intakeSlots };
+    if (ws && Array.isArray(ws.settings.removed)) {
+      const gone = ws.settings.removed.filter(r => r && typeof r.uid === "string" && /^[0-9A-Za-z-]{1,64}$/.test(r.uid) && Number.isFinite(r.at));
+      if (gone.length) settings.removed = gone.map(r => ({ uid: r.uid, at: r.at }));
+    }
     const probe = { pieces, settings, wishlist, ui: current ? { piece: current.piece, nodeId: current.node.id } : null, session };
     lastWorkspaceCanon = ws && JSON.stringify({ ...ws, savedAt: EPOCH_ISO }) === canonicalWorkspace(probe) ? canonicalWorkspace(probe) : null;
 
@@ -3613,7 +3626,18 @@ function mergeWorkspaces(local, remote, { prefer = "local" } = {}) {
     if (!seen.has(k)) { seen.add(k); wishlist.push({ ...w }); report.wishlistAdded++; }
   }
   const settings = prefer === "local" ? { ...remote.settings, ...local.settings } : { ...local.settings, ...remote.settings };
-  return { pieces: pieces.concat(extra), wishlist, settings, report };
+  // Pieces taken away on either device stay away, unless the piece was reviewed after it was removed: then a review
+  // would be lost, so the piece is kept and the record of its removal is dropped.
+  const gone = new Map();
+  for (const r of (local.settings.removed || []).concat(remote.settings.removed || [])) if (!gone.has(r.uid) || r.at < gone.get(r.uid)) gone.set(r.uid, r.at);
+  const kept = [];
+  report.removed = [];
+  for (const p of pieces.concat(extra)) {
+    if (gone.has(p.uid) && newestInTree(p.root) <= gone.get(p.uid)) { if (localUids.has(p.uid)) report.removed.push(p.label); const i = report.copied.indexOf(p.label); if (i >= 0) report.copied.splice(i, 1); }
+    else { kept.push(p); gone.delete(p.uid); }
+  }
+  if (gone.size) settings.removed = [...gone].map(([uid, at]) => ({ uid, at })); else delete settings.removed;
+  return { pieces: kept, wishlist, settings, report };
 }
 
 module.exports = { mergePieces, mergeWorkspaces };
@@ -4098,6 +4122,13 @@ function backupLine() {
   const d = backupAgo();
   return d === null ? "No backup has been taken from this device yet." : d === 0 ? "Last backup: today." : `Last backup: ${d} day${d === 1 ? "" : "s"} ago.`;
 }
+const reviewCount = () => S.pieces.reduce((t, p) => t + core.flattenTree(p.root).reduce((n, x) => n + x.reviewLog.length, 0), 0);   // reviewDate is a calendar day, so a count says what is new since a sync better than a time
+function syncNudge() {
+  const last = lsGet("sip-drive-last"); if (!last || !hasHistory()) return "";        // only for devices that have synced before
+  if (Date.now() < Number(lsGet("sip-drive-snooze") || 0)) return "";
+  if (reviewCount() <= Number(lsGet("sip-drive-count") || 0)) return "";                // nothing new since the last sync
+  return `<div class="banner"><span class="grow">You have practised since you last synced with Drive.</span><button class="btn small primary" data-act="sync-go">Sync</button><button class="btn small" data-act="sync-later">Later</button></div>`;
+}
 function backupNudge() {
   if (!hasHistory()) return "";
   const b = backupInfo(), d = backupAgo();
@@ -4159,9 +4190,10 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-26";
+const APP_VERSION = "sip-app-27";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-27", items: ["Sync: a piece you remove stays removed on your other devices after syncing (unless it was practised since). The Google client ID box cleans up pasted links and spaces and warns if it looks wrong. After you practise, the Practice screen reminds you to sync."] },
   { v: "sip-app-26", items: ["Data tab: \"Sync with Google Drive\". One tap merges what is on your Drive into this device and saves the combined copy back, using a hidden app folder in your own Drive. Enter the Google client ID once on each device."] },
   { v: "sip-app-25", items: ["Quick repeat taps no longer zoom the screen (pinch to zoom still works). A piece section you set aside on one device is still waiting to resume after you merge that device's backup into another."] },
   { v: "sip-app-24", items: ["Data tab: \"Merge into this device\". Choose or paste a backup from another device and it adds what is new (reviews made on either device are kept, new pieces, the waiting list) without replacing anything. You see what will change first."] },
@@ -4225,7 +4257,7 @@ function startCard() {
   if (S.pieces.length === 0) return `<section class="card"><h1>Welcome</h1><p class="muted" style="margin:0">SIP breaks a piece down to the exact spots that need work, and schedules each one so your short practice sessions go where they matter. Add a piece to begin. Everything stays on this device.</p><button class="btn primary" data-act="view" data-v="pieces">Add a piece</button></section>`;
   const q = queueNow();
   const due = q.filter(e => e.status === "due" || e.status === "retry").length, fresh = q.filter(e => e.status === "new").length, back = q.filter(e => e.status === "interrupted").length;
-  return `${backupNudge()}<section class="card"><div class="eyebrow">Today</div><h1>Ready to practise</h1>
+  return `${syncNudge()}${backupNudge()}<section class="card"><div class="eyebrow">Today</div><h1>Ready to practise</h1>
     <div class="row">${back ? `<span class="tag retry">${back} to resume</span>` : ""}<span class="tag due">${due} due</span><span class="tag new">${fresh} new</span></div>
     ${startIntake()}
     ${knownInstruments().length ? `<div><div class="eyebrow" style="margin-bottom:8px">Instruments out today</div>${instChips(pickedNow(), "start")}<div class="small muted" style="margin-top:6px">${pickedNow().length ? "Untagged work shows too." : "None chosen, so everything shows."}</div></div>` : ""}
@@ -4434,7 +4466,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-26\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-27\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -4446,7 +4478,7 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-26</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-27</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -4461,7 +4493,7 @@ function viewData() {
     ${S.importMsg ? `<div class="small">${esc(S.importMsg)}</div>` : ""}</section>
   <section class="card"><h2>Sync with Google Drive</h2>
     <p class="muted" style="margin:0">Keeps one copy of your practice in a hidden app folder in your own Google Drive. Sync now adds what is on Drive to this device (reviews from both are kept), then saves the combined copy back. Do it before you start on another device and when you finish.</p>
-    <label class="field" for="driveid">Google client ID<small>Entered once on each device.</small><input id="driveid" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(driveClientId())}" placeholder="…apps.googleusercontent.com"></label>
+    <label class="field" for="driveid">Google client ID<small>Entered once on each device. Pasted links and spaces are cleaned up.</small><input id="driveid" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(driveClientId())}" placeholder="…apps.googleusercontent.com"></label>
     <div class="row"><button class="btn primary" data-act="sync" ${S.syncBusy ? "disabled" : ""}>${S.syncBusy ? "Syncing…" : "Sync now"}</button><span class="small muted">${esc(driveLastLine())}</span></div>
     ${S.syncMsg ? `<div class="small" id="syncmsg">${esc(S.syncMsg)}</div>` : ""}</section>
   <section class="card"><h2>Look</h2><div class="chips" role="group" aria-label="Theme">${["system", "light", "dark"].map(t => `<button data-act="theme" data-t="${t}" aria-pressed="${themePref() === t}">${t}</button>`).join("")}</div>
@@ -4512,9 +4544,10 @@ async function planMerge(text) {
   const structural = r.pieces.filter(np => { const old = S.pieces.find(x => x.uid === np.uid); return old && fixedCanon(old) !== fixedCanon(np) && !r.report.merged.some(m => m.uid === np.uid && m.addedToLocal); });
   structural.forEach(np => lines.push(`${np.label}: sections or settings brought up to date`));
   r.report.copied.forEach(l => lines.push(`New piece: ${l}`));
+  r.report.removed.forEach(l => lines.push(`Removed: ${l} (it was removed on the other device)`));
   r.report.conflicts.forEach(c => lines.push(`${c.label} could not be combined (${c.reason}). The other copy is kept as its own piece, so nothing is lost.`));
   if (r.report.wishlistAdded) lines.push(`Waiting list: ${r.report.wishlistAdded} added`);
-  const same = changed.length === S.pieces.length && changed.every((p, i) => p === S.pieces[i]) && !r.report.wishlistAdded;
+  const same = changed.length === S.pieces.length && changed.every((p, i) => p === S.pieces[i]) && !r.report.wishlistAdded && JSON.stringify(r.settings.removed || []) === JSON.stringify(S.settings.removed || []);
   return { result: r, pieces: changed, lines, same, warnings: remote.warnings };
 }
 async function applyMerge(plan) {
@@ -4534,6 +4567,9 @@ const DRIVE_FILE = "sip-sync.json", DRIVE_SCOPE = "https://www.googleapis.com/au
 const lsGet = k => { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* optional */ } };
 const driveClientId = () => lsGet("sip-drive-cid");
+/* Mail and chat apps turn the ID into a link ("http://….com/") and add spaces or line breaks; strip all that. */
+const cleanClientId = v => String(v).replace(/\s+/g, "").replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").replace(/\/+$/, "");
+const clientIdOk = v => /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/i.test(v);
 function driveLastLine() { const t = lsGet("sip-drive-last"); return t ? "Last synced " + new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Not synced yet"; }
 const DRIVE = {                         // replaced in tests
   tok: null, exp: 0, tc: null,
@@ -4568,14 +4604,14 @@ async function syncNow() {
   S.syncBusy = true; S.syncMsg = ""; render();
   try {
     await DRIVE.token();
-    const files = await DRIVE.list(); let added = 0, pieces = 0, wish = 0;
+    const files = await DRIVE.list(); let added = 0, pieces = 0, wish = 0, gone = 0;
     for (const f of files) {                       // normally one; several only if two devices created it at once
       const plan = await planMerge(await DRIVE.read(f.id));
-      if (!plan.same) { added += plan.result.report.merged.reduce((n, m) => n + m.addedToLocal, 0); pieces += plan.result.report.copied.length; wish += plan.result.report.wishlistAdded; await applyMerge(plan); }
+      if (!plan.same) { added += plan.result.report.merged.reduce((n, m) => n + m.addedToLocal, 0); pieces += plan.result.report.copied.length; wish += plan.result.report.wishlistAdded; gone += plan.result.report.removed.length; await applyMerge(plan); }
     }
     await DRIVE.write(files.length ? files[0].id : null, await buildBackup());
-    lsSet("sip-drive-last", new Date().toISOString());
-    const bits = []; if (added) bits.push(`${added} review${added === 1 ? "" : "s"} added here`); if (pieces) bits.push(`${pieces} new piece${pieces === 1 ? "" : "s"}`); if (wish) bits.push(`${wish} on the waiting list`);
+    lsSet("sip-drive-last", new Date().toISOString()); lsSet("sip-drive-count", String(reviewCount()));
+    const bits = []; if (added) bits.push(`${added} review${added === 1 ? "" : "s"} added here`); if (pieces) bits.push(`${pieces} new piece${pieces === 1 ? "" : "s"}`); if (wish) bits.push(`${wish} on the waiting list`); if (gone) bits.push(`${gone} piece${gone === 1 ? "" : "s"} removed (removed on another device)`);
     S.syncMsg = "Synced. " + (bits.length ? bits.join(", ") + "." : "Nothing new from Drive; your copy is saved there.");
   } catch (e) { S.syncMsg = "Sync did not finish: " + e.message + " Nothing was lost."; }
   S.syncBusy = false; render();
@@ -4827,7 +4863,7 @@ function onAct(act, el) {
     case "removepiece": {
       const p = S.pieces[Number(el.dataset.i)];
       if (live()) { toast("Finish the session before removing a piece."); break; }
-      S.sheet = { kind: "confirm", title: `Remove ${p.label}?`, body: "Its history moves to the removed folder inside the app, so it can be recovered from a backup.", cta: "Remove", run: () => { S.pieces.splice(S.pieces.indexOf(p), 1); S.cur = null; persist(); render(); toast("Removed."); } };
+      S.sheet = { kind: "confirm", title: `Remove ${p.label}?`, body: "Its history moves to the removed folder inside the app, so it can be recovered from a backup. When you sync, it is removed from your other devices too.", cta: "Remove", run: () => { S.pieces.splice(S.pieces.indexOf(p), 1); S.settings.removed = (S.settings.removed || []).filter(r => r.uid !== p.uid).concat({ uid: p.uid, at: Date.now() }); S.cur = null; persist(); render(); toast("Removed."); } };
       render(); break;
     }
     case "export": buildBackup().then(t => { S.exportText = t; render(); }).catch(e => toast(e.message)); break;
@@ -4853,6 +4889,8 @@ function onAct(act, el) {
       break;
     }
     case "sync": syncNow(); break;
+    case "sync-go": S.view = "data"; S.sheet = null; window.scrollTo(0, 0); syncNow(); break;
+    case "sync-later": lsSet("sip-drive-snooze", String(Date.now() + 4 * 3600000)); render(); break;
     case "theme": try { localStorage.setItem("sip-theme", el.dataset.t); } catch (e) { /* optional */ } applyTheme(); render(); break;
     case "persistent":
       (navigator.storage && navigator.storage.persist ? navigator.storage.persist() : Promise.resolve(false)).then(ok => { const m = $("persistmsg"); if (m) m.textContent = ok ? "Done. The browser will keep it." : "The browser did not agree. Back up now and then."; });
@@ -4892,7 +4930,7 @@ document.addEventListener("input", ev => {
   else if (t.id === "metvol") { MET.cfg.vol = Number(t.value); metSave(); }
 });
 document.addEventListener("change", ev => {
-  if (ev.target.id === "driveid") { lsSet("sip-drive-cid", ev.target.value.trim()); return; }
+  if (ev.target.id === "driveid") { const v = cleanClientId(ev.target.value); lsSet("sip-drive-cid", v); ev.target.value = v; S.syncMsg = v && !clientIdOk(v) ? "That does not look like a Google client ID. It should look like 123456-abc.apps.googleusercontent.com. Copy it again from the Google console." : ""; render(); return; }
   if (ev.target.id === "importfile" && ev.target.files && ev.target.files[0]) {
     const rd = new FileReader();
     rd.onload = () => { S.importText = String(rd.result); render(); };
