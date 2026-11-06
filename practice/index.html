@@ -1609,7 +1609,26 @@ function newUid() {
   return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
 }
 
-function makePiece({ label, root, kind = "metered", goalTempo = null, unitPages = null, tempoAnchors = null, instruments = [], uid = null }) {
+// A performance the piece is being prepared for: { name, date } with date as YYYY-MM-DD, or null. Pieces for the same
+// concert carry the same name and date. Past the date the piece goes back to ordinary scheduling (see activeEvent).
+const EVENT_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function assertValidEvent(ev) {
+  if (ev === null) return;
+  const ok = ev && typeof ev === "object" && typeof ev.name === "string" && ev.name.trim() && ev.name.length <= 80
+    && typeof ev.date === "string" && EVENT_DATE_RE.test(ev.date) && !Number.isNaN(Date.parse(ev.date + "T00:00:00Z")) && new Date(ev.date + "T00:00:00Z").toISOString().slice(0, 10) === ev.date;
+  if (!ok) throw new Error("A performance needs a name (up to 80 characters) and a date as YYYY-MM-DD.");
+}
+function setEvent(piece, ev) { assertValidEvent(ev); piece.event = ev === null ? null : { name: ev.name.trim(), date: ev.date }; }
+// The piece's performance if it has not happened yet on `day` (YYYY-MM-DD or Date); otherwise null.
+function activeEvent(piece, day) {
+  if (!piece.event || day === undefined || day === null) return null;
+  const d = day instanceof Date ? day.toISOString().slice(0, 10) : String(day).slice(0, 10);
+  return piece.event.date >= d ? piece.event : null;
+}
+function daysUntil(date, day) { return Math.round((Date.parse(date + "T00:00:00Z") - Date.parse(String(day).slice(0, 10) + "T00:00:00Z")) / 86400000); }
+
+function makePiece({ label, root, kind = "metered", goalTempo = null, unitPages = null, tempoAnchors = null, instruments = [], uid = null, event = null }) {
+  assertValidEvent(event);
   if (uid !== null && !(typeof uid === "string" && UID_RE.test(uid))) throw new Error("A piece's uid must be 12 to 64 letters, digits, - or _.");
   if (typeof label !== "string" || label.trim() === "") throw new Error("A piece needs a non-empty label.");
   if (!PIECE_KINDS.includes(kind)) throw new Error(`Unknown piece kind "${kind}" — use ${PIECE_KINDS.join(" or ")}.`);
@@ -1618,7 +1637,7 @@ function makePiece({ label, root, kind = "metered", goalTempo = null, unitPages 
   if (kind === "unmetered" && unitPages === null) throw new Error("An unmetered piece needs unitPages.");
   if (kind === "metered" && unitPages !== null) throw new Error("A metered piece can't have unitPages (its ordinals are measure numbers).");
 
-  const piece = { uid: uid === null ? newUid() : uid, label, kind, goalTempo, root, unitPages: null, tempoAnchors: null, instruments: core.normalizeInstruments(instruments) };
+  const piece = { uid: uid === null ? newUid() : uid, label, kind, goalTempo, root, unitPages: null, tempoAnchors: null, instruments: core.normalizeInstruments(instruments), event: event === null ? null : { name: event.name.trim(), date: event.date } };
   if (unitPages !== null) setUnitPages(piece, unitPages);
   if (tempoAnchors !== null) setTempoAnchors(piece, tempoAnchors);
   return piece;
@@ -2008,6 +2027,7 @@ function serializePiece(piece, { now = new Date() } = {}) {
     unitPages: piece.unitPages,
     tempoAnchors: piece.tempoAnchors,
     instruments: Array.isArray(piece.instruments) ? [...piece.instruments] : [],
+    ...(piece.event ? { event: { name: piece.event.name, date: piece.event.date } } : {}),
     root: serializeNode(piece.root)
   };
 }
@@ -2033,6 +2053,7 @@ function validatePieceData(data) {
   const isInt = v => Number.isInteger(v);
 
   if (typeof data.label !== "string" || data.label.trim() === "") bad("label", "must be a non-empty string");
+  if (data.event !== undefined) { try { assertValidEvent(data.event); } catch (e) { bad("event", "must be { name, date: YYYY-MM-DD } or null when present"); } }
   if (data.uid !== undefined && !(typeof data.uid === "string" && UID_RE.test(data.uid))) bad("uid", "must be 12 to 64 letters, digits, - or _ when present");
   if (version === 2) {
     if (!PIECE_KINDS.includes(data.kind)) bad("kind", `must be ${PIECE_KINDS.join(" or ")}`);
@@ -2193,6 +2214,7 @@ function deserializePiece(data, { startingId = 1, dayConfig = {}, preserveIds = 
     unitPages: version === 2 ? data.unitPages : null,
     tempoAnchors: version === 2 ? data.tempoAnchors : null,
     instruments: data.instruments,
+    event: data.event || null,
     uid: typeof data.uid === "string" ? data.uid : null    // files written before uids existed get a fresh one, kept from the next save on
   });
   return { piece, nextFreeId: counter.next };
@@ -2253,8 +2275,9 @@ const subdivisionOf = node => (node.subdivision === 2 || node.subdivision === 3 
 // The limit is guidance: slots === 0 means no limit, and the app lets the player go over it after a confirmation.
 const DEFAULT_INTAKE_SLOTS = 5;
 function isOpenPiece(piece) { return core.flattenTree(piece.root).some(n => n.fsrs === null); }
-function intakeStatus(pieces, slots) {
-  const open = pieces.filter(isOpenPiece);
+// Pieces being prepared for a performance that has not happened yet do not use up a slot (pass `day` to count them out).
+function intakeStatus(pieces, slots, day) {
+  const open = pieces.filter(p => isOpenPiece(p) && !activeEvent(p, day));
   const limit = Number.isInteger(slots) && slots >= 0 ? slots : DEFAULT_INTAKE_SLOTS;
   return { limit, open: open.length, free: limit === 0 ? Infinity : Math.max(0, limit - open.length), over: limit !== 0 && open.length > limit, openLabels: open.map(p => p.label) };
 }
@@ -2300,6 +2323,7 @@ function admitWish(wishlist, index, pieces) {
 module.exports = {
   setNodeSubdivision, subdivisionOf, DEFAULT_INTAKE_SLOTS, isOpenPiece, intakeStatus, wishReady, makeWish, recommendWish, admitWish,
   setGoalTempo, editPiece, setPieceInstruments, setNodeInstruments,
+  assertValidEvent, setEvent, activeEvent, daysUntil,
   FORMAT_VERSION, PIECE_KINDS, PLACEHOLDER_END, newUid,
   makePiece, setUnitPages, setTempoAnchors, getUnitTable, getTempoMap,
   tempoSpan, describeTempo, clickPlan, pieceDurationSeconds, formatDuration,
@@ -2349,6 +2373,7 @@ __mods["./sip-session"] = function (module, exports, require) {
 // (a missing `now`, a bad grade) throw.
 
 const core = require("./sip-core");
+const pieceMod = require("./sip-piece");
 const {
   getDueNodes, getInterruptedNodes, daysBetween, dateOnly, effectiveNote,
   beginHotspotSearch, nextTrial, recordTrialResult, isSearchConverged,
@@ -2710,6 +2735,12 @@ function buildQueue(pieces, studyDay, { excludeIds = [], instruments = [] } = {}
   const interrupted = [];
   const waitingDue = [];
   const waitingNew = [];
+  // Pieces being prepared for a performance that has not happened yet. Their work goes ahead of everything else, in this
+  // order: (1) the piece as a whole, never practised, so its hotspot search happens first; (2) hotspots; (3) anything
+  // else that is due, including reviews pulled in so that nothing is left to come due after the date (a node waits no
+  // longer than the day before the performance); (4) sections never practised.
+  const ev = { find: [], hot: [], due: [], fresh: [] };
+  const dayStr = toDayString(studyDay);
   pieces.forEach(piece => {
     const order = breadthFirstIndex(piece.root);
     const bySpawnOrder = (a, b) => order.get(a.id) - order.get(b.id);
@@ -2718,14 +2749,40 @@ function buildQueue(pieces, studyDay, { excludeIds = [], instruments = [] } = {}
     getInterruptedNodes(piece.root).filter(n => !excluded.has(n.id) && wanted(n)).sort(bySpawnOrder)
       .forEach(n => interrupted.push(entry(piece, n, "interrupted")));
 
+    const event = pieceMod.activeEvent(piece, dayStr);
+    if (event) {
+      const left = pieceMod.daysUntil(event.date, dayStr);
+      const tag = e => Object.assign(e, { event: { name: event.name, date: event.date, daysLeft: left } });
+      const cap = core.addDays(dayDate(event.date), -1);                       // the day before the performance
+      const nodes = core.flattenTree(piece.root).filter(n => !n.interrupted && !excluded.has(n.id) && wanted(n));
+      const effDue = n => { const own = dateOnly(n.fsrs.due), soonest = core.addDays(dateOnly(n.fsrs.lastReview), 1), limit = cap > soonest ? cap : soonest; return own < limit ? own : limit; };
+      const isDue = n => n.fsrs === null || effDue(n) <= day;
+      const mk = (n, status) => tag(Object.assign(entry(piece, n, status), status === "due" ? { daysOverdue: Math.max(0, daysBetween(effDue(n), day)) } : {}));
+      const due = nodes.filter(isDue);
+      const fresh = due.filter(n => n.fsrs === null).sort(bySpawnOrder);
+      const reviewed = due.filter(n => n.fsrs !== null).sort((a, b) => (effDue(a) - effDue(b)) || bySpawnOrder(a, b));
+      const isHot = n => n.kind === "hotspot";
+      ev.find.push({ at: event.date, list: fresh.filter(n => n.parentId === null).map(n => mk(n, "new")) });
+      ev.hot.push({ at: event.date, list: reviewed.filter(isHot).map(n => mk(n, "due")).concat(fresh.filter(n => n.parentId !== null && isHot(n)).map(n => mk(n, "new"))) });
+      ev.due.push({ at: event.date, list: reviewed.filter(n => !isHot(n)).map(n => mk(n, "due")) });
+      ev.fresh.push({ at: event.date, list: fresh.filter(n => n.parentId !== null && !isHot(n)).map(n => mk(n, "new")) });
+      return;
+    }
+
     const due = getDueNodes(piece.root, day).filter(n => !n.interrupted && !excluded.has(n.id) && wanted(n));
     const fresh = due.filter(n => n.fsrs === null).sort(bySpawnOrder);
     const reviewed = due.filter(n => n.fsrs !== null).sort((a, b) => (a.fsrs.due - b.fsrs.due) || bySpawnOrder(a, b));
     waitingDue.push(reviewed.map(n => entry(piece, n, "due")));
     waitingNew.push(fresh.map(n => entry(piece, n, "new")));
   });
+  // Soonest performance first; pieces for the same date take turns.
+  const lane = items => {
+    const dates = [...new Set(items.map(i => i.at))].sort();
+    return dates.flatMap(d => interleave(items.filter(i => i.at === d).map(i => i.list)));
+  };
+  const performance = [...lane(ev.find), ...lane(ev.hot), ...lane(ev.due), ...lane(ev.fresh)];
   // Reviews that have come due go before anything never practised, across all pieces.
-  return [...interrupted, ...interleave(waitingDue), ...interleave(waitingNew)];
+  return [...interrupted, ...performance, ...interleave(waitingDue), ...interleave(waitingNew)];
 }
 
 // The queue for a running session — nodes already graded this session
@@ -3007,6 +3064,118 @@ module.exports = {
 };
 
 };
+__mods["./sip-event"] = function (module, exports, require) {
+// sip-event.js
+// A performance as a plan: an event has a performance date, an optional earlier jury, a set list of pieces, and a
+// timeline worked backwards from the first date that matters (the jury if there is one, else the performance).
+//
+//   learn  ->  [ready-by date]  ->  piece run-throughs  ->  [program run-throughs start]  ->  program run-throughs
+//   ->  jury (if any)  ->  performance
+//
+// The two offsets are days before that first date: `readyDays` is when the program should be ready and run-throughs
+// begin, `programRunDays` is when the whole program is played through. Events are kept in the workspace settings
+// (settings.events), carry a permanent uid so two devices can merge them, and are pure data: no storage, no clock.
+//
+// Each piece's own `event` ({ name, date }) is derived from the events it is in (see syncPieceEvents), because the
+// practice queue already reads it: the soonest event that has not happened yet, by its performance date.
+
+"use strict";
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DEFAULTS = { readyDays: 14, programRunDays: 7, target: 0.9 };
+const MAX_DAYS = 365;
+
+const validDate = d => typeof d === "string" && DATE_RE.test(d) && new Date(d + "T00:00:00Z").toISOString().slice(0, 10) === d;
+const addDaysStr = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+const daysBetween = (a, b) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400000);
+const newUid = () => { let s = ""; for (let i = 0; i < 24; i++) s += Math.floor(Math.random() * 16).toString(16); return s; };
+
+// Checks a plain object and returns a clean copy, or throws an Error whose message says what to fix.
+function normalizeEvent(raw) {
+  const bad = m => { throw new Error(m); };
+  if (!raw || typeof raw !== "object") bad("An event is missing.");
+  const name = typeof raw.name === "string" ? raw.name.trim() : "";
+  if (!name || name.length > 80) bad("An event needs a name (up to 80 characters).");
+  if (!validDate(raw.date)) bad("The performance needs a date.");
+  const jury = raw.jury === undefined || raw.jury === null || raw.jury === "" ? null : raw.jury;
+  if (jury !== null && !validDate(jury)) bad("The jury date is not a date.");
+  if (jury !== null && jury > raw.date) bad("The jury cannot be after the performance.");
+  const int = (v, lo, hi, what) => { if (!Number.isInteger(v) || v < lo || v > hi) bad(`${what} must be a whole number from ${lo} to ${hi}.`); return v; };
+  const readyDays = int(raw.readyDays === undefined ? DEFAULTS.readyDays : raw.readyDays, 1, MAX_DAYS, "Days before to be ready");
+  const programRunDays = int(raw.programRunDays === undefined ? DEFAULTS.programRunDays : raw.programRunDays, 0, MAX_DAYS, "Days of whole-program run-throughs");
+  if (programRunDays >= readyDays) bad("Whole-program run-throughs must start later than the ready-by date, so that number of days must be smaller.");
+  const target = raw.target === undefined ? DEFAULTS.target : raw.target;
+  if (typeof target !== "number" || !(target > 0.5 && target < 1)) bad("The readiness target must be between 50% and 100%.");
+  const setList = Array.isArray(raw.setList) ? raw.setList : bad("An event needs a set list.");
+  if (!setList.every(u => typeof u === "string" && u.length > 0 && u.length <= 64) || new Set(setList).size !== setList.length) bad("The set list must name each piece once.");
+  const uid = raw.uid === undefined ? newUid() : raw.uid;
+  if (typeof uid !== "string" || !/^[0-9A-Za-z-]{1,64}$/.test(uid)) bad("The event id is not valid.");
+  const editedAt = raw.editedAt === undefined ? 0 : raw.editedAt;
+  if (!Number.isFinite(editedAt)) bad("The edit time is not valid.");
+  return { uid, name, date: raw.date, jury, readyDays, programRunDays, target, setList: setList.slice(), editedAt };
+}
+
+// The first date the program has to be ready for.
+const anchorOf = ev => ev.jury || ev.date;
+
+// The phases, in order, each with the first day it applies (inclusive). `until` is the day before the next phase.
+function timeline(ev) {
+  const anchor = anchorOf(ev), readyBy = addDaysStr(anchor, -ev.readyDays), programFrom = addDaysStr(anchor, -ev.programRunDays);
+  const rows = [
+    { key: "learn", label: "Learn and fix", from: null, until: addDaysStr(readyBy, -1) },
+    { key: "pieceRuns", label: "Run-throughs of single pieces", from: readyBy, until: addDaysStr(programFrom, -1) },
+    { key: "programRuns", label: "Run-throughs of the whole program", from: programFrom, until: anchor }
+  ];
+  if (ev.jury && ev.jury < ev.date) rows.push({ key: "afterJury", label: "Between the jury and the performance", from: addDaysStr(ev.jury, 1), until: ev.date });
+  return rows;
+}
+
+// Which phase `day` falls in: "learn", "pieceRuns", "programRuns", "afterJury", or "done" (after the performance).
+function phaseOn(ev, day) {
+  const d = String(day).slice(0, 10);
+  if (d > ev.date) return "done";
+  for (const row of timeline(ev)) if ((row.from === null || d >= row.from) && d <= row.until) return row.key;
+  return "done";
+}
+const readyBy = ev => addDaysStr(anchorOf(ev), -ev.readyDays);
+const daysUntil = (date, day) => daysBetween(String(day).slice(0, 10), date);
+
+function migratedUid(name, date) {
+  let h = 5381; const t = date + "|" + name;
+  for (let i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0;
+  return "m" + h.toString(16).padStart(8, "0");
+}
+
+// Events made from pieces that already carry a plain performance ({ name, date }): one event per name and date.
+function eventsFromPieces(pieces) {
+  const groups = new Map();
+  for (const p of pieces) if (p.event) {
+    const k = p.event.date + "|" + p.event.name;
+    if (!groups.has(k)) groups.set(k, { name: p.event.name, date: p.event.date, setList: [] });
+    groups.get(k).setList.push(p.uid);
+  }
+  // The id comes from the name and date, so two devices that each make this event get the same one, and a merge joins them.
+  return [...groups.values()].map(g => normalizeEvent({ ...g, uid: migratedUid(g.name, g.date), jury: null, editedAt: 0 }));
+}
+
+// Makes each piece's own `event` agree with the events it is in: the soonest one that has not happened yet, else none.
+function syncPieceEvents(events, pieces, day) {
+  const today = String(day).slice(0, 10);
+  const byPiece = new Map();
+  for (const ev of events) for (const u of ev.setList) {
+    if (ev.date < today) continue;
+    const cur = byPiece.get(u);
+    if (!cur || ev.date < cur.date || (ev.date === cur.date && ev.name < cur.name)) byPiece.set(u, ev);
+  }
+  for (const p of pieces) {
+    const ev = byPiece.get(p.uid);
+    p.event = ev ? { name: ev.name, date: ev.date } : null;
+  }
+}
+
+module.exports = { DEFAULTS, normalizeEvent, anchorOf, timeline, phaseOn, readyBy, daysUntil, addDaysStr, eventsFromPieces, syncPieceEvents, newUid };
+
+};
 __mods["./sip-store"] = function (module, exports, require) {
 // sip-store.js
 // The workspace: everything SIP remembers between runs — the pieces, the
@@ -3035,6 +3204,7 @@ __mods["./sip-store"] = function (module, exports, require) {
 const { serializePiece, deserializePiece } = require("./sip-piece");
 const { flattenTree, assertValidRolloverHours, DEFAULT_ROLLOVER_HOURS, normalizeInstruments } = require("./sip-core");
 const { SESSION_VERSION } = require("./sip-session");
+const eventMod = require("./sip-event");
 
 const WORKSPACE_VERSION = 1;
 const WORKSPACE_KEY = "workspace.json";
@@ -3138,6 +3308,8 @@ function createStore(adapter, { backupDays = 14 } = {}) {
     const out = { rolloverHours: settings.rolloverHours };
     if (settings.intakeSlots !== undefined) out.intakeSlots = settings.intakeSlots;
     if (Array.isArray(settings.removed) && settings.removed.length) out.removed = settings.removed.map(r => ({ uid: r.uid, at: r.at }));
+    if (Array.isArray(settings.events) && settings.events.length) out.events = settings.events.map(e => eventMod.normalizeEvent(e));
+    if (settings.eventsMigrated === true) out.eventsMigrated = true;
     return out;
   }
 
@@ -3323,6 +3495,12 @@ function createStore(adapter, { backupDays = 14 } = {}) {
       const gone = ws.settings.removed.filter(r => r && typeof r.uid === "string" && /^[0-9A-Za-z-]{1,64}$/.test(r.uid) && Number.isFinite(r.at));
       if (gone.length) settings.removed = gone.map(r => ({ uid: r.uid, at: r.at }));
     }
+    if (ws && Array.isArray(ws.settings.events)) {
+      const good = [];
+      for (const e of ws.settings.events) { try { good.push(eventMod.normalizeEvent(e)); } catch (err) { warnings.push(`An unreadable performance was dropped (${err.message})`); } }
+      if (good.length) settings.events = good;
+    }
+    if (ws && ws.settings.eventsMigrated === true) settings.eventsMigrated = true;
     const probe = { pieces, settings, wishlist, ui: current ? { piece: current.piece, nodeId: current.node.id } : null, session };
     lastWorkspaceCanon = ws && JSON.stringify({ ...ws, savedAt: EPOCH_ISO }) === canonicalWorkspace(probe) ? canonicalWorkspace(probe) : null;
 
@@ -3421,12 +3599,14 @@ __mods["./sip-merge"] = function (module, exports, require) {
 //      search state) of a node or piece, which come from the side that reviewed it last; on a tie the side named
 //      by `prefer` wins.
 //
-// Known limit: a piece removed on one device comes back from the other. Removal needs tombstones to merge; later.
+// Removal: a piece or event removed on one device stays removed (settings.removed holds { uid, at }), unless it was
+// reviewed or edited after that.
 
 "use strict";
 
 const core = require("./sip-core");
 const pc = require("./sip-piece");
+const evMod = require("./sip-event");
 
 class MergeConflict extends Error {}
 const conflict = msg => { throw new MergeConflict(msg); };
@@ -3629,6 +3809,13 @@ function mergeWorkspaces(local, remote, { prefer = "local" } = {}) {
   // Pieces taken away on either device stay away, unless the piece was reviewed after it was removed: then a review
   // would be lost, so the piece is kept and the record of its removal is dropped.
   const gone = new Map();
+  // Events: matched by uid; if both devices have one, the one edited last wins (a tie goes to `prefer`).
+  const evs = new Map(), evLocal = new Set((local.settings.events || []).map(e => e.uid));
+  for (const e of (local.settings.events || [])) evs.set(e.uid, e);
+  for (const e of (remote.settings.events || [])) {
+    const cur = evs.get(e.uid);
+    if (!cur || e.editedAt > cur.editedAt || (e.editedAt === cur.editedAt && prefer === "remote")) evs.set(e.uid, e);
+  }
   for (const r of (local.settings.removed || []).concat(remote.settings.removed || [])) if (!gone.has(r.uid) || r.at < gone.get(r.uid)) gone.set(r.uid, r.at);
   const kept = [];
   report.removed = [];
@@ -3636,6 +3823,15 @@ function mergeWorkspaces(local, remote, { prefer = "local" } = {}) {
     if (gone.has(p.uid) && newestInTree(p.root) <= gone.get(p.uid)) { if (localUids.has(p.uid)) report.removed.push(p.label); const i = report.copied.indexOf(p.label); if (i >= 0) report.copied.splice(i, 1); }
     else { kept.push(p); gone.delete(p.uid); }
   }
+  const keptEvents = [];
+  report.eventsAdded = 0; report.eventsRemoved = [];
+  for (const [uid, e] of evs) {
+    if (gone.has(uid) && e.editedAt <= gone.get(uid)) { if (evLocal.has(uid)) report.eventsRemoved.push(e.name); continue; }
+    keptEvents.push(e); gone.delete(uid);
+    if (!evLocal.has(uid)) report.eventsAdded++;
+  }
+  if (keptEvents.length) settings.events = keptEvents; else delete settings.events;
+  if (local.settings.eventsMigrated || remote.settings.eventsMigrated) settings.eventsMigrated = true;
   if (gone.size) settings.removed = [...gone].map(([uid, at]) => ({ uid, at })); else delete settings.removed;
   return { pieces: kept, wishlist, settings, report };
 }
@@ -3647,7 +3843,7 @@ module.exports = { mergePieces, mergeWorkspaces };
 </script>
 <script>
 "use strict";
-const core = __req("./sip-core"), pc = __req("./sip-piece"), sess = __req("./sip-session"), sto = __req("./sip-store"), mrg = __req("./sip-merge");
+const core = __req("./sip-core"), pc = __req("./sip-piece"), sess = __req("./sip-session"), sto = __req("./sip-store"), mrg = __req("./sip-merge"), evMod = __req("./sip-event");
 const { GRADE } = core;
 const GRADE_NAME = { 1: "Again", 2: "Hard", 3: "Good", 4: "Easy" };
 const GRADE_HINT = { 1: "needs another look soon", 2: "got through, but barely", 3: "solid, as expected", 4: "ready to perform" };
@@ -4190,9 +4386,11 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-27";
+const APP_VERSION = "sip-app-28";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-28", items: ["Performances grow into plans. A performance can have a jury date, and the plan works back from the first date that matters: learn and fix, then run-throughs of single pieces, then of the whole program. Performances now sync between devices, and removing one on a device removes it everywhere. (Dashboard and run-through practice come next.)"] },
+  { v: "sip-app-28", items: ["Performances: on the Pieces tab, name a performance, set its date and choose its pieces. Until then, those pieces get their hotspot search first, then hotspots, then reviews that are due, and nothing is scheduled to come due after the date. They also stop using up intake slots."] },
   { v: "sip-app-27", items: ["Sync: a piece you remove stays removed on your other devices after syncing (unless it was practised since). The Google client ID box cleans up pasted links and spaces and warns if it looks wrong. After you practise, the Practice screen reminds you to sync."] },
   { v: "sip-app-26", items: ["Data tab: \"Sync with Google Drive\". One tap merges what is on your Drive into this device and saves the combined copy back, using a hidden app folder in your own Drive. Enter the Google client ID once on each device."] },
   { v: "sip-app-25", items: ["Quick repeat taps no longer zoom the screen (pinch to zoom still works). A piece section you set aside on one device is still waiting to resume after you merge that device's backup into another."] },
@@ -4257,7 +4455,7 @@ function startCard() {
   if (S.pieces.length === 0) return `<section class="card"><h1>Welcome</h1><p class="muted" style="margin:0">SIP breaks a piece down to the exact spots that need work, and schedules each one so your short practice sessions go where they matter. Add a piece to begin. Everything stays on this device.</p><button class="btn primary" data-act="view" data-v="pieces">Add a piece</button></section>`;
   const q = queueNow();
   const due = q.filter(e => e.status === "due" || e.status === "retry").length, fresh = q.filter(e => e.status === "new").length, back = q.filter(e => e.status === "interrupted").length;
-  return `${syncNudge()}${backupNudge()}<section class="card"><div class="eyebrow">Today</div><h1>Ready to practise</h1>
+  return `${syncNudge()}${backupNudge()}${eventBanner()}<section class="card"><div class="eyebrow">Today</div><h1>Ready to practise</h1>
     <div class="row">${back ? `<span class="tag retry">${back} to resume</span>` : ""}<span class="tag due">${due} due</span><span class="tag new">${fresh} new</span></div>
     ${startIntake()}
     ${knownInstruments().length ? `<div><div class="eyebrow" style="margin-bottom:8px">Instruments out today</div>${instChips(pickedNow(), "start")}<div class="small muted" style="margin-top:6px">${pickedNow().length ? "Untagged work shows too." : "None chosen, so everything shows."}</div></div>` : ""}
@@ -4368,15 +4566,80 @@ function viewQueue() {
         : e.status === "new" ? `<span class="tag new">new</span>`
         : `<span class="tag due">${e.daysOverdue === 0 ? "due today" : e.daysOverdue + " d overdue"}</span>`;
       const cur = S.cur && S.cur.node === e.node;
-      return `<div class="item"><div class="body"><div class="t">${esc(e.piece.label)} · ${esc(roleOf(e.piece, e.node))}</div><div class="s"><span class="num">${rng(e.node)}</span>${tag}${e.hasChildren ? '<span class="tag">whole review</span>' : ""}</div>${e.note ? `<div class="s">why: ${esc(e.note)}</div>` : ""}</div>${canPick ? `<button class="btn small ${cur ? "ghost" : ""}" data-act="pick" data-id="${e.node.id}">${cur ? "Current" : "Practise"}</button>` : ""}</div>`;
+      return `<div class="item"><div class="body"><div class="t">${esc(e.piece.label)} · ${esc(roleOf(e.piece, e.node))}</div><div class="s"><span class="num">${rng(e.node)}</span>${tag}${e.event ? `<span class="tag">${esc(e.event.name)} · ${e.event.daysLeft} d</span>` : ""}${e.hasChildren ? '<span class="tag">whole review</span>' : ""}</div>${e.note ? `<div class="s">why: ${esc(e.note)}</div>` : ""}</div>${canPick ? `<button class="btn small ${cur ? "ghost" : ""}" data-act="pick" data-id="${e.node.id}">${cur ? "Current" : "Practise"}</button>` : ""}</div>`;
     }).join("")}</div>
     ${live() ? "" : `<button class="btn primary" data-act="view" data-v="practice">Go to Practice to start</button>`}</section>`;
+}
+
+/* ---------- performances (events: a date, an optional jury, a set list, and a timeline) ---------- */
+const eventList = () => (S.settings.events || []).slice().sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+const eventPieces = e => e.setList.map(u => S.pieces.find(p => p.uid === u)).filter(Boolean);
+const daysLeftText = n => n < 0 ? "past" : n === 0 ? "today" : n === 1 ? "tomorrow" : `in ${n} days`;
+const PHASE_TEXT = { learn: "Learn and fix", pieceRuns: "Run-throughs of single pieces", programRuns: "Run-throughs of the whole program", afterJury: "Between the jury and the performance", done: "Over" };
+/* Events that came from pieces carrying a plain performance are made once; after that each piece's own performance
+   follows its events (sip-event.js), so removing an event on one device also removes it on the others. */
+function settleEvents() {
+  if (!S.settings.eventsMigrated) {
+    const made = evMod.eventsFromPieces(S.pieces);
+    if (made.length) S.settings.events = (S.settings.events || []).filter(e => !made.some(m => m.uid === e.uid)).concat(made);
+    S.settings.eventsMigrated = true;
+  }
+  evMod.syncPieceEvents(S.settings.events || [], S.pieces, dayStr());
+}
+function eventsCard() {
+  const today = dayStr(), list = eventList();
+  return `<section class="card"><h2>Performances</h2>
+    <p class="muted" style="margin:0">Name a performance, give its date (and a jury date if there is one), and choose its pieces. The plan works back from the first date that matters: learn and fix, then run-throughs. Until the performance, those pieces' hotspot search comes first, then hotspots, then reviews that are due, and nothing is scheduled to come due after the date. These pieces do not use up a slot.</p>
+    ${list.map((e, i) => { const left = evMod.daysUntil(e.date, today), ps = eventPieces(e), todo = ps.filter(p => p.root.fsrs === null).length, ph = evMod.phaseOn(e, today);
+      return `<div class="item"><div class="body"><div class="t">${esc(e.name)} · ${esc(e.date)}</div><div class="s"><span class="tag ${left < 0 ? "" : "due"}">${daysLeftText(left)}</span>${esc(ps.map(p => p.label).join(", "))}${left >= 0 && todo ? ` · ${todo} still to search for hotspots` : ""}</div>
+      ${left >= 0 ? `<div class="s">${esc(PHASE_TEXT[ph])}${e.jury ? ` · jury ${esc(e.jury)} (${daysLeftText(evMod.daysUntil(e.jury, today))})` : ""} · ready by ${esc(evMod.readyBy(e))}</div>` : ""}</div><button class="btn small ghost" data-act="event-edit" data-i="${i}">Edit</button></div>`; }).join("")}
+    <div class="row"><button class="btn" data-act="event-add">Add a performance</button></div></section>`;
+}
+function eventBanner() {
+  const today = dayStr(), e = eventList().find(x => evMod.daysUntil(x.date, today) >= 0);
+  if (!e) return "";
+  const todo = eventPieces(e).filter(p => p.root.fsrs === null).length, ph = evMod.phaseOn(e, today);
+  return `<div class="banner"><span class="grow"><b>${esc(e.name)}</b> ${daysLeftText(evMod.daysUntil(e.date, today))}. ${esc(PHASE_TEXT[ph])}; ready by ${esc(evMod.readyBy(e))}.${todo ? ` ${todo} piece${todo === 1 ? "" : "s"} still to search for hotspots, and that comes first.` : " Hotspots and reviews come first."}</span></div>`;
+}
+function eventSheet(sh) {
+  const e = (() => { try { return evMod.normalizeEvent({ name: sh.name || "x", date: sh.date, jury: sh.jury, readyDays: Number(sh.ready), programRunDays: Number(sh.prog), setList: [] }); } catch (err) { return null; } })();
+  const plan = e ? evMod.timeline(e).map(r => `<li>${esc(r.label)}: ${r.from ? esc(r.from) : "now"} to ${esc(r.until)}</li>`).join("") : "";
+  return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="Performance" data-stop="1"><h2>${sh.orig ? "Edit performance" : "Add a performance"}</h2>
+    <label class="field" for="ev-name">Name<input id="ev-name" type="text" maxlength="80" value="${esc(sh.name)}" autocomplete="off" placeholder="Spring recital"></label>
+    <label class="field" for="ev-date">Performance date<input id="ev-date" type="date" value="${esc(sh.date)}"></label>
+    <label class="field" for="ev-jury">Jury date<small>Optional. If there is one, the plan works back from it.</small><input id="ev-jury" type="date" value="${esc(sh.jury)}"></label>
+    <div class="row"><label class="field grow" for="ev-ready">Ready by (days before)<input id="ev-ready" type="number" inputmode="numeric" min="1" value="${esc(sh.ready)}"></label>
+    <label class="field grow" for="ev-prog">Whole program from (days before)<input id="ev-prog" type="number" inputmode="numeric" min="0" value="${esc(sh.prog)}"></label></div>
+    ${plan ? `<ul class="small muted" style="margin:0;padding-left:18px">${plan}</ul>` : ""}
+    <div><div class="eyebrow" style="margin-bottom:8px">Pieces</div><div class="chips" role="group" aria-label="Pieces">${S.pieces.map(p => `<button data-act="ev-toggle" data-uid="${esc(p.uid)}" aria-pressed="${sh.picks.includes(p.uid)}">${esc(p.label)}</button>`).join("") || '<span class="muted small">Add a piece first.</span>'}</div></div>
+    ${sh.err ? `<div class="banner red"><span class="grow">${esc(sh.err)}</span></div>` : ""}
+    <div class="row">${sh.orig ? `<button class="btn danger" data-act="event-remove">Remove</button>` : ""}<button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
+}
+function eventRead(sh) { const g = id => $(id); if (g("ev-name")) sh.name = g("ev-name").value; if (g("ev-date")) sh.date = g("ev-date").value; if (g("ev-jury")) sh.jury = g("ev-jury").value; if (g("ev-ready")) sh.ready = g("ev-ready").value; if (g("ev-prog")) sh.prog = g("ev-prog").value; }
+function saveEvent(sh) {
+  eventRead(sh);
+  try {
+    const prior = sh.orig ? (S.settings.events || []).find(x => x.uid === sh.orig) : null;
+    const e = evMod.normalizeEvent({ uid: prior ? prior.uid : undefined, name: sh.name, date: sh.date, jury: sh.jury || null, readyDays: Number(sh.ready), programRunDays: Number(sh.prog), target: prior ? prior.target : undefined, setList: sh.picks, editedAt: Date.now() });
+    if (!e.setList.length) throw new Error("Choose at least one piece.");
+    if (!sh.orig && e.date < dayStr()) throw new Error("That date has already passed.");
+    S.settings.events = (S.settings.events || []).filter(x => x.uid !== e.uid).concat(e);
+    evMod.syncPieceEvents(S.settings.events, S.pieces, dayStr());
+    S.sheet = null; persist(); render(); toast("Saved.");
+  } catch (err) { sh.err = err.message; render(); }
+}
+function removeEvent(sh) {
+  S.settings.events = (S.settings.events || []).filter(x => x.uid !== sh.orig);
+  if (!S.settings.events.length) delete S.settings.events;
+  S.settings.removed = (S.settings.removed || []).filter(r => r.uid !== sh.orig).concat({ uid: sh.orig, at: Date.now() });
+  evMod.syncPieceEvents(S.settings.events || [], S.pieces, dayStr());
+  S.sheet = null; persist(); render(); toast("Removed. The pieces are scheduled as usual again.");
 }
 
 /* ---------- pieces ---------- */
 /* ---------- intake: open pieces, slots, waiting list ---------- */
 const slotsNow = () => Number.isInteger(S.settings.intakeSlots) ? S.settings.intakeSlots : pc.DEFAULT_INTAKE_SLOTS;
-const intake = () => pc.intakeStatus(S.pieces, slotsNow());
+const intake = () => pc.intakeStatus(S.pieces, slotsNow(), dayStr());
 function intakeText(st) {
   if (st.limit === 0) return `Open pieces: ${st.open} (no limit set)`;
   return `Open pieces: ${st.open} of ${st.limit} · ${st.over ? "over by " + (st.open - st.limit) : st.free === 1 ? "1 slot free" : st.free + " slots free"}`;
@@ -4428,7 +4691,7 @@ function loadWish(i) {
 }
 function viewPieces() {
   const f = S.form;
-  let h = intakeCard() + `<section class="card"><h2>Add a piece</h2>
+  let h = intakeCard() + eventsCard() + `<section class="card"><h2>Add a piece</h2>
     <label class="field" for="f-label">Title<input id="f-label" type="text" value="${esc(f.label)}" autocomplete="off" placeholder="e.g. Gaston"></label>
     <div class="row"><label class="field grow" for="f-start">First measure<input id="f-start" type="number" inputmode="numeric" min="1" value="${esc(f.start)}"></label>
     <label class="field grow" for="f-end">Last measure<input id="f-end" type="number" inputmode="numeric" min="1" value="${esc(f.end)}"></label>
@@ -4466,7 +4729,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-27\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-28\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -4478,7 +4741,7 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-27</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-28</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -4545,9 +4808,11 @@ async function planMerge(text) {
   structural.forEach(np => lines.push(`${np.label}: sections or settings brought up to date`));
   r.report.copied.forEach(l => lines.push(`New piece: ${l}`));
   r.report.removed.forEach(l => lines.push(`Removed: ${l} (it was removed on the other device)`));
+  if (r.report.eventsAdded) lines.push(`Performances: ${r.report.eventsAdded} added`);
+  r.report.eventsRemoved.forEach(l => lines.push(`Performance removed: ${l} (it was removed on the other device)`));
   r.report.conflicts.forEach(c => lines.push(`${c.label} could not be combined (${c.reason}). The other copy is kept as its own piece, so nothing is lost.`));
   if (r.report.wishlistAdded) lines.push(`Waiting list: ${r.report.wishlistAdded} added`);
-  const same = changed.length === S.pieces.length && changed.every((p, i) => p === S.pieces[i]) && !r.report.wishlistAdded && JSON.stringify(r.settings.removed || []) === JSON.stringify(S.settings.removed || []);
+  const same = changed.length === S.pieces.length && changed.every((p, i) => p === S.pieces[i]) && !r.report.wishlistAdded && JSON.stringify([r.settings.removed || [], r.settings.events || [], !!r.settings.eventsMigrated]) === JSON.stringify([S.settings.removed || [], S.settings.events || [], !!S.settings.eventsMigrated]);
   return { result: r, pieces: changed, lines, same, warnings: remote.warnings };
 }
 async function applyMerge(plan) {
@@ -4680,6 +4945,7 @@ function sheetHtml() {
   const sh = S.sheet;
   if (sh.kind === "edit") return editSheet(sh);
   if (sh.kind === "wish") return wishSheet(sh);
+  if (sh.kind === "event") return eventSheet(sh);
   if (sh.kind === "guide") return guideSheet();
   if (sh.kind === "news") return newsSheet();
   if (sh.kind === "note") return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="Note" data-stop="1"><h2>Watch for</h2>
@@ -4695,7 +4961,7 @@ function sheetHtml() {
     <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button>${sh.skip ? `<button class="btn grow" data-act="sheet-skip">${esc(sh.skip)}</button>` : ""}<button class="btn primary grow" data-act="sheet-ok" id="sheetok">${esc(sh.cta)}</button></div></div></div>`;
 }
 function setSheetValue(v) {
-  const sh = S.sheet; if (!sh || sh.kind === "confirm" || sh.kind === "inst" || sh.kind === "edit" || sh.kind === "wish" || sh.kind === "note") return;
+  const sh = S.sheet; if (!sh || sh.kind === "confirm" || sh.kind === "inst" || sh.kind === "edit" || sh.kind === "wish" || sh.kind === "note" || sh.kind === "event") return;
   sh.value = Math.min(sh.hi, Math.max(sh.lo, Math.round(v)));
   const bv = $("bigval"), rg = $("sheetrange"); if (bv) bv.textContent = `m. ${sh.value}`; if (rg) rg.value = sh.value;
 }
@@ -4761,6 +5027,7 @@ function onAct(act, el) {
       const sh = S.sheet;
       if (sh.kind === "edit") { saveEdit(sh); break; }
       if (sh.kind === "wish") { saveWish(sh); break; }
+      if (sh.kind === "event") { saveEvent(sh); break; }
       S.sheet = null;
       if (sh.kind === "note") { if (S.cur) { S.cur.node.hotspotNote = sh.text.trim().slice(0, 160); persist(); toast(sh.text.trim() ? "Note saved." : "Note cleared."); } render(); break; }
       if (sh.kind === "fail") answer(false, sh.value);
@@ -4888,6 +5155,10 @@ function onAct(act, el) {
       }).catch(e => { S.importMsg = e.message; render(); });
       break;
     }
+    case "event-add": S.sheet = { kind: "event", orig: null, name: "", date: "", jury: "", ready: String(evMod.DEFAULTS.readyDays), prog: String(evMod.DEFAULTS.programRunDays), picks: [], err: "" }; render(); break;
+    case "event-edit": { const e = eventList()[Number(el.dataset.i)]; S.sheet = { kind: "event", orig: e.uid, name: e.name, date: e.date, jury: e.jury || "", ready: String(e.readyDays), prog: String(e.programRunDays), picks: e.setList.slice(), err: "" }; render(); break; }
+    case "ev-toggle": { const sh = S.sheet; eventRead(sh); const u = el.dataset.uid; sh.picks = sh.picks.includes(u) ? sh.picks.filter(x => x !== u) : sh.picks.concat(u); render(); break; }
+    case "event-remove": removeEvent(S.sheet); break;
     case "sync": syncNow(); break;
     case "sync-go": S.view = "data"; S.sheet = null; window.scrollTo(0, 0); syncNow(); break;
     case "sync-later": lsSet("sip-drive-snooze", String(Date.now() + 4 * 3600000)); render(); break;
@@ -4963,6 +5234,7 @@ setInterval(tick, 1000);
 async function loadAll() {
   const loaded = await S.store.load({ now: new Date() });
   S.pieces = loaded.pieces; S.settings = loaded.settings; S.wishlist = loaded.wishlist;
+  settleEvents();
   core.resetIdCounter(loaded.nextFreeId);
   S.session = null; S.sessionPieces = []; S.cur = null; S.result = null;
   if (loaded.session) { S.session = loaded.session.session; S.sessionPieces = loaded.session.pieces; }
