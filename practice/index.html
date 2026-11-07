@@ -1592,6 +1592,8 @@ function resolveTempoMap(tempoMap, unitTable) {
   return tempoMap.map(anchor => {
     const ordinal = resolveLocation(anchor, unitTable, "Tempo anchor");
     const resolved = { ordinal, tempo: anchor.tempo };
+    // pass: this line applies only on that time through (see mapForPass); absent means every pass.
+    if (anchor.pass !== undefined) resolved.pass = anchor.pass;
     if (anchor.rampTo !== undefined) {
       resolved.rampTo = {
         ordinal: resolveLocation(anchor.rampTo, unitTable, "Ramp target"),
@@ -1612,6 +1614,33 @@ function resolveTempoMap(tempoMap, unitTable) {
   });
 }
 
+// The tempo map as it is on one pass through the music (1 = the first time a bar is played, 2 = the second ...). Lines without
+// a pass apply on every pass; a line tagged with this pass applies on this pass only and replaces an untagged line at the
+// same position. Pass 0 gives the untagged lines alone. Each tagged line, like any other, holds until the next line.
+function mapForPass(tempoMap, pass = 1) {
+  const tagged = new Set(tempoMap.filter(a => a.pass !== undefined && a.pass === pass).map(a => a.ordinal));
+  const base = tempoMap.filter(a => a.pass === undefined);
+  // A tagged line that gives no meter changes the tempo only: the bar length in force on the other passes stays.
+  const meterAt = ordinal => { let m; for (const a of base) if (a.ordinal <= ordinal && a.meter) m = a.meter; return m; };
+  return tempoMap.filter(a => a.pass === undefined ? !tagged.has(a.ordinal) : a.pass === pass)   // duplicates stay, so validation still sees them
+    .map(a => { if (a.pass === undefined || a.meter) return a; const m = meterAt(a.ordinal); return m ? { ...a, meter: m } : a; })
+    .sort((x, y) => x.ordinal - y.ordinal);
+}
+const passesOf = tempoMap => [...new Set(tempoMap.filter(a => a.pass !== undefined).map(a => a.pass))].sort((a, b) => a - b);
+// Validates the untagged lines and the map on every pass that has tagged lines.
+function validateTempoMapPasses(tempoMap) {
+  for (const a of tempoMap) if (a.pass !== undefined && !(Number.isInteger(a.pass) && a.pass >= 1 && a.pass <= 8)) {
+    throw new Error(`Tempo anchor at ordinal ${a.ordinal}: the pass must be a whole number from 1 to 8, got ${JSON.stringify(a.pass)}.`);
+  }
+  validateTempoMap(mapForPass(tempoMap, 0));
+  for (const p of passesOf(tempoMap)) {
+    try { validateTempoMap(mapForPass(tempoMap, p)); } catch (err) { throw new Error(`On pass ${p}: ${err.message}`); }
+  }
+}
+
+module.exports.mapForPass = mapForPass;
+module.exports.passesOf = passesOf;
+module.exports.validateTempoMapPasses = validateTempoMapPasses;
 module.exports.buildUnitTable = buildUnitTable;
 module.exports.findUnitByOrdinal = findUnitByOrdinal;
 module.exports.validateTempoMap = validateTempoMap;
@@ -1667,6 +1696,135 @@ function estimateDurationSeconds(unitTable, startOrdinal, endOrdinal, tempoMap, 
 module.exports.estimateDurationSeconds = estimateDurationSeconds;
 
 };
+__mods["./sip-form"] = function (module, exports, require) {
+// sip-form.js
+// The form of a piece: repeats and endings, and the playing order they make. Pure functions: no storage, no clock.
+//
+// A piece is written in POSITIONS, one per written bar, in page order (the ordinals of the tempo map). A chart that prints
+// both endings as 9 and 10 gets the second ending the next free positions (11 and 12); the optional `printed` label keeps
+// the number on the page ("m. 9"). The practice tree, hotspots and slips all stay on positions. The form is a separate layer
+// that says which positions are played, in what order, and so what the click track, the durations and the export follow.
+//
+// Markers (each one a repeat):
+//   { type: "repeat", from, to }                               bars from..to played twice
+//   { type: "repeat", from, to, times: 3 }                     ... three times (2 to 8)
+//   { type: "repeat", from, to, endings: [ {from, to, printed?}, ... ] }
+//        from..to is the body, played once for each ending; the endings follow the body in the music, each starting the bar
+//        after the one before. Pass k plays the body and then ending k; the music carries on after the last ending.
+// Repeats may not overlap or nest. (Jumps such as D.S. and D.C. are meant to be markers of their own later.)
+//
+// A bar's PASS is how many times it has been played so far: the body of a repeat runs on pass 1, 2, ...; an ending is
+// played once, on pass 1. Tempo lines may carry a pass (see sip-core).
+
+"use strict";
+
+const MAX_TIMES = 8, MAX_ENDINGS = 4, MAX_MARKERS = 40, MAX_PRINTED = 20;
+
+function normalizeForm(raw, range) {
+  const bad = m => { throw new Error(m); };
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) bad("The form must be a list of repeats.");
+  if (raw.length > MAX_MARKERS) bad(`A piece can have at most ${MAX_MARKERS} repeats.`);
+  const int = (v, what) => { if (!Number.isInteger(v) || v < 1) bad(`${what} must be a whole number from 1.`); return v; };
+  const out = raw.map((m, i) => {
+    const where = `Repeat ${i + 1}`;
+    if (!m || typeof m !== "object" || m.type !== "repeat") bad(`${where} must be a repeat.`);
+    const from = int(m.from, `${where}: the first bar`), to = int(m.to, `${where}: the last bar`);
+    if (to < from) bad(`${where}: the last bar (${to}) is before the first (${from}).`);
+    const c = { type: "repeat", from, to };
+    if (m.endings !== undefined) {
+      if (m.times !== undefined) bad(`${where}: a repeat with endings plays once for each ending, so it takes no count.`);
+      if (!Array.isArray(m.endings) || m.endings.length < 2 || m.endings.length > MAX_ENDINGS) bad(`${where}: give 2 to ${MAX_ENDINGS} endings.`);
+      let next = to + 1;
+      c.endings = m.endings.map((e, k) => {
+        const ew = `${where}, ending ${k + 1}`;
+        if (!e || typeof e !== "object") bad(`${ew} is missing.`);
+        const ef = int(e.from, `${ew}: the first bar`), et = int(e.to, `${ew}: the last bar`);
+        if (ef !== next) bad(`${ew} should start at bar ${next}, the bar after the one before it.`);
+        if (et < ef) bad(`${ew}: the last bar (${et}) is before the first (${ef}).`);
+        next = et + 1;
+        const ce = { from: ef, to: et };
+        if (e.printed !== undefined && e.printed !== "") {
+          if (typeof e.printed !== "string" || e.printed.length > MAX_PRINTED) bad(`${ew}: the printed number is at most ${MAX_PRINTED} characters.`);
+          ce.printed = e.printed;
+        }
+        return ce;
+      });
+    } else if (m.times !== undefined) {
+      if (!Number.isInteger(m.times) || m.times < 2 || m.times > MAX_TIMES) bad(`${where}: a repeat is played 2 to ${MAX_TIMES} times.`);
+      if (m.times !== 2) c.times = m.times;
+    }
+    return c;
+  });
+  out.sort((a, b) => a.from - b.from);
+  const lastBar = m => m.endings ? m.endings[m.endings.length - 1].to : m.to;
+  for (let i = 0; i < out.length; i++) {
+    if (range && (out[i].from < range.start || lastBar(out[i]) > range.end)) bad(`Repeat ${i + 1} (bars ${out[i].from}–${lastBar(out[i])}) is outside the piece (bars ${range.start}–${range.end}).`);
+    if (i > 0 && out[i].from <= lastBar(out[i - 1])) bad(`Repeats cannot overlap or sit inside one another (bars ${out[i].from} and ${lastBar(out[i - 1])}).`);
+  }
+  return out;
+}
+
+const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" })[n % 10] || "th");
+const span = (a, b) => a === b ? String(a) : `${a}–${b}`;
+
+// { spans: [{ from, to, pass, note? }], text, bars } for a piece covering start..end. Each span is played straight through
+// on one pass. With no form the order is the one span start..end.
+function playingOrder(form, start, end) {
+  const markers = normalizeForm(form, { start, end }), spans = [];
+  const add = (from, to, pass, note) => { const s = { from, to, pass }; if (note) s.note = note; spans.push(s); };
+  let pos = start;
+  for (const m of markers) {
+    if (pos < m.from) add(pos, m.from - 1, 1);
+    if (m.endings) {
+      m.endings.forEach((e, k) => { add(m.from, m.to, k + 1); add(e.from, e.to, 1, `ending ${k + 1}${e.printed ? `, printed ${e.printed}` : ""}`); });
+      pos = m.endings[m.endings.length - 1].to + 1;
+    } else {
+      for (let k = 1; k <= (m.times || 2); k++) add(m.from, m.to, k);
+      pos = m.to + 1;
+    }
+  }
+  if (pos <= end) add(pos, end, 1);
+  const text = spans.map(s => `${span(s.from, s.to)}${s.pass > 1 ? ` (${ord(s.pass)})` : ""}${s.note ? ` (${s.note})` : ""}`).join(", ");
+  return { spans, text, bars: spans.reduce((n, s) => n + (s.to - s.from + 1), 0) };
+}
+
+// The text a player types and reads: one repeat to a line.
+//   repeat 1-8            repeat 1-8 x3           repeat 1-8 endings 9-10, 11-12 (9-10)
+function formToText(form) {
+  return (form || []).map(m => {
+    let t = `repeat ${span(m.from, m.to).replace("–", "-")}`;
+    if (m.endings) t += " endings " + m.endings.map(e => `${e.from}-${e.to}${e.printed ? ` (${e.printed})` : ""}`).join(", ");
+    else if (m.times) t += ` x${m.times}`;
+    return t;
+  }).join("\n");
+}
+
+function parseForm(text) {
+  const lines = String(text || "").split(/\n/).map(l => l.trim()).filter(Boolean);
+  const rng = (s, what) => { const r = /^(\d+)\s*[-–]\s*(\d+)$|^(\d+)$/.exec(s.trim()); if (!r) throw new Error(`${what} ("${s.trim()}") should be like 1-8.`); return r[3] ? [Number(r[3]), Number(r[3])] : [Number(r[1]), Number(r[2])]; };
+  return lines.map((l, i) => {
+    const m = /^repeat\s+(\S+?)(?:\s+x(\d+))?(?:\s+endings\s+(.+))?$/i.exec(l);
+    if (!m) throw new Error(`Line ${i + 1} ("${l}") should be like: repeat 1-8, repeat 1-8 x3, or repeat 1-8 endings 9-10, 11-12.`);
+    const [from, to] = rng(m[1], `Line ${i + 1}: the repeated bars`);
+    const out = { type: "repeat", from, to };
+    if (m[2]) out.times = Number(m[2]);
+    if (m[3]) {
+      out.endings = m[3].split(/,(?![^(]*\))/).map(part => {
+        const e = /^\s*([^()]+?)\s*(?:\(([^)]*)\))?\s*$/.exec(part);
+        if (!e) throw new Error(`Line ${i + 1}: an ending ("${part.trim()}") should be like 9-10 or 11-12 (9-10).`);
+        const [ef, et] = rng(e[1], `Line ${i + 1}: an ending`);
+        const o = { from: ef, to: et }; if (e[2]) o.printed = e[2].trim();
+        return o;
+      });
+    }
+    return out;
+  });
+}
+
+module.exports = { MAX_TIMES, MAX_ENDINGS, MAX_MARKERS, normalizeForm, playingOrder, formToText, parseForm };
+
+};
 __mods["./sip-piece"] = function (module, exports, require) {
 // sip-piece.js
 //
@@ -1681,8 +1839,9 @@ __mods["./sip-piece"] = function (module, exports, require) {
 // below is its executable form.
 
 const core = require("./sip-core");
+const formMod = require("./sip-form");
 const {
-  buildUnitTable, resolveTempoMap, validateTempoMap, effectiveTempo, governingAnchor,
+  buildUnitTable, resolveTempoMap, validateTempoMap, validateTempoMapPasses, mapForPass, effectiveTempo, governingAnchor,
   estimateDurationSeconds, stepToTempo, dateOnly, studyDayOf
 } = core;
 
@@ -1773,7 +1932,7 @@ function setUnitPages(piece, pages) {
   piece.unitPages = JSON.parse(JSON.stringify(pages));
   if (piece.tempoAnchors) {
     try {
-      validateTempoMap(resolveTempoMap(piece.tempoAnchors, getUnitTable(piece)));
+      validateTempoMapPasses(resolveTempoMap(piece.tempoAnchors, getUnitTable(piece)));
     } catch (err) {
       piece.kind = previous.kind;
       piece.unitPages = previous.unitPages;
@@ -1804,7 +1963,7 @@ function setTempoAnchors(piece, anchors) {
   if (!Array.isArray(anchors)) throw new Error("Tempo anchors must be an array.");
   const copy = JSON.parse(JSON.stringify(anchors));
   const resolved = resolveTempoMap(copy, getUnitTable(piece) || []);
-  validateTempoMap(resolved);
+  validateTempoMapPasses(resolved);
   resolved.forEach(a => {
     if (!(typeof a.tempo === "number" && a.tempo > 0)) {
       throw new Error(`Tempo anchor at ordinal ${a.ordinal} needs a positive tempo, got ${JSON.stringify(a.tempo)}.`);
@@ -1818,10 +1977,22 @@ function getUnitTable(piece) {
   return piece.unitPages ? buildUnitTable(piece.unitPages) : null;
 }
 
-function getTempoMap(piece) {
+// The tempo map on one pass (default: the first time through). See sip-core mapForPass.
+function getTempoMap(piece, pass = 1) {
   if (!piece.tempoAnchors) return null;
-  return resolveTempoMap(piece.tempoAnchors, getUnitTable(piece) || []);
+  return mapForPass(resolveTempoMap(piece.tempoAnchors, getUnitTable(piece) || []), pass);
 }
+
+// ---------------------------------------------------------------
+// Repeats and endings (sip-form.js)
+// ---------------------------------------------------------------
+function setForm(piece, markers) {
+  const clean = formMod.normalizeForm(markers, { start: piece.root.start, end: piece.root.end });
+  if (clean.length) piece.form = clean; else delete piece.form;
+  return clean;
+}
+// { spans, text, bars }: the bars of the piece in the order they are played.
+function playingOrder(piece) { return formMod.playingOrder(piece.form || [], piece.root.start, piece.root.end); }
 
 // ---------------------------------------------------------------
 // Tempo and duration for a stretch of a piece
@@ -1852,8 +2023,8 @@ function tempoSpan(tempoMap, fromOrdinal, toOrdinal, step = 0) {
 // Uses the tempo map when the piece has one, else the flat goalTempo,
 // else null — never a made-up number. No note value is claimed ("Q=")
 // because a map's tempo is in whatever pulse the piece was authored in.
-function describeTempo(piece, fromOrdinal, toOrdinal, step = 0) {
-  const map = getTempoMap(piece);
+function describeTempo(piece, fromOrdinal, toOrdinal, step = 0, pass = 1) {
+  const map = getTempoMap(piece, pass);
   const r = n => Math.round(n);
   if (map) {
     const span = tempoSpan(map, fromOrdinal, toOrdinal, step);
@@ -1880,8 +2051,8 @@ function describeTempo(piece, fromOrdinal, toOrdinal, step = 0) {
 // before it that carries a meter; its optional pattern gives each beat's state (accent / ordinary / silent).
 // Returns {ok:true, beats:[{measure, beat, bpm, state}]} or {ok:false, reason} and never invents a number.
 const CLICK_PLAN_MAX_BARS = 2000;
-function clickPlan(piece, fromOrdinal, toOrdinal, step = 0) {
-  const map = getTempoMap(piece);
+function clickPlan(piece, fromOrdinal, toOrdinal, step = 0, pass = 1) {
+  const map = getTempoMap(piece, pass);
   if (!map) return { ok: false, reason: "no-map" };
   if (piece.kind === "unmetered") return { ok: false, reason: "unmetered" };
   if (toOrdinal >= PLACEHOLDER_END) return { ok: false, reason: "no-end" };
@@ -1903,8 +2074,8 @@ function clickPlan(piece, fromOrdinal, toOrdinal, step = 0) {
 // or null when it can't be known honestly: no tempo map, a placeholder
 // end, an unmetered range past its unit table, or a metered anchor
 // that doesn't say how many beats are in a bar.
-function pieceDurationSeconds(piece, fromOrdinal, toOrdinal, step = 0) {
-  const map = getTempoMap(piece);
+function pieceDurationSeconds(piece, fromOrdinal, toOrdinal, step = 0, pass = 1) {
+  const map = getTempoMap(piece, pass);
   if (!map) return null;
   if (toOrdinal >= PLACEHOLDER_END) return null;
 
@@ -1923,6 +2094,28 @@ function pieceDurationSeconds(piece, fromOrdinal, toOrdinal, step = 0) {
     total += (anchor.meter.beatsPerBar / effectiveTempo(map, ordinal, step)) * 60;
   }
   return total;
+}
+
+// The whole piece as it is played: every span of the playing order, each on its own pass. A repeat counts twice. Null when
+// any part cannot be known honestly (see pieceDurationSeconds).
+function playingDurationSeconds(piece, step = 0) {
+  let total = 0;
+  for (const s of playingOrder(piece).spans) {
+    const t = pieceDurationSeconds(piece, s.from, s.to, step, s.pass);
+    if (t === null) return null;
+    total += t;
+  }
+  return total;
+}
+// The click plan for the whole piece as played: the beats of every span in order, each with the pass it belongs to.
+function playingClickPlan(piece, step = 0) {
+  const beats = [];
+  for (const s of playingOrder(piece).spans) {
+    const r = clickPlan(piece, s.from, s.to, step, s.pass);
+    if (!r.ok) return r;
+    r.beats.forEach(b => beats.push({ ...b, pass: s.pass }));
+  }
+  return { ok: true, beats };
 }
 
 function formatDuration(seconds) {
@@ -2150,6 +2343,8 @@ function serializePiece(piece, { now = new Date() } = {}) {
     tempoAnchors: piece.tempoAnchors,
     instruments: Array.isArray(piece.instruments) ? [...piece.instruments] : [],
     ...(piece.event ? { event: { name: piece.event.name, date: piece.event.date } } : {}),
+    ...(piece.sightReads ? { sightReads: true } : {}),
+    ...(piece.form && piece.form.length ? { form: JSON.parse(JSON.stringify(piece.form)) } : {}),
     root: serializeNode(piece.root)
   };
 }
@@ -2185,6 +2380,8 @@ function validatePieceData(data) {
   }
   const badInstruments = v => v !== undefined && !(Array.isArray(v) && v.every(x => typeof x === "string" && x.trim() !== ""));
   if (badInstruments(data.instruments)) bad("instruments", "must be a list of non-empty names");
+  if (data.sightReads !== undefined && typeof data.sightReads !== "boolean") bad("sightReads", "must be true or false");
+  if (data.form !== undefined) { try { formMod.normalizeForm(data.form, null); } catch (err) { bad("form", err.message); } }
   if (data.goalTempo !== null && !(typeof data.goalTempo === "number" && data.goalTempo > 0)) {
     bad("goalTempo", "must be a positive number or null");
   }
@@ -2354,6 +2551,8 @@ function deserializePiece(data, { startingId = 1, dayConfig = {}, preserveIds = 
     event: data.event || null,
     uid: typeof data.uid === "string" ? data.uid : null    // files written before uids existed get a fresh one, kept from the next save on
   });
+  if (data.sightReads === true) piece.sightReads = true;
+  if (Array.isArray(data.form) && data.form.length) piece.form = formMod.normalizeForm(data.form, { start: piece.root.start, end: piece.root.end });
   return { piece, nextFreeId: counter.next };
 }
 
@@ -2379,6 +2578,7 @@ function editPiece(piece, { label, start, end, goalTempo } = {}) {
     if (endFirst) { doEnd(); doStart(); } else { doStart(); doEnd(); }
     if (goalTempo !== undefined) setGoalTempo(p, goalTempo);
     if (label !== undefined) renamePiece(p, label);
+    if (p.form) playingOrder(p);                            // the repeats must still fit the new range
     return warnings;
   };
   const trial = deserializePiece(JSON.parse(JSON.stringify(serializePiece(piece))), { preserveIds: true }).piece;
@@ -2461,6 +2661,7 @@ module.exports = {
   setNodeSubdivision, subdivisionOf, DEFAULT_INTAKE_SLOTS, isOpenPiece, intakeStatus, wishReady, makeWish, recommendWish, admitWish,
   setGoalTempo, editPiece, setPieceInstruments, setNodeInstruments,
   assertValidEvent, setEvent, activeEvent, daysUntil,
+  setForm, playingOrder, playingDurationSeconds, playingClickPlan,
   FORMAT_VERSION, PIECE_KINDS, PLACEHOLDER_END, newUid,
   makePiece, setUnitPages, setTempoAnchors, getUnitTable, getTempoMap,
   tempoSpan, describeTempo, clickPlan, pieceDurationSeconds, formatDuration,
@@ -2883,7 +3084,7 @@ function buildQueue(pieces, studyDay, { excludeIds = [], instruments = [] } = {}
   // ready-by date instead of all falling due on the last one. Pieces whose performance carries no ready-by date (the
   // command line, older data) keep the plain rule: nothing waits past the day before the performance.
   const plans = new Map();
-  const planKey = e => e.date + "|" + e.name;
+  const planKey = () => "all";                       // every performance shares one plan: one daily budget
   pieces.forEach(piece => {
     const e = pieceMod.activeEvent(piece, dayStr);
     if (!e || !e.readyBy) return;
@@ -3158,6 +3359,7 @@ function gradeNode(session, pieces, node, grade, { now } = {}) {
     result = concludeSession(node, grade, day);
   }
   appendSpawned(session, result.decomposedChildren);
+  if (grade <= 2) { const owner = pieces.find(p => p.sightReads && core.flattenTree(p.root).includes(node)); if (owner) owner.sightReads = false; }   // it did not sight-read as well as hoped
   node.interrupted = false;
   addOnce(session.gradedNodeIds, node.id);
   removeId(session.graceEligibleIds, node.id);
@@ -3243,7 +3445,7 @@ const runMod = require("./sip-run");
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULTS = { readyDays: 14, programRunDays: 7, target: 0.9, visitsPerDay: 10 };
-const MAX_DAYS = 365;
+const MAX_DAYS = 365, MAX_DATES = 30;
 
 const validDate = d => typeof d === "string" && DATE_RE.test(d) && new Date(d + "T00:00:00Z").toISOString().slice(0, 10) === d;
 const addDaysStr = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
@@ -3269,12 +3471,22 @@ function normalizeEvent(raw) {
   const visitsPerDay = int(raw.visitsPerDay === undefined ? DEFAULTS.visitsPerDay : raw.visitsPerDay, 1, 200, "Visits a day");
   const setList = Array.isArray(raw.setList) ? raw.setList : bad("An event needs a set list.");
   if (!setList.every(u => typeof u === "string" && u.length > 0 && u.length <= 64) || new Set(setList).size !== setList.length) bad("The set list must name each piece once.");
+  // A series of performances of the same program (a tour): further dates after the first. The plan is ready by the first.
+  const more = raw.dates === undefined || raw.dates === null ? [] : raw.dates;
+  if (!Array.isArray(more) || more.length > MAX_DATES || !more.every(validDate)) bad(`The extra performance dates must be real dates, at most ${MAX_DATES}.`);
+  if (more.some(d => d <= raw.date)) bad("Extra performance dates must come after the first one.");
+  const dates = [...new Set(more)].sort();
   const uid = raw.uid === undefined ? newUid() : raw.uid;
   if (typeof uid !== "string" || !/^[0-9A-Za-z-]{1,64}$/.test(uid)) bad("The event id is not valid.");
   const editedAt = raw.editedAt === undefined ? 0 : raw.editedAt;
   if (!Number.isFinite(editedAt)) bad("The edit time is not valid.");
-  return { uid, name, date: raw.date, jury, readyDays, programRunDays, target, visitsPerDay, setList: setList.slice(), editedAt };
+  return { uid, name, date: raw.date, ...(dates.length ? { dates } : {}), jury, readyDays, programRunDays, target, visitsPerDay, setList: setList.slice(), editedAt };
 }
+
+// Every performance date, first to last, and the last one. nextDate is the first one not yet past on `day` (null when all are).
+const datesOf = ev => [ev.date, ...(ev.dates || [])];
+const lastDate = ev => datesOf(ev).slice(-1)[0];
+const nextDate = (ev, day) => { const d = String(day).slice(0, 10); return datesOf(ev).find(x => x >= d) || null; };
 
 // The first date the program has to be ready for.
 const anchorOf = ev => ev.jury || ev.date;
@@ -3288,13 +3500,14 @@ function timeline(ev) {
     { key: "programRuns", label: "Run-throughs of the whole program", from: programFrom, until: anchor }
   ];
   if (ev.jury && ev.jury < ev.date) rows.push({ key: "afterJury", label: "Between the jury and the performance", from: addDaysStr(ev.jury, 1), until: ev.date });
+  if (ev.dates && ev.dates.length) rows.push({ key: "tour", label: "Between performances", from: addDaysStr(ev.date, 1), until: lastDate(ev) });
   return rows;
 }
 
 // Which phase `day` falls in: "learn", "pieceRuns", "programRuns", "afterJury", or "done" (after the performance).
 function phaseOn(ev, day) {
   const d = String(day).slice(0, 10);
-  if (d > ev.date) return "done";
+  if (d > lastDate(ev)) return "done";
   for (const row of timeline(ev)) if ((row.from === null || d >= row.from) && d <= row.until) return row.key;
   return "done";
 }
@@ -3320,18 +3533,27 @@ function eventsFromPieces(pieces) {
 }
 
 // Makes each piece's own `event` agree with the events it is in: the soonest one that has not happened yet, else none.
+// One daily budget for all performances: the visits-a-day of the event edited most recently among those still to come.
+function sharedBudget(events, day) {
+  const today = String(day).slice(0, 10);
+  const live = events.filter(ev => nextDate(ev, today) !== null).sort((a, b) => (b.editedAt || 0) - (a.editedAt || 0) || (a.uid < b.uid ? -1 : 1));
+  return live.length ? live[0].visitsPerDay : DEFAULTS.visitsPerDay;
+}
+
 function syncPieceEvents(events, pieces, day, runs = []) {
   const today = String(day).slice(0, 10);
   const byPiece = new Map();
+  // A piece in several performances follows the nearest coming date; every event still counts it in its own readiness.
+  const budget = sharedBudget(events, today);
   for (const ev of events) for (const u of ev.setList) {
-    if (ev.date < today) continue;
-    const cur = byPiece.get(u);
-    if (!cur || ev.date < cur.date || (ev.date === cur.date && ev.name < cur.name)) byPiece.set(u, ev);
+    const next = nextDate(ev, today); if (next === null) continue;
+    const cur = byPiece.get(u), curNext = cur && nextDate(cur, today);
+    if (!cur || next < curNext || (next === curNext && ev.name < cur.name)) byPiece.set(u, ev);
   }
   for (const p of pieces) {
     const ev = byPiece.get(p.uid);
     // readyBy and visitsPerDay ride along (they are derived, never saved with the piece) so the queue can plan toward the ready-by date.
-    p.event = ev ? { name: ev.name, date: ev.date, readyBy: readyBy(ev), visitsPerDay: ev.visitsPerDay } : null;
+    p.event = ev ? { name: ev.name, date: nextDate(ev, today), readyBy: readyBy(ev), visitsPerDay: budget } : null;
     if (ev) { const slips = runMod.slipsFor(runs, ev.uid, p.uid); if (slips.length) p.event.slips = slips; }   // places that slipped in run-throughs, for the queue
   }
 }
@@ -3377,7 +3599,7 @@ function readiness(ev, pieces, day) {
   return { day: today, readyBy: by, daysToReadyBy: daysBetween(today, by), phase: phaseOn(ev, today), memoryDate: target, pieces: rows, program };
 }
 
-module.exports = { TIERS, TIER_LABEL, tierOfStep, readiness, DEFAULTS, normalizeEvent, anchorOf, timeline, phaseOn, readyBy, daysUntil, addDaysStr, eventsFromPieces, syncPieceEvents, newUid };
+module.exports = { TIERS, TIER_LABEL, tierOfStep, readiness, DEFAULTS, normalizeEvent, anchorOf, datesOf, lastDate, nextDate, sharedBudget, timeline, phaseOn, readyBy, daysUntil, addDaysStr, eventsFromPieces, syncPieceEvents, newUid };
 
 };
 __mods["./sip-plan"] = function (module, exports, require) {
@@ -3417,7 +3639,7 @@ const DEFAULT_VISITS_PER_DAY = 10;
 // its search and its splits, and splits into roughly one finest section per 15 measures (looked at in a real backup: pieces
 // of 58 to 172 measures had 7 to 13 finest sections each). First guesses: the recorded steps will replace them.
 const VISITS_TO_GREEN = { green: 1, amber: 2, orange: 3, red: 4 };
-const UNTRIED_PART_VISITS = 3;
+const UNTRIED_PART_VISITS = 3, SIGHT_READ_VISITS = 1;
 const MEASURES_PER_PART = 15;
 const untriedPieceVisits = measures => 4 + UNTRIED_PART_VISITS * Math.max(1, Math.round(measures / MEASURES_PER_PART));
 
@@ -3466,15 +3688,27 @@ function schedule(items, today, capacity) {
   return planned;
 }
 
-// event: { date, readyBy?, visitsPerDay? } (a piece's derived event works). pieces: the pieces in it.
+// One plan for every piece being prepared, whatever performance it is for: all of them draw on the same daily budget.
+// Each piece keeps the cap of its own (nearest) performance; `event` is only the fallback for a piece without a derived
+// one. The budget is the visitsPerDay of the event (the sync gives every piece the same figure).
 function planDays(pieces, event, day) {
-  const today = String(day).slice(0, 10), cap = capFor(event, today);
+  const today = String(day).slice(0, 10);
   const items = [];
-  for (const piece of pieces) for (const n of core.flattenTree(piece.root)) {
-    if (n.fsrs === null || n.interrupted) continue;
-    items.push({ id: n.id, ...windowOf(n, cap) });
+  for (const piece of pieces) {
+    const cap = capFor(piece.event || event, today);
+    for (const n of core.flattenTree(piece.root)) {
+      if (n.fsrs === null || n.interrupted) continue;
+      items.push({ id: n.id, ...windowOf(n, cap) });
+    }
   }
-  return schedule(items, today, event.visitsPerDay || DEFAULT_VISITS_PER_DAY);
+  const first = pieces.length && pieces[0].event ? pieces[0].event : event;
+  return schedule(items, today, (first && first.visitsPerDay) || DEFAULT_VISITS_PER_DAY);
+}
+
+// The other events whose plan competes with this one for the same days: those still to come whose cap is no later.
+function competing(events, event, day) {
+  const today = String(day).slice(0, 10), capOf = e => capFor({ readyBy: evMod.readyBy(e), date: evMod.nextDate(e, today) }, today), mine = capOf(event);
+  return events.filter(o => o.uid !== event.uid && evMod.nextDate(o, today) !== null && capOf(o) <= mine);
 }
 
 // Sections with a slip from an earlier run-through that has not been visited since (sip-run.js), for a piece whose
@@ -3485,15 +3719,21 @@ const leavesOf = node => node.children.length === 0 ? [node] : node.children.fla
 
 // Is there time? Counts the visits still needed before the cap and compares them with the days left and what the
 // player can spare. `event` is a full event (uid, setList, readyDays ...); the pieces are looked up by uid.
-function workload(event, pieces, day) {
-  const today = String(day).slice(0, 10), by = evMod.readyBy(event), cap = capFor({ readyBy: by, date: event.date }, today);
-  const capacity = event.visitsPerDay || DEFAULT_VISITS_PER_DAY;
+// opts.capacity: the shared daily budget (default: the event's own figure). opts.others: events that must be ready no later
+// than this one; their pieces are counted too (once), because they draw on the same days.
+function workload(event, pieces, day, opts = {}) {
+  const today = String(day).slice(0, 10), by = evMod.readyBy(event), cap = capFor({ readyBy: by, date: evMod.nextDate(event, today) || event.date }, today);
+  const capacity = opts.capacity || event.visitsPerDay || DEFAULT_VISITS_PER_DAY;
+  const others = opts.others || [];
+  const uids = [...new Set([...event.setList, ...others.flatMap(o => o.setList)])];
   const daysLeft = cap >= today ? between(today, cap) + 1 : 0;
   let learning = 0, maintenance = 0, untried = 0;
   const logDays = new Set(); let logVisits = 0;
   const since = add(today, -14);
-  for (const uid of event.setList) {
+  for (const uid of uids) {
     const piece = pieces.find(p => p.uid === uid); if (!piece) continue;
+    // A piece marked as one that sight-reads reliably costs one visit until its first visit shows otherwise.
+    if (piece.sightReads && piece.root.fsrs === null && piece.root.children.length === 0) { learning += SIGHT_READ_VISITS; untried += SIGHT_READ_VISITS; continue; }
     for (const n of core.flattenTree(piece.root)) {
       for (const e of n.reviewLog) { const d = iso(e.reviewDate); if (d >= since && d <= today) { logDays.add(d); logVisits++; } }
       if (n.children.length > 0) { if (n.fsrs !== null) maintenance += 1; continue; }              // a split section is reviewed on its own schedule too
@@ -3511,12 +3751,13 @@ function workload(event, pieces, day) {
     perDay: Math.round(perDay * 10) / 10,
     shortfall: Math.max(0, total - fits),
     daysNeeded: Math.ceil(total / capacity),
+    sharedWith: others.map(o => o.name),
     recentRate: logDays.size ? Math.round((logVisits / logDays.size) * 10) / 10 : null,
     status
   };
 }
 
-module.exports = { WORTH_TAKING_AT, DEFAULT_VISITS_PER_DAY, VISITS_TO_GREEN, untriedPieceVisits, UNTRIED_PART_VISITS, capFor, windowOf, schedule, planDays, workload, flagged };
+module.exports = { WORTH_TAKING_AT, DEFAULT_VISITS_PER_DAY, VISITS_TO_GREEN, untriedPieceVisits, UNTRIED_PART_VISITS, SIGHT_READ_VISITS, competing, capFor, windowOf, schedule, planDays, workload, flagged };
 
 };
 __mods["./sip-run"] = function (module, exports, require) {
@@ -3624,7 +3865,7 @@ function suggestion(ev, runs, day) {
     const pending = ev.setList.filter(u => !ratedToday.has(u));
     return { phase, kind: "piece", pending, doneToday: ev.setList.filter(u => ratedToday.has(u)), done: pending.length === 0 };
   }
-  if (phase === "programRuns" || phase === "afterJury") {
+  if (phase === "programRuns" || phase === "afterJury" || phase === "tour") {
     const did = todays.some(r => r.scope === "program");
     return { phase, kind: "program", pending: did ? [] : ev.setList.slice(), doneToday: did ? ev.setList.slice() : [], done: did };
   }
@@ -4350,7 +4591,7 @@ module.exports = { mergePieces, mergeWorkspaces };
 </script>
 <script>
 "use strict";
-const core = __req("./sip-core"), pc = __req("./sip-piece"), sess = __req("./sip-session"), sto = __req("./sip-store"), mrg = __req("./sip-merge"), evMod = __req("./sip-event"), planMod = __req("./sip-plan"), runMod = __req("./sip-run");
+const core = __req("./sip-core"), pc = __req("./sip-piece"), sess = __req("./sip-session"), sto = __req("./sip-store"), mrg = __req("./sip-merge"), evMod = __req("./sip-event"), planMod = __req("./sip-plan"), runMod = __req("./sip-run"), formMod = __req("./sip-form");
 const { GRADE } = core;
 const GRADE_NAME = { 1: "Again", 2: "Hard", 3: "Good", 4: "Easy" };
 const GRADE_HINT = { 1: "needs another look soon", 2: "got through, but barely", 3: "solid, as expected", 4: "ready to perform" };
@@ -4914,9 +5155,11 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-35";
+const APP_VERSION = "sip-app-37";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-37", items: ["Repeats and endings. Edit a piece to say where it repeats (repeat 1-8, repeat 1-8 x3, or repeat 1-8 endings 9-10, 11-12) and the screen shows the order the bars are played. Each written bar still has one position; give a second ending the next free numbers and put the number printed on the page in brackets. Tempo lines can carry pass 2 for a change that applies only the second time through. The estimated time of the whole piece, the click plan and the TonalEnergy export (command line) all follow the order you actually play."] },
+  { v: "sip-app-36", items: ["Several performances at once. All of them now share one daily budget of visits (the figure you saved last), and the Time card says when an earlier performance is using up the days. A performance can also be a series: add more dates (a tour) and the plan is ready by the first, then keeps the program fresh until the last, with whole-program run-throughs between dates. On a piece, Edit lets you mark that you can sight-read it reliably, so the plan counts one visit for it instead of a full learning estimate; a poor first visit takes the mark off."] },
   { v: "sip-app-35", items: ["Run-throughs. In the run-through weeks of a performance the Practice screen suggests playing a piece (then the whole program) straight through, and you rate it afterward: clean, slipped but kept going, or stopped. A slip is not a failure; carrying on is the skill. Optionally type the measures where it slipped, and those places come back as ordinary visits from the next day, near the top of the queue. The Readiness screen has a Run-throughs card with each piece's recent runs."] },
   { v: "sip-app-34", items: ["Ready-by scheduling. A performance now works toward its ready-by date: every section is reviewed before it, and the reviews are spread over the days before it, no more than the visits a day you say you can spare (new field on the performance), instead of all falling on the last day. The Readiness screen has a new Time card: about how many visits are still needed, how many a day that is, and whether the days left are enough.", "Each review now records the tempo step the section had reached, so progress per visit can be measured later."] },
   { v: "sip-app-33", items: ["Hotspot search starts from what it already knows. When a section is split around its hotspot, the part before it starts from the tempos the earlier attempts already showed, and the part after it skips the tempos the section already held. Fewer attempts, about a third less playing time on a new piece. A part that inherited everything goes straight to its grade."] },
@@ -5114,7 +5357,9 @@ function viewQueue() {
 const eventList = () => (S.settings.events || []).slice().sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
 const eventPieces = e => e.setList.map(u => S.pieces.find(p => p.uid === u)).filter(Boolean);
 const daysLeftText = n => n < 0 ? "past" : n === 0 ? "today" : n === 1 ? "tomorrow" : `in ${n} days`;
-const PHASE_TEXT = { learn: "Learn and fix", pieceRuns: "Run-throughs of single pieces", programRuns: "Run-throughs of the whole program", afterJury: "Between the jury and the performance", done: "Over" };
+const PHASE_TEXT = { learn: "Learn and fix", pieceRuns: "Run-throughs of single pieces", programRuns: "Run-throughs of the whole program", afterJury: "Between the jury and the performance", tour: "Between performances", done: "Over" };
+const shownDate = (e, day = dayStr()) => evMod.nextDate(e, day) || evMod.lastDate(e);
+const datesText = e => evMod.datesOf(e).join(", ");
 /* Events that came from pieces carrying a plain performance are made once; after that each piece's own performance
    follows its events (sip-event.js), so removing an event on one device also removes it on the others. */
 function settleEvents() {
@@ -5129,8 +5374,8 @@ function eventsCard() {
   const today = dayStr(), list = eventList();
   return `<section class="card"><h2>Performances</h2>
     <p class="muted" style="margin:0">Name a performance, give its date (and a jury date if there is one), and choose its pieces. The plan works back from the first date that matters: learn and fix, then run-throughs. Until the performance, those pieces' hotspot search comes first, then hotspots, then reviews that are due, and nothing is scheduled to come due after the date. These pieces do not use up a slot.</p>
-    ${list.map((e, i) => { const left = evMod.daysUntil(e.date, today), ps = eventPieces(e), todo = ps.filter(p => p.root.fsrs === null).length, ph = evMod.phaseOn(e, today);
-      return `<div class="item"><div class="body"><div class="t">${esc(e.name)} · ${esc(e.date)}</div><div class="s"><span class="tag ${left < 0 ? "" : "due"}">${daysLeftText(left)}</span>${esc(ps.map(p => p.label).join(", "))}${left >= 0 && todo ? ` · ${todo} still to search for hotspots` : ""}</div>
+    ${list.map((e, i) => { const left = evMod.daysUntil(shownDate(e, today), today), ps = eventPieces(e), todo = ps.filter(p => p.root.fsrs === null).length, ph = evMod.phaseOn(e, today);
+      return `<div class="item"><div class="body"><div class="t">${esc(e.name)} · ${esc(datesText(e))}</div><div class="s"><span class="tag ${left < 0 ? "" : "due"}">${daysLeftText(left)}</span>${esc(ps.map(p => p.label).join(", "))}${left >= 0 && todo ? ` · ${todo} still to search for hotspots` : ""}</div>
       ${left >= 0 ? `<div class="s">${esc(PHASE_TEXT[ph])}${e.jury ? ` · jury ${esc(e.jury)} (${daysLeftText(evMod.daysUntil(e.jury, today))})` : ""} · ready by ${esc(evMod.readyBy(e))}</div>` : ""}</div><div class="col" style="display:flex;flex-direction:column;gap:6px"><button class="btn small" data-act="readiness" data-uid="${esc(e.uid)}">Readiness</button><button class="btn small ghost" data-act="event-edit" data-i="${i}">Edit</button></div></div>`; }).join("")}
     <div class="row"><button class="btn" data-act="event-add">Add a performance</button></div></section>`;
 }
@@ -5152,7 +5397,7 @@ function viewReadiness() {
   const byText = r.daysToReadyBy > 0 ? `ready by ${esc(r.readyBy)} (${daysLeftText(r.daysToReadyBy)})` : r.daysToReadyBy === 0 ? `ready by today` : `ready-by date was ${esc(r.readyBy)}`;
   const head = `<section class="card"><div class="row"><button class="btn small ghost" data-act="view" data-v="pieces">‹ Pieces</button><span class="grow"></span></div>
     <div class="eyebrow">Readiness</div><h1>${esc(e.name)}</h1>
-    <div class="small muted">Performance ${daysLeftText(evMod.daysUntil(e.date, dayStr()))}${e.jury ? ` · jury ${esc(e.jury)} (${daysLeftText(evMod.daysUntil(e.jury, dayStr()))})` : ""} · ${esc(PHASE_TEXT[r.phase])} · ${byText}</div></section>`;
+    <div class="small muted">${e.dates ? "Next performance" : "Performance"} ${daysLeftText(evMod.daysUntil(shownDate(e), dayStr()))}${e.dates ? ` (${esc(datesText(e))})` : ""}${e.jury ? ` · jury ${esc(e.jury)} (${daysLeftText(evMod.daysUntil(e.jury, dayStr()))})` : ""} · ${esc(PHASE_TEXT[r.phase])} · ${byText}</div></section>`;
   if (!r.pieces.length) return head + `<section class="card"><div class="empty">This performance has no pieces yet. Edit it to choose some.</div></section>`;
   const prog = `<section class="card"><h2>The whole program</h2>
     <div class="num" style="font-size:2rem;font-weight:700" id="ready-pct">${pct}%</div><div class="small muted">of the program (by measures) is at Ready, which is tempo +4 steps or more</div>
@@ -5224,7 +5469,8 @@ function saveRun(sh) {
 }
 const WORKLOAD_TAG = { ok: "On track", tight: "Tight", behind: "Behind", done: "Done" };
 function workloadCard(e) {
-  const w = planMod.workload(e, S.pieces, dayStr()), n = x => Math.round(x);
+  const evs = S.settings.events || [], today = dayStr(), others = planMod.competing(evs, e, today);
+  const w = planMod.workload(e, S.pieces, today, { capacity: evMod.sharedBudget(evs, today), others }), n = x => Math.round(x);
   if (w.status === "done") return `<section class="card" data-workload="done"><div class="row"><h2 class="grow">Time</h2><span class="tag t-green">Done</span></div><div class="small">Nothing is left to work on before ${esc(w.cap)}.</div></section>`;
   const days = w.daysLeft <= 0 ? "No days are left before the cap" : `${w.daysLeft} day${w.daysLeft === 1 ? "" : "s"} to work in, through ${esc(w.cap)}`;
   const advice = w.status === "behind"
@@ -5233,37 +5479,39 @@ function workloadCard(e) {
   return `<section class="card" data-workload="${w.status}"><div class="row"><h2 class="grow">Time</h2><span class="tag ${w.status === "ok" ? "t-green" : w.status === "tight" ? "t-amber" : "t-red"}">${WORKLOAD_TAG[w.status]}</span></div>
     <div class="num" style="font-size:1.6rem;font-weight:700" id="workload-n">About ${n(w.total)} visits to go</div>
     <div class="small">${days}, so about ${w.perDay} a day. ${esc(advice)}</div>
-    <div class="small muted">${n(w.learning)} to bring sections up to tempo, ${n(w.maintenance)} to keep what is ready fresh.${w.untried ? ` ${n(w.untried)} of those are a guess for sections not tried yet.` : ""}${w.recentRate !== null ? ` Lately you make about ${w.recentRate} visits on a day you practice.` : ""}</div></section>`;
+    <div class="small muted">${n(w.learning)} to bring sections up to tempo, ${n(w.maintenance)} to keep what is ready fresh.${w.untried ? ` ${n(w.untried)} of those are a guess for sections not tried yet.` : ""}${w.recentRate !== null ? ` Lately you make about ${w.recentRate} visits on a day you practice.` : ""}</div>${w.sharedWith.length ? `<div class="small muted">These days are shared with ${esc(w.sharedWith.join(", "))}, which is due first, so its visits are counted here too.</div>` : ""}</section>`;
 }
 function eventBanner() {
-  const today = dayStr(), e = eventList().find(x => evMod.daysUntil(x.date, today) >= 0);
+  const today = dayStr(), e = eventList().find(x => evMod.nextDate(x, today) !== null);
   if (!e) return "";
   const todo = eventPieces(e).filter(p => p.root.fsrs === null).length, ph = evMod.phaseOn(e, today);
   const sug = runMod.suggestion(e, runList(), today);
   const runLine = sug.kind && !sug.done ? (sug.kind === "piece" ? ` Run-through today: ${sug.pending.length} of ${e.setList.length} piece${e.setList.length === 1 ? "" : "s"} still to play through.` : " Run-through today: play the whole program through.") : "";
-  return `<div class="banner" data-event-banner><span class="grow"><b>${esc(e.name)}</b> ${daysLeftText(evMod.daysUntil(e.date, today))}. ${esc(PHASE_TEXT[ph])}; ready by ${esc(evMod.readyBy(e))}.${todo ? ` ${todo} piece${todo === 1 ? "" : "s"} still to search for hotspots, and that comes first.` : " Hotspots and reviews come first."}${esc(runLine)}</span>${runLine ? `<button class="btn small primary" data-act="run-open" data-uid="${esc(e.uid)}" data-scope="${sug.kind}">Record a run</button>` : ""}<button class="btn small" data-act="readiness" data-uid="${esc(e.uid)}">Readiness</button></div>`;
+  return `<div class="banner" data-event-banner><span class="grow"><b>${esc(e.name)}</b> ${daysLeftText(evMod.daysUntil(shownDate(e, today), today))}. ${esc(PHASE_TEXT[ph])}; ready by ${esc(evMod.readyBy(e))}.${todo ? ` ${todo} piece${todo === 1 ? "" : "s"} still to search for hotspots, and that comes first.` : " Hotspots and reviews come first."}${esc(runLine)}</span>${runLine ? `<button class="btn small primary" data-act="run-open" data-uid="${esc(e.uid)}" data-scope="${sug.kind}">Record a run</button>` : ""}<button class="btn small" data-act="readiness" data-uid="${esc(e.uid)}">Readiness</button></div>`;
 }
+const parseDates = t => String(t || "").split(/[\s,;]+/).filter(Boolean);
 function eventSheet(sh) {
-  const e = (() => { try { return evMod.normalizeEvent({ name: sh.name || "x", date: sh.date, jury: sh.jury, readyDays: Number(sh.ready), programRunDays: Number(sh.prog), setList: [] }); } catch (err) { return null; } })();
+  const e = (() => { try { return evMod.normalizeEvent({ name: sh.name || "x", date: sh.date, dates: parseDates(sh.dates), jury: sh.jury, readyDays: Number(sh.ready), programRunDays: Number(sh.prog), setList: [] }); } catch (err) { return null; } })();
   const plan = e ? evMod.timeline(e).map(r => `<li>${esc(r.label)}: ${r.from ? esc(r.from) : "now"} to ${esc(r.until)}</li>`).join("") : "";
   return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="Performance" data-stop="1"><h2>${sh.orig ? "Edit performance" : "Add a performance"}</h2>
     <label class="field" for="ev-name">Name<input id="ev-name" type="text" maxlength="80" value="${esc(sh.name)}" autocomplete="off" placeholder="Spring recital"></label>
     <label class="field" for="ev-date">Performance date<input id="ev-date" type="date" value="${esc(sh.date)}"></label>
+    <label class="field" for="ev-dates">More dates<small>Optional. For a tour or a series of the same program: the other dates, separated by commas (2026-12-12, 2026-12-19). The plan is ready by the first date, then keeps the program fresh.</small><input id="ev-dates" type="text" value="${esc(sh.dates)}" autocomplete="off" placeholder="2026-12-12, 2026-12-19"></label>
     <label class="field" for="ev-jury">Jury date<small>Optional. If there is one, the plan works back from it.</small><input id="ev-jury" type="date" value="${esc(sh.jury)}"></label>
     <div class="row"><label class="field grow" for="ev-ready">Ready by (days before)<input id="ev-ready" type="number" inputmode="numeric" min="1" value="${esc(sh.ready)}"></label>
     <label class="field grow" for="ev-prog">Whole program from (days before)<input id="ev-prog" type="number" inputmode="numeric" min="0" value="${esc(sh.prog)}"></label></div>
     ${plan ? `<ul class="small muted" style="margin:0;padding-left:18px">${plan}</ul>` : ""}
-    <label class="field" for="ev-visits">Visits a day you can spare<small>A visit is one section worked once. The plan spreads reviews so no day gets more than this, and tells you if the days left are not enough.</small><input id="ev-visits" type="number" inputmode="numeric" min="1" max="200" value="${esc(sh.visits)}"></label>
+    <label class="field" for="ev-visits">Visits a day you can spare<small>A visit is one section worked once. One budget for all your performances: the plan spreads reviews so no day gets more than this, and tells you if the days left are not enough. The figure you saved last applies to everything.</small><input id="ev-visits" type="number" inputmode="numeric" min="1" max="200" value="${esc(sh.visits)}"></label>
     <div><div class="eyebrow" style="margin-bottom:8px">Pieces</div><div class="chips" role="group" aria-label="Pieces">${S.pieces.map(p => `<button data-act="ev-toggle" data-uid="${esc(p.uid)}" aria-pressed="${sh.picks.includes(p.uid)}">${esc(p.label)}</button>`).join("") || '<span class="muted small">Add a piece first.</span>'}</div></div>
     ${sh.err ? `<div class="banner red"><span class="grow">${esc(sh.err)}</span></div>` : ""}
     <div class="row">${sh.orig ? `<button class="btn danger" data-act="event-remove">Remove</button>` : ""}<button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
 }
-function eventRead(sh) { const g = id => $(id); if (g("ev-name")) sh.name = g("ev-name").value; if (g("ev-date")) sh.date = g("ev-date").value; if (g("ev-jury")) sh.jury = g("ev-jury").value; if (g("ev-ready")) sh.ready = g("ev-ready").value; if (g("ev-prog")) sh.prog = g("ev-prog").value; if (g("ev-visits")) sh.visits = g("ev-visits").value; }
+function eventRead(sh) { const g = id => $(id); if (g("ev-name")) sh.name = g("ev-name").value; if (g("ev-date")) sh.date = g("ev-date").value; if (g("ev-dates")) sh.dates = g("ev-dates").value; if (g("ev-jury")) sh.jury = g("ev-jury").value; if (g("ev-ready")) sh.ready = g("ev-ready").value; if (g("ev-prog")) sh.prog = g("ev-prog").value; if (g("ev-visits")) sh.visits = g("ev-visits").value; }
 function saveEvent(sh) {
   eventRead(sh);
   try {
     const prior = sh.orig ? (S.settings.events || []).find(x => x.uid === sh.orig) : null;
-    const e = evMod.normalizeEvent({ uid: prior ? prior.uid : undefined, name: sh.name, date: sh.date, jury: sh.jury || null, readyDays: Number(sh.ready), programRunDays: Number(sh.prog), visitsPerDay: Number(sh.visits), target: prior ? prior.target : undefined, setList: sh.picks, editedAt: Date.now() });
+    const e = evMod.normalizeEvent({ uid: prior ? prior.uid : undefined, name: sh.name, date: sh.date, dates: parseDates(sh.dates), jury: sh.jury || null, readyDays: Number(sh.ready), programRunDays: Number(sh.prog), visitsPerDay: Number(sh.visits), target: prior ? prior.target : undefined, setList: sh.picks, editedAt: Date.now() });
     if (!e.setList.length) throw new Error("Choose at least one piece.");
     if (!sh.orig && e.date < dayStr()) throw new Error("That date has already passed.");
     S.settings.events = (S.settings.events || []).filter(x => x.uid !== e.uid).concat(e);
@@ -5344,7 +5592,7 @@ function viewPieces() {
     <div class="row"><button class="btn primary grow" data-act="addpiece">Add piece</button><button class="btn grow" data-act="wish-add">Add to waiting list</button>${S.pieces.length === 0 ? `<button class="btn ghost" data-act="example">Try an example</button>` : ""}</div></section>`;
   S.pieces.forEach((p, pi) => {
     const nodes = []; const walk = (n, d) => { nodes.push([n, d]); n.children.forEach(c => walk(c, d + 1)); }; walk(p.root, 0);
-    h += `<section class="card"><div class="row"><div class="grow"><h2>${esc(p.label)}</h2><div class="small muted num">${rng(p.root)}${p.goalTempo ? " · ♩ " + p.goalTempo : ""}</div><div class="small" style="margin-top:4px">${p.instruments.length ? p.instruments.map(x => `<span class="tag new">${esc(x)}</span>`).join(" ") : `<span class="muted">No instrument set</span>`}</div></div></div>
+    h += `<section class="card"><div class="row"><div class="grow"><h2>${esc(p.label)}</h2><div class="small muted num">${rng(p.root)}${p.goalTempo ? " · ♩ " + p.goalTempo : ""}</div>${p.form ? `<div class="small muted" data-played>Played as: ${esc(pc.playingOrder(p).text)}</div>` : ""}<div class="small" style="margin-top:4px">${p.instruments.length ? p.instruments.map(x => `<span class="tag new">${esc(x)}</span>`).join(" ") : `<span class="muted">No instrument set</span>`}</div></div></div>
       <div class="row" style="flex-wrap:wrap"><button class="btn small primary" data-act="practice-piece" data-pi="${pi}">Practice</button><button class="btn small ghost" data-act="piece-edit" data-pi="${pi}">Edit</button><button class="btn small ghost" data-act="inst-edit" data-pi="${pi}" data-id="${p.root.id}">Instruments</button><button class="btn small danger" data-act="removepiece" data-i="${pi}">Remove</button></div>
       <div class="list tree">${nodes.map(([n, d]) => {
         const t = tempoFor(p, n, n.step);
@@ -5372,7 +5620,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-35\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-37\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -5384,7 +5632,7 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-35</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-37</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -5526,6 +5774,13 @@ async function syncNow() {
 }
 
 /* ------------------------------------------------------------------ sheet */
+function formPreview(text, start, end) {
+  try {
+    const m = formMod.parseForm(text);
+    if (!m.length) return "";
+    return "Played as: " + formMod.playingOrder(m, Number(start), Number(end)).text;
+  } catch (e) { return e.message; }
+}
 function editSheet(sh) {
   const p = S.pieces[sh.pi], f = sh.f, unit = p.kind === "unmetered" ? "unit" : "measure";
   return `<div class="scrim" data-act="sheet-cancel"><div class="sheet" role="dialog" aria-label="Edit piece" data-stop="1"><h2>Edit piece</h2>
@@ -5534,7 +5789,10 @@ function editSheet(sh) {
     <label class="field grow" for="e-end">Last ${unit}<input id="e-end" type="number" inputmode="numeric" min="1" value="${esc(f.end)}"></label></div>
     ${sh.hasMap ? `<p class="small muted" style="margin:0">The marked tempo comes from the tempo map below.</p>`
       : `<label class="field" for="e-tempo">Marked tempo<small>♩ per minute; leave empty for none</small><input id="e-tempo" type="number" inputmode="numeric" min="1" value="${esc(f.tempo)}"></label>`}
-    <label class="field" for="e-map">Tempo map<small>${p.kind === "unmetered" ? "Paste the JSON anchors from the command line." : "One line per change: measure, tempo, and optionally beats per bar (for example 17 80 3). Or paste JSON anchors. Leave empty for none."}</small><textarea id="e-map" rows="4" spellcheck="false" autocapitalize="off" style="font-family:ui-monospace,monospace">${esc(f.map)}</textarea></label>
+    <label class="field" for="e-map">Tempo map<small>${p.kind === "unmetered" ? "Paste the JSON anchors from the command line." : "One line per change: measure, tempo, and optionally beats per bar (for example 17 80 3). Add pass 2 at the end of a line for a change that applies only the second time through (17 70 pass 2). Or paste JSON anchors. Leave empty for none."}</small><textarea id="e-map" rows="4" spellcheck="false" autocapitalize="off" style="font-family:ui-monospace,monospace">${esc(f.map)}</textarea></label>
+    <label class="field" for="e-form">Repeats and endings<small>One line each, in bar positions: repeat 1-8, or repeat 1-8 x3, or repeat 1-8 endings 9-10, 11-12 (9-10). Number each written bar once, in page order; the bracket gives the number printed on the page. Leave empty if the piece is played straight through.</small><textarea id="e-form" rows="3" spellcheck="false" autocapitalize="off" style="font-family:ui-monospace,monospace">${esc(f.form)}</textarea></label>
+    <p class="small muted" style="margin:0" id="e-form-order" aria-live="polite">${esc(formPreview(f.form, f.start, f.end))}</p>
+    <div><div class="chips" role="group" aria-label="Sight-reading"><button data-act="e-sight" aria-pressed="${!!f.sight}">I can sight-read this reliably</button></div><p class="small muted" style="margin:6px 0 0">The plan counts one visit for it instead of a full learning estimate. If its first visit goes badly, the mark comes off by itself.</p></div>
     ${sh.err ? `<div class="banner red"><span class="grow">${esc(sh.err)}</span></div>` : ""}
     <p class="small muted" style="margin:0">Sections and history are kept. Changing the first or last ${unit} stretches the sections on that edge.</p>
     <div class="row"><button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
@@ -5543,19 +5801,22 @@ function editSheet(sh) {
 function mapToText(p) {
   const a = p.tempoAnchors;
   if (!a) return "";
-  const simple = a.every(x => Number.isInteger(x.ordinal) && typeof x.tempo === "number" && x.rampTo === undefined && x.label === undefined && (!x.meter || (Object.keys(x.meter).length === 1 && x.meter.beatsPerBar)) && Object.keys(x).every(k => ["ordinal", "tempo", "meter"].includes(k)));
+  const simple = a.every(x => Number.isInteger(x.ordinal) && typeof x.tempo === "number" && x.rampTo === undefined && x.label === undefined && (!x.meter || (Object.keys(x.meter).length === 1 && x.meter.beatsPerBar)) && Object.keys(x).every(k => ["ordinal", "tempo", "meter", "pass"].includes(k)));
   if (p.kind === "unmetered" || !simple) return JSON.stringify(a, null, 1);
-  return a.map(x => `${x.ordinal} ${x.tempo}${x.meter ? " " + x.meter.beatsPerBar : ""}`).join("\n");
+  return a.map(x => `${x.ordinal} ${x.tempo}${x.meter ? " " + x.meter.beatsPerBar : ""}${x.pass ? " pass " + x.pass : ""}`).join("\n");
 }
 function parseMapText(text) {
   const t = text.trim();
   if (t === "") return null;
   if (t[0] === "[") { try { return JSON.parse(t); } catch (e) { throw new Error("The tempo map could not be read as JSON."); } }
   return t.split(/\n/).map(l => l.trim()).filter(Boolean).map((l, i) => {
+    const pm = /\s+pass\s*(\d+)\s*$/i.exec(l), pass = pm ? Number(pm[1]) : undefined;
+    if (pm) l = l.slice(0, pm.index);
     const w = l.split(/[\s,:;]+/).filter(Boolean).map(Number);
     if (w.length < 2 || w.length > 3 || w.some(n => !Number.isFinite(n))) throw new Error(`Line ${i + 1} ("${l}") should be: measure, tempo, and optionally beats per bar.`);
     const a = { ordinal: w[0], tempo: w[1] };
     if (w.length === 3) a.meter = { beatsPerBar: w[2] };
+    if (pass !== undefined) a.pass = pass;
     return a;
   });
 }
@@ -5576,8 +5837,14 @@ function saveEdit(sh) {
       const trial = pc.deserializePiece(JSON.parse(JSON.stringify(pc.serializePiece(p))), { preserveIds: true }).piece;
       try { pc.setTempoAnchors(trial, anchors); } catch (e) { throw new Error("Tempo map: " + e.message); }
     }
-    const old = p.label;
-    const warnings = pc.editPiece(p, change);
+    const markers = formMod.parseForm(f.form);
+    try { formMod.normalizeForm(markers, { start: a, end: b }); } catch (e) { throw new Error("Repeats: " + e.message); }
+    const old = p.label, oldForm = p.form;
+    delete p.form;                                         // judged against the new range below, not the old form
+    let warnings;
+    try { warnings = pc.editPiece(p, change); } catch (e) { if (oldForm) p.form = oldForm; throw e; }
+    pc.setForm(p, markers);
+    if (f.sight) p.sightReads = true; else delete p.sightReads;
     if (anchors === null) p.tempoAnchors = null; else pc.setTempoAnchors(p, anchors);
     if (old !== p.label && MET.cfg.patterns[old] !== undefined) { MET.cfg.patterns[p.label] = MET.cfg.patterns[old]; delete MET.cfg.patterns[old]; metSave(); }
     S.sheet = null; persist(); render();
@@ -5664,7 +5931,7 @@ function onAct(act, el) {
     case "piece-edit": {
       if (live()) { toast("Finish the session before editing a piece."); break; }
       const pi = Number(el.dataset.pi), p = S.pieces[pi];
-      S.sheet = { kind: "edit", pi, err: "", hasMap: !!pc.getTempoMap(p), f: { map: mapToText(p), label: p.label, start: String(p.root.start), end: String(p.root.end), tempo: p.goalTempo === null ? "" : String(p.goalTempo) } };
+      S.sheet = { kind: "edit", pi, err: "", hasMap: !!pc.getTempoMap(p), f: { map: mapToText(p), label: p.label, start: String(p.root.start), end: String(p.root.end), tempo: p.goalTempo === null ? "" : String(p.goalTempo), sight: !!p.sightReads, form: formMod.formToText(p.form) } };
       render(); break;
     }
     case "sheet-ok": {
@@ -5800,10 +6067,11 @@ function onAct(act, el) {
       }).catch(e => { S.importMsg = e.message; render(); });
       break;
     }
-    case "event-add": S.sheet = { kind: "event", orig: null, name: "", date: "", jury: "", ready: String(evMod.DEFAULTS.readyDays), prog: String(evMod.DEFAULTS.programRunDays), visits: String(evMod.DEFAULTS.visitsPerDay), picks: [], err: "" }; render(); break;
-    case "event-edit": { const e = eventList()[Number(el.dataset.i)]; S.sheet = { kind: "event", orig: e.uid, name: e.name, date: e.date, jury: e.jury || "", ready: String(e.readyDays), prog: String(e.programRunDays), visits: String(e.visitsPerDay), picks: e.setList.slice(), err: "" }; render(); break; }
+    case "event-add": S.sheet = { kind: "event", orig: null, name: "", date: "", dates: "", jury: "", ready: String(evMod.DEFAULTS.readyDays), prog: String(evMod.DEFAULTS.programRunDays), visits: String(evMod.DEFAULTS.visitsPerDay), picks: [], err: "" }; render(); break;
+    case "event-edit": { const e = eventList()[Number(el.dataset.i)]; S.sheet = { kind: "event", orig: e.uid, name: e.name, date: e.date, dates: (e.dates || []).join(", "), jury: e.jury || "", ready: String(e.readyDays), prog: String(e.programRunDays), visits: String(e.visitsPerDay), picks: e.setList.slice(), err: "" }; render(); break; }
     case "ev-toggle": { const sh = S.sheet; eventRead(sh); const u = el.dataset.uid; sh.picks = sh.picks.includes(u) ? sh.picks.filter(x => x !== u) : sh.picks.concat(u); render(); break; }
     case "event-remove": removeEvent(S.sheet); break;
+    case "e-sight": { const sh = S.sheet; sh.f.sight = !sh.f.sight; render(); break; }
     case "run-open": openRun(el.dataset.uid, el.dataset.scope); break;
     case "run-set": { const sh = S.sheet; runRead(sh); const r = sh.rows[Number(el.dataset.i)]; r.outcome = r.outcome === el.dataset.o ? null : el.dataset.o; sh.err = ""; render(); break; }
     case "readiness": S.readyUid = el.dataset.uid; S.view = "readiness"; S.sheet = null; render(); window.scrollTo(0, 0); break;
@@ -5845,7 +6113,7 @@ document.addEventListener("input", ev => {
   else if (S.sheet && S.sheet.kind === "wish" && /^w-(start|end|tempo)$/.test(t.id)) S.sheet.f[t.id.slice(2)] = t.value;
   else if (t.id === "importbox") S.importText = t.value;
   else if (t.id === "n-text" && S.sheet && S.sheet.kind === "note") S.sheet.text = t.value;
-  else if (S.sheet && S.sheet.kind === "edit" && /^e-(label|start|end|tempo|map)$/.test(t.id)) S.sheet.f[t.id.slice(2)] = t.value;
+  else if (S.sheet && S.sheet.kind === "edit" && /^e-(label|start|end|tempo|map|form)$/.test(t.id)) { S.sheet.f[t.id.slice(2)] = t.value; if (/^e-(start|end|form)$/.test(t.id)) { const o = $("e-form-order"); if (o) o.textContent = formPreview(S.sheet.f.form, S.sheet.f.start, S.sheet.f.end); } }
   else if (t.id === "metvol") { MET.cfg.vol = Number(t.value); metSave(); }
 });
 document.addEventListener("change", ev => {
