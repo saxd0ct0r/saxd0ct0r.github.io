@@ -924,6 +924,7 @@ function concludeSession(node, grade, reviewDate = studyDayOf(new Date()), optio
   // tempo step. Whatever the new search found is worked out in the children.
   const alreadySplit = node.children.length > 0;
   node.step = node.search.passStep;
+  entry.step = node.step;   // the review above ran before the search's result was committed
   if (!alreadySplit) node.hotspot = node.search.hotspotCandidate;
 
   const converged = isSearchConverged(node.search);
@@ -1317,7 +1318,8 @@ function reviewNode(node, grade, reviewDate = studyDayOf(new Date()), options = 
     newStability,
     newDifficulty,
     interval,
-    due
+    due,
+    step: node.step   // the tempo step this section stood at when reviewed, so gain per visit can be measured later (concludeSession sets the new one)
   };
 
   node.reviewLog.push(entry);
@@ -2249,6 +2251,7 @@ function validatePieceData(data) {
       if (![1, 2, 3, 4].includes(e.grade)) bad(`${p}.grade`, "must be 1, 2, 3, or 4");
       checkDay(e.reviewDate, `${p}.reviewDate`);
       checkDay(e.due, `${p}.due`);
+      if (e.step !== undefined && !isInt(e.step)) bad(`${p}.step`, "must be a whole number when present");
     });
 
     if (!Array.isArray(node.children)) { bad(`${path}.children`, "must be an array"); return; }
@@ -2508,6 +2511,7 @@ __mods["./sip-session"] = function (module, exports, require) {
 
 const core = require("./sip-core");
 const pieceMod = require("./sip-piece");
+const planMod = require("./sip-plan");
 const {
   getDueNodes, getInterruptedNodes, daysBetween, dateOnly, effectiveNote,
   beginHotspotSearch, nextTrial, recordTrialResult, isSearchConverged,
@@ -2875,6 +2879,19 @@ function buildQueue(pieces, studyDay, { excludeIds = [], instruments = [] } = {}
   // longer than the day before the performance); (4) sections never practiced.
   const ev = { find: [], hot: [], due: [], fresh: [] };
   const dayStr = toDayString(studyDay);
+  // Ready-by planning: pieces in the same performance share one plan, so the reviews are spread over the days before the
+  // ready-by date instead of all falling due on the last one. Pieces whose performance carries no ready-by date (the
+  // command line, older data) keep the plain rule: nothing waits past the day before the performance.
+  const plans = new Map();
+  const planKey = e => e.date + "|" + e.name;
+  pieces.forEach(piece => {
+    const e = pieceMod.activeEvent(piece, dayStr);
+    if (!e || !e.readyBy) return;
+    const k = planKey(e);
+    if (!plans.has(k)) plans.set(k, { event: e, pieces: [] });
+    plans.get(k).pieces.push(piece);
+  });
+  plans.forEach(g => { g.days = planMod.planDays(g.pieces, g.event, dayStr); });
   pieces.forEach(piece => {
     const order = breadthFirstIndex(piece.root);
     const bySpawnOrder = (a, b) => order.get(a.id) - order.get(b.id);
@@ -2889,7 +2906,9 @@ function buildQueue(pieces, studyDay, { excludeIds = [], instruments = [] } = {}
       const tag = e => Object.assign(e, { event: { name: event.name, date: event.date, daysLeft: left } });
       const cap = core.addDays(dayDate(event.date), -1);                       // the day before the performance
       const nodes = core.flattenTree(piece.root).filter(n => !n.interrupted && !excluded.has(n.id) && wanted(n));
-      const effDue = n => { const own = dateOnly(n.fsrs.due), soonest = core.addDays(dateOnly(n.fsrs.lastReview), 1), limit = cap > soonest ? cap : soonest; return own < limit ? own : limit; };
+      const group = plans.get(planKey(event));
+      const plain = n => { const own = dateOnly(n.fsrs.due), soonest = core.addDays(dateOnly(n.fsrs.lastReview), 1), limit = cap > soonest ? cap : soonest; return own < limit ? own : limit; };
+      const effDue = n => { const pd = group && group.days.get(n.id); return pd ? dayDate(pd) : plain(n); };
       const isDue = n => n.fsrs === null || effDue(n) <= day;
       const mk = (n, status) => tag(Object.assign(entry(piece, n, status), status === "due" ? { daysOverdue: Math.max(0, daysBetween(effDue(n), day)) } : {}));
       const due = nodes.filter(isDue);
@@ -3220,7 +3239,7 @@ __mods["./sip-event"] = function (module, exports, require) {
 const core = require("./sip-core");
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const DEFAULTS = { readyDays: 14, programRunDays: 7, target: 0.9 };
+const DEFAULTS = { readyDays: 14, programRunDays: 7, target: 0.9, visitsPerDay: 10 };
 const MAX_DAYS = 365;
 
 const validDate = d => typeof d === "string" && DATE_RE.test(d) && new Date(d + "T00:00:00Z").toISOString().slice(0, 10) === d;
@@ -3244,13 +3263,14 @@ function normalizeEvent(raw) {
   if (programRunDays >= readyDays) bad("Whole-program run-throughs must start later than the ready-by date, so that number of days must be smaller.");
   const target = raw.target === undefined ? DEFAULTS.target : raw.target;
   if (typeof target !== "number" || !(target > 0.5 && target < 1)) bad("The readiness target must be between 50% and 100%.");
+  const visitsPerDay = int(raw.visitsPerDay === undefined ? DEFAULTS.visitsPerDay : raw.visitsPerDay, 1, 200, "Visits a day");
   const setList = Array.isArray(raw.setList) ? raw.setList : bad("An event needs a set list.");
   if (!setList.every(u => typeof u === "string" && u.length > 0 && u.length <= 64) || new Set(setList).size !== setList.length) bad("The set list must name each piece once.");
   const uid = raw.uid === undefined ? newUid() : raw.uid;
   if (typeof uid !== "string" || !/^[0-9A-Za-z-]{1,64}$/.test(uid)) bad("The event id is not valid.");
   const editedAt = raw.editedAt === undefined ? 0 : raw.editedAt;
   if (!Number.isFinite(editedAt)) bad("The edit time is not valid.");
-  return { uid, name, date: raw.date, jury, readyDays, programRunDays, target, setList: setList.slice(), editedAt };
+  return { uid, name, date: raw.date, jury, readyDays, programRunDays, target, visitsPerDay, setList: setList.slice(), editedAt };
 }
 
 // The first date the program has to be ready for.
@@ -3307,7 +3327,8 @@ function syncPieceEvents(events, pieces, day) {
   }
   for (const p of pieces) {
     const ev = byPiece.get(p.uid);
-    p.event = ev ? { name: ev.name, date: ev.date } : null;
+    // readyBy and visitsPerDay ride along (they are derived, never saved with the piece) so the queue can plan toward the ready-by date.
+    p.event = ev ? { name: ev.name, date: ev.date, readyBy: readyBy(ev), visitsPerDay: ev.visitsPerDay } : null;
   }
 }
 
@@ -3353,6 +3374,140 @@ function readiness(ev, pieces, day) {
 }
 
 module.exports = { TIERS, TIER_LABEL, tierOfStep, readiness, DEFAULTS, normalizeEvent, anchorOf, timeline, phaseOn, readyBy, daysUntil, addDaysStr, eventsFromPieces, syncPieceEvents, newUid };
+
+};
+__mods["./sip-plan"] = function (module, exports, require) {
+// sip-plan.js
+// Ready-by-date scheduling for a performance. Pure functions: no storage, no clock.
+//
+// Two jobs:
+//  1. WHEN each reviewed section is next worked on, so that every one has been seen before the date that matters and
+//     the visits are spread over the days available instead of piling up on the last one (planDays).
+//  2. WHETHER the days available are enough: how many visits are still needed and what that is per day (workload).
+//
+// The date that matters ("the cap") is the day before the ready-by date while that is still ahead, and afterward the day
+// before the performance. A section has a WINDOW: the earliest day a visit is worth taking and the latest day it can wait.
+//  - latest   = the day it is due, but no later than the cap;
+//  - earliest = the day its recall is predicted to have fallen to 95%. That is about 40% of the way to its due date
+//               (FSRS-6 with the default weights: 95% retention gives an interval about 0.4 of the one for 90%), so a
+//               visit sooner than that mostly repeats what is still fresh. The interval comes from FSRS itself
+//               (nextIntervalDays at 95% desired retention), not from a fixed fraction.
+//               A section that is due AFTER the cap is being pulled forward anyway: its visit is early whatever day it
+//               gets, so its window opens the day after its last review and the visits are free to spread.
+// Visits are placed as late as their window allows (the most stability per visit) and moved earlier, inside the window,
+// only when a day is full (the player's visits-a-day figure).
+//
+// Remaining work is estimated per finest section from its tier on the dashboard (see sip-event.js): provisional numbers,
+// to be replaced by what the review log's recorded steps show once there is enough history.
+
+"use strict";
+
+const core = require("./sip-core");
+const evMod = require("./sip-event");
+
+const WORTH_TAKING_AT = 0.95;
+const DEFAULT_VISITS_PER_DAY = 10;
+// Visits still needed to bring a finest section to green (+4 steps or better), by its tier now. Green needs one visit
+// before the cap to keep it fresh. A section never worked on needs about three. A whole piece never worked on also needs
+// its search and its splits, and splits into roughly one finest section per 15 measures (looked at in a real backup: pieces
+// of 58 to 172 measures had 7 to 13 finest sections each). First guesses: the recorded steps will replace them.
+const VISITS_TO_GREEN = { green: 1, amber: 2, orange: 3, red: 4 };
+const UNTRIED_PART_VISITS = 3;
+const MEASURES_PER_PART = 15;
+const untriedPieceVisits = measures => 4 + UNTRIED_PART_VISITS * Math.max(1, Math.round(measures / MEASURES_PER_PART));
+
+const iso = d => core.dateOnly(d).toISOString().slice(0, 10);
+const add = evMod.addDaysStr;
+const between = (a, b) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400000);
+
+// The last day a review can wait for this event on `day`.
+function capFor(event, day) {
+  const d = String(day).slice(0, 10);
+  return event.readyBy && d < event.readyBy ? add(event.readyBy, -1) : add(event.date, -1);
+}
+
+// { earliest, latest } as YYYY-MM-DD for a reviewed section.
+function windowOf(node, cap) {
+  const last = iso(node.fsrs.lastReview), due = iso(node.fsrs.due);
+  const floor = add(last, 1);
+  const limit = cap > floor ? cap : floor;                 // a section reviewed after the cap still waits at least a day
+  const latest = due < limit ? due : limit;
+  if (due > limit) return { earliest: floor, latest };      // pulled forward: any day from tomorrow on is equally early
+  const soonest = add(last, core.nextIntervalDays(node.fsrs.stability, WORTH_TAKING_AT));
+  return { earliest: soonest > latest ? latest : soonest, latest };
+}
+
+// items: [{ id, earliest, latest }]  ->  Map id -> day. See the header for the rule.
+function schedule(items, today, capacity) {
+  const load = new Map();
+  const bump = d => load.set(d, (load.get(d) || 0) + 1);
+  const planned = new Map();
+  const flexible = [];
+  for (const it of items) {
+    if (it.latest <= today) { planned.set(it.id, today); bump(today); }          // due now: nothing to balance
+    else flexible.push({ id: it.id, lo: it.earliest > today ? it.earliest : today, hi: it.latest });
+  }
+  flexible.sort((a, b) => (between(a.lo, a.hi) - between(b.lo, b.hi)) || (a.hi < b.hi ? 1 : a.hi > b.hi ? -1 : 0) || (a.id < b.id ? -1 : 1));
+  for (const it of flexible) {
+    let pick = null, best = Infinity, bestDay = null;
+    for (let d = it.hi; d >= it.lo; d = add(d, -1)) {
+      const n = load.get(d) || 0;
+      if (n < capacity) { pick = d; break; }
+      if (n < best) { best = n; bestDay = d; }                // every day is full: the least full one, the latest of those
+    }
+    if (pick === null) pick = bestDay;
+    planned.set(it.id, pick); bump(pick);
+  }
+  return planned;
+}
+
+// event: { date, readyBy?, visitsPerDay? } (a piece's derived event works). pieces: the pieces in it.
+function planDays(pieces, event, day) {
+  const today = String(day).slice(0, 10), cap = capFor(event, today);
+  const items = [];
+  for (const piece of pieces) for (const n of core.flattenTree(piece.root)) {
+    if (n.fsrs === null || n.interrupted) continue;
+    items.push({ id: n.id, ...windowOf(n, cap) });
+  }
+  return schedule(items, today, event.visitsPerDay || DEFAULT_VISITS_PER_DAY);
+}
+
+const leavesOf = node => node.children.length === 0 ? [node] : node.children.flatMap(leavesOf);
+
+// Is there time? Counts the visits still needed before the cap and compares them with the days left and what the
+// player can spare. `event` is a full event (uid, setList, readyDays ...); the pieces are looked up by uid.
+function workload(event, pieces, day) {
+  const today = String(day).slice(0, 10), by = evMod.readyBy(event), cap = capFor({ readyBy: by, date: event.date }, today);
+  const capacity = event.visitsPerDay || DEFAULT_VISITS_PER_DAY;
+  const daysLeft = cap >= today ? between(today, cap) + 1 : 0;
+  let learning = 0, maintenance = 0, untried = 0;
+  const logDays = new Set(); let logVisits = 0;
+  const since = add(today, -14);
+  for (const uid of event.setList) {
+    const piece = pieces.find(p => p.uid === uid); if (!piece) continue;
+    for (const n of core.flattenTree(piece.root)) {
+      for (const e of n.reviewLog) { const d = iso(e.reviewDate); if (d >= since && d <= today) { logDays.add(d); logVisits++; } }
+      if (n.children.length > 0) { if (n.fsrs !== null) maintenance += 1; continue; }              // a split section is reviewed on its own schedule too
+      if (n.fsrs === null) { const v = n.parentId === null ? untriedPieceVisits(n.end - n.start + 1) : UNTRIED_PART_VISITS; learning += v; untried += v; continue; }
+      const tier = evMod.tierOfStep(n.step), v = VISITS_TO_GREEN[tier];
+      if (tier === "green") maintenance += v; else learning += v;
+    }
+  }
+  const total = learning + maintenance;
+  const perDay = total === 0 ? 0 : daysLeft > 0 ? total / daysLeft : total;
+  const fits = capacity * daysLeft;
+  const status = total === 0 ? "done" : perDay <= capacity * 0.8 ? "ok" : perDay <= capacity ? "tight" : "behind";
+  return {
+    cap, daysLeft, capacity, learning, maintenance, untried, total,
+    perDay: Math.round(perDay * 10) / 10,
+    shortfall: Math.max(0, total - fits),
+    daysNeeded: Math.ceil(total / capacity),
+    recentRate: logDays.size ? Math.round((logVisits / logDays.size) * 10) / 10 : null,
+    status
+  };
+}
+
+module.exports = { WORTH_TAKING_AT, DEFAULT_VISITS_PER_DAY, VISITS_TO_GREEN, untriedPieceVisits, UNTRIED_PART_VISITS, capFor, windowOf, schedule, planDays, workload };
 
 };
 __mods["./sip-store"] = function (module, exports, require) {
@@ -3870,7 +4025,13 @@ function mergeLogs(a, b) {
   const rest = M.slice(p).map(i => from.get(i.id));
   if (p === 0 && rest[0].priorStability != null) conflict("the two histories do not share a start");
   const tmp = { id: a.id, fsrs: stateAfter(side, items, p), reviewLog: [] };
-  try { for (const e of rest) core.reviewNode(tmp, e.grade, e.reviewDate); }
+  try {
+    for (const e of rest) {
+      tmp.step = e.step;                                  // a replayed review keeps the tempo step it was made at
+      const made = core.reviewNode(tmp, e.grade, e.reviewDate);
+      if (e.step === undefined) delete made.step;         // older reviews never recorded one
+    }
+  }
   catch (err) { conflict(`the histories could not be replayed together (${err.message})`); }
   return { log: items.slice(0, p).map(i => i.entry).concat(tmp.reviewLog), fsrs: tmp.fsrs };
 }
@@ -4023,7 +4184,7 @@ module.exports = { mergePieces, mergeWorkspaces };
 </script>
 <script>
 "use strict";
-const core = __req("./sip-core"), pc = __req("./sip-piece"), sess = __req("./sip-session"), sto = __req("./sip-store"), mrg = __req("./sip-merge"), evMod = __req("./sip-event");
+const core = __req("./sip-core"), pc = __req("./sip-piece"), sess = __req("./sip-session"), sto = __req("./sip-store"), mrg = __req("./sip-merge"), evMod = __req("./sip-event"), planMod = __req("./sip-plan");
 const { GRADE } = core;
 const GRADE_NAME = { 1: "Again", 2: "Hard", 3: "Good", 4: "Easy" };
 const GRADE_HINT = { 1: "needs another look soon", 2: "got through, but barely", 3: "solid, as expected", 4: "ready to perform" };
@@ -4587,9 +4748,10 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-33";
+const APP_VERSION = "sip-app-34";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-34", items: ["Ready-by scheduling. A performance now works toward its ready-by date: every section is reviewed before it, and the reviews are spread over the days before it, no more than the visits a day you say you can spare (new field on the performance), instead of all falling on the last day. The Readiness screen has a new Time card: about how many visits are still needed, how many a day that is, and whether the days left are enough.", "Each review now records the tempo step the section had reached, so progress per visit can be measured later."] },
   { v: "sip-app-33", items: ["Hotspot search starts from what it already knows. When a section is split around its hotspot, the part before it starts from the tempos the earlier attempts already showed, and the part after it skips the tempos the section already held. Fewer attempts, about a third less playing time on a new piece. A part that inherited everything goes straight to its grade."] },
   { v: "sip-app-32", items: ["Wording is American English throughout (practice, color)."] },
   { v: "sip-app-31", items: ["Fixed: on a phone the Add a performance sheet ran off the top of the screen, so the name field could not be reached. Every pop-up sheet now scrolls inside itself, and its Save and Cancel buttons stay in view."] },
@@ -4838,7 +5000,20 @@ function viewReadiness() {
       ${tierBar(p.counts, p.measures, `${p.label} by measures: ${TIER_ORDER.map(t => evMod.TIER_LABEL[t] + " " + p.counts[t]).join(", ")}`)}
       <div class="small">${esc(weak)}</div><div class="small muted">${memText}</div></section>`;
   }).join("");
-  return head + prog + rows;
+  return head + workloadCard(e) + prog + rows;
+}
+const WORKLOAD_TAG = { ok: "On track", tight: "Tight", behind: "Behind", done: "Done" };
+function workloadCard(e) {
+  const w = planMod.workload(e, S.pieces, dayStr()), n = x => Math.round(x);
+  if (w.status === "done") return `<section class="card" data-workload="done"><div class="row"><h2 class="grow">Time</h2><span class="tag t-green">Done</span></div><div class="small">Nothing is left to work on before ${esc(w.cap)}.</div></section>`;
+  const days = w.daysLeft <= 0 ? "No days are left before the cap" : `${w.daysLeft} day${w.daysLeft === 1 ? "" : "s"} to work in, through ${esc(w.cap)}`;
+  const advice = w.status === "behind"
+    ? `At ${w.capacity} visits a day it would take ${w.daysNeeded} days. Options: spare more visits a day, move the ready-by date later, or take a piece off the set list.`
+    : w.status === "tight" ? `That is close to the ${w.capacity} visits a day you said you can spare.` : `Comfortably within the ${w.capacity} visits a day you said you can spare.`;
+  return `<section class="card" data-workload="${w.status}"><div class="row"><h2 class="grow">Time</h2><span class="tag ${w.status === "ok" ? "t-green" : w.status === "tight" ? "t-amber" : "t-red"}">${WORKLOAD_TAG[w.status]}</span></div>
+    <div class="num" style="font-size:1.6rem;font-weight:700" id="workload-n">About ${n(w.total)} visits to go</div>
+    <div class="small">${days}, so about ${w.perDay} a day. ${esc(advice)}</div>
+    <div class="small muted">${n(w.learning)} to bring sections up to tempo, ${n(w.maintenance)} to keep what is ready fresh.${w.untried ? ` ${n(w.untried)} of those are a guess for sections not tried yet.` : ""}${w.recentRate !== null ? ` Lately you make about ${w.recentRate} visits on a day you practice.` : ""}</div></section>`;
 }
 function eventBanner() {
   const today = dayStr(), e = eventList().find(x => evMod.daysUntil(x.date, today) >= 0);
@@ -4856,16 +5031,17 @@ function eventSheet(sh) {
     <div class="row"><label class="field grow" for="ev-ready">Ready by (days before)<input id="ev-ready" type="number" inputmode="numeric" min="1" value="${esc(sh.ready)}"></label>
     <label class="field grow" for="ev-prog">Whole program from (days before)<input id="ev-prog" type="number" inputmode="numeric" min="0" value="${esc(sh.prog)}"></label></div>
     ${plan ? `<ul class="small muted" style="margin:0;padding-left:18px">${plan}</ul>` : ""}
+    <label class="field" for="ev-visits">Visits a day you can spare<small>A visit is one section worked once. The plan spreads reviews so no day gets more than this, and tells you if the days left are not enough.</small><input id="ev-visits" type="number" inputmode="numeric" min="1" max="200" value="${esc(sh.visits)}"></label>
     <div><div class="eyebrow" style="margin-bottom:8px">Pieces</div><div class="chips" role="group" aria-label="Pieces">${S.pieces.map(p => `<button data-act="ev-toggle" data-uid="${esc(p.uid)}" aria-pressed="${sh.picks.includes(p.uid)}">${esc(p.label)}</button>`).join("") || '<span class="muted small">Add a piece first.</span>'}</div></div>
     ${sh.err ? `<div class="banner red"><span class="grow">${esc(sh.err)}</span></div>` : ""}
     <div class="row">${sh.orig ? `<button class="btn danger" data-act="event-remove">Remove</button>` : ""}<button class="btn grow" data-act="sheet-cancel">Cancel</button><button class="btn primary grow" data-act="sheet-ok" id="sheetok">Save</button></div></div></div>`;
 }
-function eventRead(sh) { const g = id => $(id); if (g("ev-name")) sh.name = g("ev-name").value; if (g("ev-date")) sh.date = g("ev-date").value; if (g("ev-jury")) sh.jury = g("ev-jury").value; if (g("ev-ready")) sh.ready = g("ev-ready").value; if (g("ev-prog")) sh.prog = g("ev-prog").value; }
+function eventRead(sh) { const g = id => $(id); if (g("ev-name")) sh.name = g("ev-name").value; if (g("ev-date")) sh.date = g("ev-date").value; if (g("ev-jury")) sh.jury = g("ev-jury").value; if (g("ev-ready")) sh.ready = g("ev-ready").value; if (g("ev-prog")) sh.prog = g("ev-prog").value; if (g("ev-visits")) sh.visits = g("ev-visits").value; }
 function saveEvent(sh) {
   eventRead(sh);
   try {
     const prior = sh.orig ? (S.settings.events || []).find(x => x.uid === sh.orig) : null;
-    const e = evMod.normalizeEvent({ uid: prior ? prior.uid : undefined, name: sh.name, date: sh.date, jury: sh.jury || null, readyDays: Number(sh.ready), programRunDays: Number(sh.prog), target: prior ? prior.target : undefined, setList: sh.picks, editedAt: Date.now() });
+    const e = evMod.normalizeEvent({ uid: prior ? prior.uid : undefined, name: sh.name, date: sh.date, jury: sh.jury || null, readyDays: Number(sh.ready), programRunDays: Number(sh.prog), visitsPerDay: Number(sh.visits), target: prior ? prior.target : undefined, setList: sh.picks, editedAt: Date.now() });
     if (!e.setList.length) throw new Error("Choose at least one piece.");
     if (!sh.orig && e.date < dayStr()) throw new Error("That date has already passed.");
     S.settings.events = (S.settings.events || []).filter(x => x.uid !== e.uid).concat(e);
@@ -4974,7 +5150,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-33\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-34\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -4986,7 +5162,7 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-33</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-34</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
@@ -5400,8 +5576,8 @@ function onAct(act, el) {
       }).catch(e => { S.importMsg = e.message; render(); });
       break;
     }
-    case "event-add": S.sheet = { kind: "event", orig: null, name: "", date: "", jury: "", ready: String(evMod.DEFAULTS.readyDays), prog: String(evMod.DEFAULTS.programRunDays), picks: [], err: "" }; render(); break;
-    case "event-edit": { const e = eventList()[Number(el.dataset.i)]; S.sheet = { kind: "event", orig: e.uid, name: e.name, date: e.date, jury: e.jury || "", ready: String(e.readyDays), prog: String(e.programRunDays), picks: e.setList.slice(), err: "" }; render(); break; }
+    case "event-add": S.sheet = { kind: "event", orig: null, name: "", date: "", jury: "", ready: String(evMod.DEFAULTS.readyDays), prog: String(evMod.DEFAULTS.programRunDays), visits: String(evMod.DEFAULTS.visitsPerDay), picks: [], err: "" }; render(); break;
+    case "event-edit": { const e = eventList()[Number(el.dataset.i)]; S.sheet = { kind: "event", orig: e.uid, name: e.name, date: e.date, jury: e.jury || "", ready: String(e.readyDays), prog: String(e.programRunDays), visits: String(e.visitsPerDay), picks: e.setList.slice(), err: "" }; render(); break; }
     case "ev-toggle": { const sh = S.sheet; eventRead(sh); const u = el.dataset.uid; sh.picks = sh.picks.includes(u) ? sh.picks.filter(x => x !== u) : sh.picks.concat(u); render(); break; }
     case "event-remove": removeEvent(S.sheet); break;
     case "readiness": S.readyUid = el.dataset.uid; S.view = "readiness"; S.sheet = null; render(); window.scrollTo(0, 0); break;
