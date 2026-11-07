@@ -274,6 +274,7 @@ function makeNode({ label, start, end, parentId, kind = "segment" }) {
     reviewLog: [],   // append-only log of review-log entries from reviewNode()
     decomposeRank: null, // 0 = Hotspot, 1 = Child A, 2 = Child B; set by decompose(). null for the root.
     search: null,    // active hotspot-search state (see beginHotspotSearch), or null
+    inherited: null, // what the parent's search already showed about this section (see deriveChildSeeds); used by its first search only
     bookmark: null,  // an ordinal location the player saved when a session was cut short
     interrupted: false, // true if a session ended by timeout mid-search, without grading
     children: []
@@ -691,20 +692,64 @@ function beginHotspotSearch(node, options = {}) {
     initialCandidate
   } = options;
 
-  return {
+  // A section split off by a converged search starts with what that search showed
+  // (see deriveChildSeeds). The seed is for its FIRST search only: a section that
+  // has been reviewed, or one that is already split and is being searched again from
+  // its top, starts clean.
+  const seed = node.inherited && node.fsrs === null && node.children.length === 0 && initialCandidate === undefined
+    ? node.inherited : null;
+  const seeded = seed !== null;
+
+  const state = {
     nodeId: node.id,
     minStep,
     maxStep,
-    passStep: minStep,       // assume the floor always plays — nothing confirmed harder yet
-    failStep: maxStep + 1,   // sentinel: nothing confirmed to fail yet
-    hotspotCandidate: initialCandidate !== undefined
-      ? initialCandidate
+    passStep: seeded && seed.passStep !== undefined ? seed.passStep : minStep,   // assume the floor always plays — nothing confirmed harder yet
+    failStep: seeded && seed.failStep !== undefined ? seed.failStep : maxStep + 1, // sentinel: nothing confirmed to fail yet
+    hotspotCandidate: seeded && seed.candidate !== undefined ? seed.candidate
+      : initialCandidate !== undefined ? initialCandidate
       : (node.hotspot !== null ? node.hotspot : node.start),
     currentStep: null,
     currentStartLocation: null, // the location actually used for the current trial (may differ from hotspotCandidate; see nextTrial)
+    currentBookmarkStart: false, // true when the current trial began at a bookmark rather than at the candidate
     trialInProgress: false,
-    history: []              // {step, hotspotCandidate, result, failureLocation?}
+    history: []              // {step, start, bookmarkStart?, hotspotCandidate, result, failureLocation?}
   };
+  if (seeded) {
+    state.seeded = true;
+    state.inheritedLog = (seed.log || []).map(e => ({ ...e }));   // earlier trials this section inherits (kept so ITS children can inherit them in turn)
+    if (seed.skipAtOrBelow !== undefined) state.skipAtOrBelow = seed.skipAtOrBelow;
+    if (state.failStep <= maxStep) state.seededFail = true;       // a failing step is already known, though no failed trial is in this history
+  }
+  settleSkips(state);
+  return state;
+}
+
+// The step the next trial would use. The first trial of a search probes the top
+// of the range — but only while no failing step is known; a section that already
+// knows where it breaks goes straight to bisection.
+function pickStep(state) {
+  return state.history.length === 0 && state.failStep === state.maxStep + 1
+    ? state.maxStep
+    : Math.floor((state.passStep + state.failStep) / 2);
+}
+
+// A seeded section whose parent already passed at some step skips every step at or
+// below it: those are treated as passes without playing them. Skipped steps are not
+// trials — they leave no history and are never shown.
+function settleSkips(state) {
+  if (state.skipAtOrBelow === undefined) return;
+  while (state.failStep - state.passStep > 1) {
+    const step = pickStep(state);
+    if (step > state.skipAtOrBelow) break;
+    state.passStep = step;
+  }
+}
+
+// True when the search has seen a section fail: a failed trial of its own, or a
+// failure it inherited. Only then does converging mean a genuine hotspot.
+function searchFoundFailure(state) {
+  return state.history.some(h => h.result === "fail") || state.seededFail === true;
 }
 
 function isSearchConverged(state) {
@@ -733,10 +778,9 @@ function nextTrial(state, startLocationOverride = undefined) {
   if (isSearchConverged(state)) {
     throw new Error("Search has already converged; no further trial is needed.");
   }
-  state.currentStep = state.history.length === 0
-    ? state.maxStep
-    : Math.floor((state.passStep + state.failStep) / 2);
+  state.currentStep = pickStep(state);
   state.trialInProgress = true;
+  state.currentBookmarkStart = startLocationOverride !== undefined;
   state.currentStartLocation = startLocationOverride !== undefined ? startLocationOverride : state.hotspotCandidate;
   return { step: state.currentStep, startLocation: state.currentStartLocation };
 }
@@ -752,7 +796,8 @@ function recordTrialResult(state, passed, failureLocation = null) {
     throw new Error("A failed trial must report a failureLocation.");
   }
 
-  const entry = { step: state.currentStep, hotspotCandidate: state.hotspotCandidate, result: passed ? "pass" : "fail" };
+  const entry = { step: state.currentStep, start: state.currentStartLocation, hotspotCandidate: state.hotspotCandidate, result: passed ? "pass" : "fail" };
+  if (state.currentBookmarkStart) entry.bookmarkStart = true;
 
   if (passed) {
     state.passStep = state.currentStep;
@@ -764,6 +809,7 @@ function recordTrialResult(state, passed, failureLocation = null) {
 
   state.trialInProgress = false;
   state.history.push(entry);
+  settleSkips(state);
   return entry;
 }
 
@@ -793,6 +839,56 @@ function amendLastFailure(state, newLocation) {
   if (state.trialInProgress && state.currentStartLocation === previous) state.currentStartLocation = newLocation;
   return { step: last.step, from: previous, to: newLocation };
 }
+
+// What a converged search that found a hotspot tells its two flanks (see
+// docs/Hotspot_Search_Inheritance.md). Called at grading, before the search is cleared.
+//  - Child A (before the hotspot) inherits every trial that STARTED before it: a trial that
+//    passed, or broke at or after the hotspot, passed A's measures at that step; one that broke
+//    before the hotspot failed A there. The result is a narrowed bracket and a known candidate.
+//  - Child B (after the hotspot) inherits one fact: the final passing step. Steps at or below it
+//    are not played again.
+//  - The hotspot itself gets nothing: it is practiced on its own and searched fresh.
+// Trials that began at a bookmark are never inherited (they did not play from the candidate), and
+// neither do trials that began at the hotspot itself or have no recorded start.
+function trialRecords(search) {
+  const own = search.history.map(e => {
+    const r = { start: e.start, step: e.step, ok: e.result === "pass" };
+    if (!r.ok) r.loc = e.failureLocation;
+    if (e.bookmarkStart) r.bookmarkStart = true;
+    return r;
+  });
+  return (search.inheritedLog || []).map(e => ({ ...e })).concat(own);
+}
+
+function deriveChildSeeds(node, search) {
+  const h = search.hotspotCandidate, P = search.passStep;
+  const seeds = { A: null, B: null };
+  if (h > node.start) {
+    let pass = search.minStep, fail = search.maxStep + 1, candidate = node.start;
+    const log = [];
+    for (const e of trialRecords(search)) {
+      if (!Number.isInteger(e.start) || !(e.start < h) || e.bookmarkStart) continue;
+      if (e.ok || e.loc >= h) {
+        pass = Math.max(pass, e.step);
+        log.push({ start: e.start, step: e.step, ok: true });
+      } else {
+        if (e.step < fail) { fail = e.step; candidate = e.loc; }
+        log.push({ start: e.start, step: e.step, ok: false, loc: e.loc });
+      }
+    }
+    const a = { log };
+    if (pass > search.minStep) a.passStep = pass;
+    if (fail <= search.maxStep) { a.failStep = fail; a.candidate = candidate; }
+    seeds.A = a;
+  }
+  if (h < node.end) {
+    seeds.B = { skipAtOrBelow: P, log: [{ start: h + 1, step: P, ok: true }] };
+  }
+  return seeds;
+}
+
+module.exports.deriveChildSeeds = deriveChildSeeds;
+module.exports.searchFoundFailure = searchFoundFailure;
 
 module.exports.SEARCH_MIN_STEP = SEARCH_MIN_STEP;
 module.exports.SEARCH_MAX_STEP = SEARCH_MAX_STEP;
@@ -831,11 +927,16 @@ function concludeSession(node, grade, reviewDate = studyDayOf(new Date()), optio
   if (!alreadySplit) node.hotspot = node.search.hotspotCandidate;
 
   const converged = isSearchConverged(node.search);
-  const foundHotspot = node.search.history.some(h => h.result === "fail");
+  const foundHotspot = searchFoundFailure(node.search);
 
   let decomposedChildren = null;
   if (converged && foundHotspot && node.kind !== "hotspot" && !alreadySplit) {
+    const seeds = deriveChildSeeds(node, node.search);   // before the search is cleared
     decomposedChildren = decompose(node);
+    for (const c of decomposedChildren) {
+      if (c.decomposeRank === 1) c.inherited = seeds.A;
+      else if (c.decomposeRank === 2) c.inherited = seeds.B;
+    }
   }
 
   if (converged) node.search = null;
@@ -976,7 +1077,7 @@ function suggestGrade(node, options = {}) {
     throw new Error("suggestGrade requires an active search on this node.");
   }
   const { firstExposureDefault = GRADE.GOOD, override = null } = options;
-  const foundHotspot = node.search.history.some(h => h.result === "fail");
+  const foundHotspot = searchFoundFailure(node.search);
   return deriveGrade({
     isPerformanceReady: node.readyForPerformance || !foundHotspot,
     isFirstExposure: node.fsrs === null,
@@ -1170,6 +1271,7 @@ function reviewNode(node, grade, reviewDate = studyDayOf(new Date()), options = 
   }
 
   assertParams(params);
+  node.inherited = null;   // a seed is for the first search only; any review ends it
   const isNew = node.fsrs === null;
   let elapsedDays = null;
   let r = null;
@@ -1862,6 +1964,7 @@ function pinnedLocations(node) {
   const pins = [];
   if (node.hotspot !== null) pins.push({ value: node.hotspot, what: "the hotspot" });
   if (node.bookmark !== null) pins.push({ value: node.bookmark, what: "the bookmark" });
+  if (node.inherited && Number.isInteger(node.inherited.candidate)) pins.push({ value: node.inherited.candidate, what: "the inherited hotspot candidate" });
   if (node.search) {
     if (Number.isInteger(node.search.hotspotCandidate)) pins.push({ value: node.search.hotspotCandidate, what: "the search's hotspot candidate" });
     if (Number.isInteger(node.search.currentStartLocation)) pins.push({ value: node.search.currentStartLocation, what: "the search's current start location" });
@@ -2024,6 +2127,7 @@ function serializeNode(node) {
       : null,
     reviewLog: node.reviewLog.map(e => ({ ...e, reviewDate: dayToString(e.reviewDate), due: dayToString(e.due) })),
     search: node.search ? JSON.parse(JSON.stringify(node.search)) : null,
+    ...(node.inherited ? { inherited: JSON.parse(JSON.stringify(node.inherited)) } : {}),   // written only while pending
     ...(Array.isArray(node.instruments) && node.instruments.length > 0 ? { instruments: [...node.instruments] } : {}),
     ...(node.subdivision === 2 || node.subdivision === 3 ? { subdivision: node.subdivision } : {}),
     children: node.children.map(serializeNode)
@@ -2113,6 +2217,19 @@ function validatePieceData(data) {
     if (!(node.bookmark === null || isInt(node.bookmark))) bad(`${path}.bookmark`, "must be null or an integer");
     if (typeof node.interrupted !== "boolean") bad(`${path}.interrupted`, "must be true or false");
     if (!(node.search === null || (typeof node.search === "object" && !Array.isArray(node.search)))) bad(`${path}.search`, "must be null or an object");
+    if (node.inherited !== undefined && node.inherited !== null) {
+      const h = node.inherited;
+      if (typeof h !== "object" || Array.isArray(h)) bad(`${path}.inherited`, "must be absent, null or an object");
+      else {
+        for (const f of ["passStep", "failStep", "candidate", "skipAtOrBelow"]) {
+          if (h[f] !== undefined && !isInt(h[f])) bad(`${path}.inherited.${f}`, "must be an integer when present");
+        }
+        if (!Array.isArray(h.log)) bad(`${path}.inherited.log`, "must be a list");
+        else if (h.log.some(e => !e || !isInt(e.start) || !isInt(e.step) || typeof e.ok !== "boolean" || (e.loc !== undefined && !isInt(e.loc)))) {
+          bad(`${path}.inherited.log`, "each record needs whole-number start and step, and ok true or false");
+        }
+      }
+    }
 
     if (node.fsrs !== null) {
       if (!node.fsrs || typeof node.fsrs !== "object") bad(`${path}.fsrs`, "must be null or an object");
@@ -2188,6 +2305,7 @@ function deserializeNode(obj, parentId, counter, parseDay, preserveIds) {
     fsrs: obj.fsrs ? { ...obj.fsrs, due: parseDay(obj.fsrs.due), lastReview: parseDay(obj.fsrs.lastReview) } : null,
     reviewLog: obj.reviewLog.map(e => ({ ...e, nodeId: id, reviewDate: parseDay(e.reviewDate), due: parseDay(e.due) })),
     search: obj.search ? JSON.parse(JSON.stringify(obj.search)) : null,
+    inherited: obj.inherited ? JSON.parse(JSON.stringify(obj.inherited)) : null,
     children: []
   };
   const tagged = core.normalizeInstruments(obj.instruments);
@@ -2945,6 +3063,8 @@ function startNodeWork(session, pieces, node, { now, resume = "auto" } = {}) {
   // out the tempo it holds now. The candidate starts at the node's first measure
   // (not at the hotspot it was split around) because it may have moved.
   node.search = beginHotspotSearch(node, node.children.length > 0 ? { initialCandidate: node.start } : {});
+  // A section that inherited everything it needs starts already converged: it only wants its grade.
+  if (isSearchConverged(node.search)) return started("converged", null);
   return started("search", nextTrial(node.search));
 }
 
@@ -3786,6 +3906,7 @@ function mergeNode(a, b, prefer, alloc) {
   const { log, fsrs } = first;
   const m = owner;                                                           // owner is a clone, so it can be changed
   if (log.length > owner.reviewLog.length) { m.interrupted = false; m.search = null; }   // reviewed elsewhere since: the set-aside is stale
+  if (log.length > 0) m.inherited = null;                                   // a seed is for the first search only: a reviewed section has used it
   m.id = a.id; m.parentId = a.parentId;
   m.reviewLog = log.map(e => ({ ...e, nodeId: m.id }));
   m.fsrs = fsrs ? { ...fsrs } : null;
@@ -4466,9 +4587,10 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-32";
+const APP_VERSION = "sip-app-33";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-33", items: ["Hotspot search starts from what it already knows. When a section is split around its hotspot, the part before it starts from the tempos the earlier attempts already showed, and the part after it skips the tempos the section already held. Fewer attempts, about a third less playing time on a new piece. A part that inherited everything goes straight to its grade."] },
   { v: "sip-app-32", items: ["Wording is American English throughout (practice, color)."] },
   { v: "sip-app-31", items: ["Fixed: on a phone the Add a performance sheet ran off the top of the screen, so the name field could not be reached. Every pop-up sheet now scrolls inside itself, and its Save and Cancel buttons stay in view."] },
   { v: "sip-app-30", items: ["Readiness dashboard for a performance (the Readiness button on a performance, or on the Practice banner). Every section is colored by how far its tempo has come: green at +4 steps or more, amber −1 to +3, orange −4 to −2, red below that, gray if not tried yet. It shows the whole program by measures, each piece worst-first with its weakest section, and how well each will be remembered on the ready-by date."] },
@@ -4574,6 +4696,7 @@ function workCard() {
     </div>
     ${metStrip(piece, node, t, step, loc)}
     <div class="startat tight"><span class="muted">Start at</span><b>m. ${loc}</b></div>
+    ${s.seeded && s.history.length === 0 ? `<div class="small muted tight" style="text-align:center">Inherited: starts from what its parent's session already showed.</div>` : ""}
     ${note ? `<button class="note tight notebtn" data-act="note-edit" aria-label="Edit the note"><span><b>Watch for:</b> ${esc(note)}</span><span class="small muted">Edit</span></button>` : ""}
     <div class="answers tight">
       <button class="pass" data-act="pass">Pass<small>played clean</small></button>
@@ -4590,7 +4713,9 @@ function workCard() {
 }
 function gradeCard() {
   const { piece, node } = S.cur, s = node.search;
-  const found = s.history.some(h => h.result === "fail");
+  const found = core.searchFoundFailure(s);
+  const lastTrial = s.history[s.history.length - 1];
+  const canFix = !!lastTrial && lastTrial.result === "fail";
   const willSplit = found && node.children.length === 0 && node.kind !== "hotspot";
   const sug = core.suggestGrade(node);
   const t = tempoFor(piece, node, s.passStep);
@@ -4604,10 +4729,11 @@ function gradeCard() {
     <div class="tempo"><div class="label">${found ? "It holds up to" : "Clean at the top of the range"}</div><div class="adjust ${s.passStep < 0 ? "neg" : ""}">${fmtPct(s.passStep)}</div>${t ? `<div class="result">♩ ${Math.round(t.first)}</div>` : ""}</div>
     ${found && !single(node) ? `<div class="startat"><span class="muted">Trouble spot</span><b>m. ${hs}</b></div>` : ""}
     ${cmp ? `<div class="small muted" style="text-align:center">${cmp}</div>` : ""}
+    ${s.seeded && s.history.length === 0 ? `<div class="small muted" style="text-align:center">Inherited: nothing to play. Its parent's session already showed this.</div>` : ""}
     ${willSplit ? `<label class="field" for="why">Why does it break there?<small>Optional. It stays with the hotspot as a reminder.</small><input type="text" id="why" maxlength="100" placeholder="e.g. ring finger not covering the tone hole" autocomplete="off"></label>` : ""}
     <div class="eyebrow">How did it go?</div>
     <div class="grades">${[1, 2, 3, 4].map(g => `<button data-act="grade" data-g="${g}" class="${g === sug ? "suggested" : ""}">${g === sug ? '<span class="sug">Suggested</span>' : ""}${GRADE_NAME[g]}<small>${GRADE_HINT[g]}</small></button>`).join("")}</div>
-    <div class="row">${found ? `<button class="btn small ghost" data-act="amend">Fix last failure</button>` : ""}${willSplit ? "" : `<button class="btn small ghost" data-act="note-edit">${node.hotspotNote ? "Edit note" : "Add note"}</button>`}</div>
+    <div class="row">${canFix ? `<button class="btn small ghost" data-act="amend">Fix last failure</button>` : ""}${willSplit ? "" : `<button class="btn small ghost" data-act="note-edit">${node.hotspotNote ? "Edit note" : "Add note"}</button>`}</div>
   </section>`;
 }
 const single = n => n.start === n.end;
@@ -4848,7 +4974,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-32\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-33\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -4860,7 +4986,7 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-32</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-33</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
