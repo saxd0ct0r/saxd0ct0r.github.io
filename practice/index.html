@@ -5155,9 +5155,10 @@ function overtimeBanner() {
   return `<div class="banner red"><span class="grow">Time's up. Keep going?</span><button class="btn small" data-act="extend">Extend 5 min</button><button class="btn small primary" data-act="end">Finish</button></div>`;
 }
 /* ---------- first-run guide and "What's new" ---------- */
-const APP_VERSION = "sip-app-37";
+const APP_VERSION = "sip-app-38";
 // Newest first. Plain words for players, not engineers. Add an entry with each release that changes what they see.
 const CHANGELOG = [
+  { v: "sip-app-38", items: ["A part that inherited its whole result now says so in plain words at the top of its grade screen: nothing to play, how far it held, and that the grade you choose sets when it comes back."] },
   { v: "sip-app-37", items: ["Repeats and endings. Edit a piece to say where it repeats (repeat 1-8, repeat 1-8 x3, or repeat 1-8 endings 9-10, 11-12) and the screen shows the order the bars are played. Each written bar still has one position; give a second ending the next free numbers and put the number printed on the page in brackets. Tempo lines can carry pass 2 for a change that applies only the second time through. The estimated time of the whole piece, the click plan and the TonalEnergy export (command line) all follow the order you actually play."] },
   { v: "sip-app-36", items: ["Several performances at once. All of them now share one daily budget of visits (the figure you saved last), and the Time card says when an earlier performance is using up the days. A performance can also be a series: add more dates (a tour) and the plan is ready by the first, then keeps the program fresh until the last, with whole-program run-throughs between dates. On a piece, Edit lets you mark that you can sight-read it reliably, so the plan counts one visit for it instead of a full learning estimate; a poor first visit takes the mark off."] },
   { v: "sip-app-35", items: ["Run-throughs. In the run-through weeks of a performance the Practice screen suggests playing a piece (then the whole program) straight through, and you rate it afterward: clean, slipped but kept going, or stopped. A slip is not a failure; carrying on is the skill. Optionally type the measures where it slipped, and those places come back as ordinary visits from the next day, near the top of the queue. The Readiness screen has a Run-throughs card with each piece's recent runs."] },
@@ -5268,7 +5269,7 @@ function workCard() {
     </div>
     ${metStrip(piece, node, t, step, loc)}
     <div class="startat tight"><span class="muted">Start at</span><b>m. ${loc}</b></div>
-    ${s.seeded && s.history.length === 0 ? `<div class="small muted tight" style="text-align:center">Inherited: starts from what its parent's session already showed.</div>` : ""}
+    ${s.seeded && s.history.length === 0 ? `<div class="banner tight" data-inherited><span class="grow"><b>Inherited:</b> starts from what its parent's session already showed, so tempos it already held are skipped.</span></div>` : ""}
     ${note ? `<button class="note tight notebtn" data-act="note-edit" aria-label="Edit the note"><span><b>Watch for:</b> ${esc(note)}</span><span class="small muted">Edit</span></button>` : ""}
     <div class="answers tight">
       <button class="pass" data-act="pass">Pass<small>played clean</small></button>
@@ -5301,7 +5302,7 @@ function gradeCard() {
     <div class="tempo"><div class="label">${found ? "It holds up to" : "Clean at the top of the range"}</div><div class="adjust ${s.passStep < 0 ? "neg" : ""}">${fmtPct(s.passStep)}</div>${t ? `<div class="result">♩ ${Math.round(t.first)}</div>` : ""}</div>
     ${found && !single(node) ? `<div class="startat"><span class="muted">Trouble spot</span><b>m. ${hs}</b></div>` : ""}
     ${cmp ? `<div class="small muted" style="text-align:center">${cmp}</div>` : ""}
-    ${s.seeded && s.history.length === 0 ? `<div class="small muted" style="text-align:center">Inherited: nothing to play. Its parent's session already showed this.</div>` : ""}
+    ${s.seeded && s.history.length === 0 ? `<div class="banner" data-inherited><span class="grow"><b>Inherited: nothing to play.</b> This part was already played as part of its parent, and it held up to ${fmtPct(s.passStep)}${t ? ` (♩ ${Math.round(t.first)})` : ""}. The grade below is suggested from that; pick another if it doesn't match what you remember. The grade is what sets when it comes back.</span></div>` : ""}
     ${willSplit ? `<label class="field" for="why">Why does it break there?<small>Optional. It stays with the hotspot as a reminder.</small><input type="text" id="why" maxlength="100" placeholder="e.g. ring finger not covering the tone hole" autocomplete="off"></label>` : ""}
     <div class="eyebrow">How did it go?</div>
     <div class="grades">${[1, 2, 3, 4].map(g => `<button data-act="grade" data-g="${g}" class="${g === sug ? "suggested" : ""}">${g === sug ? '<span class="sug">Suggested</span>' : ""}${GRADE_NAME[g]}<small>${GRADE_HINT[g]}</small></button>`).join("")}</div>
@@ -5620,7 +5621,7 @@ function addPiece(label, start, end, tempo, inst) {
 /* ---------- data ---------- */
 const FEEDBACK_TO = "sip.feedback.3.14@gmail.com";
 function feedbackHref() {
-  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-37\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
+  const body = "What happened, or what would help?\n\n\n\nWhat I expected:\n\n\n\n-----\nSent from SIP sip-app-38\nDevice: " + navigator.userAgent + "\n(No practice data is included.)";
   return "mailto:" + FEEDBACK_TO + "?subject=" + encodeURIComponent("SIP feedback") + "&body=" + encodeURIComponent(body);
 }
 function viewData() {
@@ -5632,7 +5633,7 @@ function viewData() {
     <button class="btn small" data-act="met-quiet" aria-pressed="${MET.cfg.quiet}">${MET.cfg.quiet ? "Only accented beats sound" : "Every beat sounds"}</button>
     <button class="btn small" data-act="met-drop" aria-label="Drop beats at random: ${["off", "some", "often"][MET.cfg.drop]}. Tap to change.">Drop beats: ${["off", "some", "often"][MET.cfg.drop]}</button></div>
     <p class="small muted" style="margin:0">Once the tempo is settled and it is time to grade, the click stops on its own. Tap to change that on this device. With an accent pattern chosen on the work screen, "Only accented beats sound" silences the beats between accents, and "Drop beats" leaves out a beat now and then (never two in a row) so you have to keep the pulse yourself.</p></section>
-  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-37</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
+  <section class="card"><h2>App version</h2><p class="muted" style="margin:0">This copy is <b class="num">sip-app-38</b>. If you have just updated and it shows an older one, close the app completely and open it again.</p><div class="row"><button class="btn small" data-act="update-check">Check for update</button><span class="small muted" id="updatemsg"></span></div></section>
   <section class="card"><h2>Saved on this device</h2>
     <p class="muted" style="margin:0">${S.durable ? "Your pieces, history and any running session are stored in this browser, on this device only. Other devices do not see them." : "This browser would not allow saving, so nothing here will be kept. Open the app in a normal window, or use a backup file."}</p>
     ${S.saveError ? `<div class="banner red"><span class="grow">Last save failed: ${esc(S.saveError)}</span></div>` : ""}
